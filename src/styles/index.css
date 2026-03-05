@@ -1,0 +1,46 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+
+/* Disable ReactFlow edge animations for instant connection updates */
+.react-flow__edge-path {
+  transition: none !important;
+}
+
+.react-flow__edge {
+  transition: none !important;
+}
+
+/* Mobile bottom sheet slide-up animation */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Sidebar slide-in from left animation */
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Hide scrollbar for mobile video thumbnails */
+.hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}

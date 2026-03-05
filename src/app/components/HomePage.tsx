@@ -1,0 +1,382 @@
+import { useState } from 'react';
+import { 
+  Clock, 
+  BookOpen, 
+  Video, 
+  TrendingUp, 
+  Users, 
+  Calendar,
+  ArrowRight,
+  PlayCircle,
+  FileText,
+  MessageSquare,
+  Zap,
+  CheckCircle2
+} from 'lucide-react';
+import svgPaths from "../../imports/svg-albmkprcym";
+
+function IconLogo() {
+  return (
+    <svg className="block w-full h-full" fill="none" viewBox="0 0 24 24">
+      <g>
+        <path d={svgPaths.p2e071580} fill="currentColor" />
+        <path d={svgPaths.p159c9f80} fill="currentColor" />
+        <path d={svgPaths.p50fb500} fill="currentColor" />
+        <path d={svgPaths.p1f65b900} fill="currentColor" />
+      </g>
+    </svg>
+  );
+}
+
+interface QuickActionProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  onClick?: () => void;
+}
+
+function QuickActionCard({ icon, title, description, onClick }: QuickActionProps) {
+  return (
+    <button
+      onClick={onClick}
+      className="bg-card border border-border rounded-[var(--radius)] p-6 hover:border-primary transition-all hover:shadow-[var(--elevation-sm)] flex flex-col items-start text-left group"
+    >
+      <div className="w-12 h-12 rounded-[var(--radius)] bg-primary/10 flex items-center justify-center mb-4 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+        {icon}
+      </div>
+      <h3 className="text-foreground mb-2">{title}</h3>
+      <p className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>
+        {description}
+      </p>
+      <div className="mt-4 flex items-center gap-2 text-primary group-hover:gap-3 transition-all">
+        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-bold)' }}>
+          Get started
+        </span>
+        <ArrowRight size={16} />
+      </div>
+    </button>
+  );
+}
+
+interface RecentItemProps {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  timestamp: string;
+  onClick?: () => void;
+}
+
+function RecentItem({ icon, title, subtitle, timestamp, onClick }: RecentItemProps) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 rounded-[var(--radius)] transition-colors text-left group"
+    >
+      <div className="w-10 h-10 rounded-[var(--radius)] bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <h4 className="text-foreground mb-0.5 truncate" style={{ fontSize: 'var(--text-base)' }}>
+          {title}
+        </h4>
+        <p className="text-muted truncate" style={{ fontSize: 'var(--text-sm)' }}>
+          {subtitle}
+        </p>
+      </div>
+      <span className="text-muted flex-shrink-0" style={{ fontSize: 'var(--text-sm)' }}>
+        {timestamp}
+      </span>
+    </button>
+  );
+}
+
+interface StatCardProps {
+  icon: React.ReactNode;
+  value: string;
+  label: string;
+  trend?: string;
+  trendUp?: boolean;
+}
+
+function StatCard({ icon, value, label, trend, trendUp }: StatCardProps) {
+  return (
+    <div className="bg-card border border-border rounded-[var(--radius)] p-5" style={{ boxShadow: 'var(--elevation-sm)' }}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-10 h-10 rounded-[var(--radius)] bg-primary/10 flex items-center justify-center text-primary">
+          {icon}
+        </div>
+        {trend && (
+          <div className={`flex items-center gap-1 px-2 py-1 rounded-[var(--radius)] ${trendUp ? 'bg-accent/10 text-accent' : 'bg-destructive/10 text-destructive'}`}>
+            <TrendingUp size={12} className={trendUp ? '' : 'rotate-180'} />
+            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-bold)' }}>
+              {trend}
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="text-foreground mb-1" style={{ fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}>
+        {value}
+      </div>
+      <div className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+interface HomePageProps {
+  onNavigateToKnowledgeBase?: () => void;
+  onNavigateToRemoteSupport?: () => void;
+  onOpenAIChat?: () => void;
+  onScheduleMeeting?: () => void;
+}
+
+export function HomePage({ 
+  onNavigateToKnowledgeBase, 
+  onNavigateToRemoteSupport, 
+  onOpenAIChat,
+  onScheduleMeeting
+}: HomePageProps) {
+  const [userName] = useState('John Smith');
+
+  const quickActions = [
+    {
+      icon: <FileText size={24} />,
+      title: 'Create Procedure',
+      description: 'Build step-by-step guides with our visual editor',
+      onClick: onNavigateToKnowledgeBase,
+    },
+    {
+      icon: <Video size={24} />,
+      title: 'Start Remote Support',
+      description: 'Connect with team members for live assistance',
+      onClick: onNavigateToRemoteSupport,
+    },
+    {
+      icon: <MessageSquare size={24} />,
+      title: 'Ask AI Assistant',
+      description: 'Get instant help with procedures and questions',
+      onClick: onOpenAIChat,
+    },
+    {
+      icon: <Calendar size={24} />,
+      title: 'Schedule Meeting',
+      description: 'Set up training or support sessions',
+      onClick: onScheduleMeeting,
+    },
+  ];
+
+  const recentItems = [
+    {
+      icon: <FileText size={18} />,
+      title: 'Product Assembly Guide',
+      subtitle: 'Manufacturing → Updated by Sarah Chen',
+      timestamp: '2 hours ago',
+    },
+    {
+      icon: <FileText size={18} />,
+      title: 'Customer Onboarding Flow',
+      subtitle: 'Sales & Support → Created by Mike Johnson',
+      timestamp: '5 hours ago',
+    },
+    {
+      icon: <PlayCircle size={18} />,
+      title: 'Training Session Recording',
+      subtitle: 'Remote Support → Completed',
+      timestamp: 'Yesterday',
+    },
+    {
+      icon: <FileText size={18} />,
+      title: 'Safety Protocol Update',
+      subtitle: 'Operations → Updated by Emily Davis',
+      timestamp: '2 days ago',
+    },
+    {
+      icon: <MessageSquare size={18} />,
+      title: 'AI Chat: Equipment Setup',
+      subtitle: 'Knowledge Base → Question answered',
+      timestamp: '3 days ago',
+    },
+  ];
+
+  return (
+    <>
+    <div className="flex flex-col h-full bg-card">
+      {/* Header */}
+      <div className="px-8 py-6 border-b border-border bg-card">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h1 className="text-foreground mb-1">Welcome back, {userName}</h1>
+            <p className="text-muted" style={{ fontSize: 'var(--text-base)' }}>
+              Here's what's happening with your workspace today
+            </p>
+          </div>
+          <div className="w-16 h-16 rounded-[var(--radius)] bg-primary/10 flex items-center justify-center text-primary p-3">
+            <IconLogo />
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-8 py-6">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Stats Overview */}
+          <section>
+            <h2 className="text-foreground mb-4">Overview</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                icon={<FileText size={20} />}
+                value="142"
+                label="Total Procedures"
+                trend="+12%"
+                trendUp={true}
+              />
+              <StatCard
+                icon={<Users size={20} />}
+                value="24"
+                label="Active Team Members"
+                trend="+8%"
+                trendUp={true}
+              />
+              <StatCard
+                icon={<Video size={20} />}
+                value="18"
+                label="Support Sessions This Week"
+                trend="+15%"
+                trendUp={true}
+              />
+              <StatCard
+                icon={<CheckCircle2 size={20} />}
+                value="96%"
+                label="Completion Rate"
+                trend="+3%"
+                trendUp={true}
+              />
+            </div>
+          </section>
+
+          {/* Quick Actions */}
+          <section>
+            <h2 className="text-foreground mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {quickActions.map((action, index) => (
+                <QuickActionCard key={index} {...action} />
+              ))}
+            </div>
+          </section>
+
+          {/* Recent Activity & Upcoming */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Recent Activity */}
+            <section className="lg:col-span-2">
+              <div className="bg-card border border-border rounded-[var(--radius)] overflow-hidden" style={{ boxShadow: 'var(--elevation-sm)' }}>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <Clock size={20} className="text-primary" />
+                    <h3 className="text-foreground">Recent Activity</h3>
+                  </div>
+                  <button className="text-primary hover:underline" style={{ fontSize: 'var(--text-sm)' }}>
+                    View all
+                  </button>
+                </div>
+                <div className="p-2">
+                  {recentItems.map((item, index) => (
+                    <RecentItem key={index} {...item} />
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* Right Column */}
+            <section className="space-y-6">
+              {/* Upcoming Meetings */}
+              <div className="bg-card border border-border rounded-[var(--radius)] overflow-hidden" style={{ boxShadow: 'var(--elevation-sm)' }}>
+                <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
+                  <Calendar size={20} className="text-primary" />
+                  <h3 className="text-foreground">Upcoming</h3>
+                </div>
+                <div className="p-6">
+                  <div className="flex items-start gap-3 mb-4 pb-4 border-b border-border last:border-0 last:mb-0 last:pb-0">
+                    <div className="w-12 h-12 rounded-[var(--radius)] bg-accent/10 flex flex-col items-center justify-center flex-shrink-0">
+                      <div className="text-accent" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-bold)' }}>
+                        15
+                      </div>
+                      <div className="text-accent" style={{ fontSize: 'var(--text-sm)' }}>
+                        FEB
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-foreground mb-1" style={{ fontSize: 'var(--text-base)' }}>
+                        Team Training
+                      </h4>
+                      <p className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>
+                        New procedure walkthrough
+                      </p>
+                      <div className="flex items-center gap-2 mt-2 text-muted" style={{ fontSize: 'var(--text-sm)' }}>
+                        <Clock size={14} />
+                        <span>2:00 PM - 3:00 PM</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-[var(--radius)] bg-primary/10 flex flex-col items-center justify-center flex-shrink-0">
+                      <div className="text-primary" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-bold)' }}>
+                        16
+                      </div>
+                      <div className="text-primary" style={{ fontSize: 'var(--text-sm)' }}>
+                        FEB
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-foreground mb-1" style={{ fontSize: 'var(--text-base)' }}>
+                        Support Session
+                      </h4>
+                      <p className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>
+                        Remote assistance call
+                      </p>
+                      <div className="flex items-center gap-2 mt-2 text-muted" style={{ fontSize: 'var(--text-sm)' }}>
+                        <Clock size={14} />
+                        <span>10:00 AM - 11:00 AM</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-6 py-4 border-t border-border">
+                  <button 
+                    onClick={onScheduleMeeting}
+                    className="w-full bg-primary text-primary-foreground px-4 py-2.5 rounded-[var(--radius)] hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                  >
+                    <Calendar size={16} />
+                    <span>Schedule New Meeting</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Tip */}
+              <div className="bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20 rounded-[var(--radius)] p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                    <Zap size={16} />
+                  </div>
+                  <h4 className="text-foreground">Pro Tip</h4>
+                </div>
+                <p className="text-foreground mb-4" style={{ fontSize: 'var(--text-sm)' }}>
+                  Use the AI Assistant to quickly generate procedure templates based on your workflow descriptions.
+                </p>
+                <button 
+                  onClick={onOpenAIChat}
+                  className="text-primary hover:underline flex items-center gap-1" 
+                  style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-bold)' }}
+                >
+                  <span>Try it now</span>
+                  <ArrowRight size={14} />
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+    </>
+  );
+}

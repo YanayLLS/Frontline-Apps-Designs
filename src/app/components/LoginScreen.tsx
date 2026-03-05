@@ -1,0 +1,432 @@
+import { useState } from 'react';
+import svgPaths from "../../imports/svg-albmkprcym";
+import { ArrowRight, AlertCircle, CheckCircle2, Mail, Lock, User } from 'lucide-react';
+
+function IconLogo() {
+  return (
+    <svg className="block size-10" fill="none" preserveAspectRatio="none" viewBox="0 0 32 32">
+      <path d={svgPaths.p3df5b20d} fill="currentColor" />
+    </svg>
+  );
+}
+
+interface LoginScreenProps {
+  onLogin: (email: string, password: string) => void;
+  onSwitchToSignUp: () => void;
+}
+
+export function LoginScreen({ onLogin, onSwitchToSignUp }: LoginScreenProps) {
+  const [step, setStep] = useState<'email' | 'password'>('email');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleEmailSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
+    
+    // Simple email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    
+    setStep('password');
+  };
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    
+    if (!password) {
+      setError('Please enter your password');
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    
+    setIsLoading(true);
+    // Simulate login delay
+    setTimeout(() => {
+      setIsLoading(false);
+      onLogin(email, password);
+    }, 500);
+  };
+
+  // Debug functions
+  const debugFillValid = () => {
+    setEmail('yanay@lls-ltd.com');
+    setPassword('password123');
+    setError('');
+  };
+
+  const debugShowEmailError = () => {
+    setEmail('invalid-email');
+    setStep('email');
+    setError('Please enter a valid email address');
+  };
+
+  const debugShowPasswordError = () => {
+    setEmail('test@example.com');
+    setPassword('123');
+    setStep('password');
+    setError('Password must be at least 6 characters');
+  };
+
+  const debugShowLoginError = () => {
+    setEmail('test@example.com');
+    setPassword('wrongpassword');
+    setStep('password');
+    setError('Invalid email or password. Please try again.');
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-[440px] relative z-10">
+        {/* Logo and Title */}
+        <div className="flex flex-col items-center mb-12">
+          <div className="mb-6 p-4 bg-primary/10 rounded-[var(--radius-lg)] backdrop-blur-sm">
+            <div className="text-primary">
+              <IconLogo />
+            </div>
+          </div>
+          <h1 
+            className="text-foreground mb-2" 
+            style={{ 
+              fontSize: 'var(--text-3xl)', 
+              fontWeight: 'var(--font-weight-bold)',
+              fontFamily: 'var(--font-family)'
+            }}
+          >
+            Frontline.io
+          </h1>
+          <p 
+            className="text-muted text-center"
+            style={{ 
+              fontSize: 'var(--text-base)',
+              fontFamily: 'var(--font-family)'
+            }}
+          >
+            Welcome back! Sign in to continue
+          </p>
+        </div>
+
+        {/* Login Card */}
+        <div 
+          className="bg-card border border-border rounded-[var(--radius-lg)] overflow-hidden"
+          style={{ boxShadow: 'var(--elevation-lg)' }}
+        >
+          {/* Progress Indicator */}
+          <div className="flex">
+            <div 
+              className={`flex-1 h-1 transition-all duration-300 ${
+                step === 'email' ? 'bg-primary' : 'bg-primary/30'
+              }`}
+            />
+            <div 
+              className={`flex-1 h-1 transition-all duration-300 ${
+                step === 'password' ? 'bg-primary' : 'bg-border'
+              }`}
+            />
+          </div>
+
+          <div className="p-8">
+            {/* Email Step */}
+            {step === 'email' && (
+              <form onSubmit={handleEmailSubmit} className="space-y-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-primary/10 rounded-[var(--radius)] text-primary">
+                      <Mail size={20} />
+                    </div>
+                    <h2 
+                      className="text-foreground"
+                      style={{ 
+                        fontSize: 'var(--text-xl)',
+                        fontWeight: 'var(--font-weight-bold)',
+                        fontFamily: 'var(--font-family)'
+                      }}
+                    >
+                      Enter your email
+                    </h2>
+                  </div>
+                  
+                  <label 
+                    htmlFor="email" 
+                    className="block text-foreground mb-2"
+                    style={{ 
+                      fontSize: 'var(--text-sm)',
+                      fontWeight: 'var(--font-weight-medium)',
+                      fontFamily: 'var(--font-family)'
+                    }}
+                  >
+                    Email address
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setError('');
+                    }}
+                    placeholder="name@company.com"
+                    autoFocus
+                    className="w-full px-4 py-3 bg-background border-2 border-border rounded-[var(--radius)] text-foreground outline-none focus:border-primary transition-colors"
+                    style={{ 
+                      fontSize: 'var(--text-base)',
+                      fontFamily: 'var(--font-family)'
+                    }}
+                  />
+                </div>
+
+                {error && (
+                  <div className="flex items-start gap-3 p-4 bg-error/10 border border-error/20 rounded-[var(--radius)]">
+                    <AlertCircle size={20} className="text-error shrink-0 mt-0.5" />
+                    <p 
+                      className="text-error"
+                      style={{ 
+                        fontSize: 'var(--text-sm)',
+                        fontFamily: 'var(--font-family)'
+                      }}
+                    >
+                      {error}
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full px-4 py-3 bg-primary text-white rounded-[var(--radius)] hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                  style={{ 
+                    fontSize: 'var(--text-base)',
+                    fontWeight: 'var(--font-weight-semibold)',
+                    fontFamily: 'var(--font-family)'
+                  }}
+                >
+                  Continue
+                  <ArrowRight size={20} />
+                </button>
+              </form>
+            )}
+
+            {/* Password Step */}
+            {step === 'password' && (
+              <form onSubmit={handlePasswordSubmit} className="space-y-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-primary/10 rounded-[var(--radius)] text-primary">
+                      <Lock size={20} />
+                    </div>
+                    <div className="flex-1">
+                      <h2 
+                        className="text-foreground"
+                        style={{ 
+                          fontSize: 'var(--text-xl)',
+                          fontWeight: 'var(--font-weight-bold)',
+                          fontFamily: 'var(--font-family)'
+                        }}
+                      >
+                        Enter your password
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStep('email');
+                          setPassword('');
+                          setError('');
+                        }}
+                        className="text-muted hover:text-primary transition-colors flex items-center gap-1 mt-1"
+                        style={{ 
+                          fontSize: 'var(--text-sm)',
+                          fontFamily: 'var(--font-family)'
+                        }}
+                      >
+                        <User size={14} />
+                        {email}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <label 
+                    htmlFor="password" 
+                    className="block text-foreground mb-2"
+                    style={{ 
+                      fontSize: 'var(--text-sm)',
+                      fontWeight: 'var(--font-weight-medium)',
+                      fontFamily: 'var(--font-family)'
+                    }}
+                  >
+                    Password
+                  </label>
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setError('');
+                    }}
+                    placeholder="Enter your password"
+                    autoFocus
+                    className="w-full px-4 py-3 bg-background border-2 border-border rounded-[var(--radius)] text-foreground outline-none focus:border-primary transition-colors"
+                    style={{ 
+                      fontSize: 'var(--text-base)',
+                      fontFamily: 'var(--font-family)'
+                    }}
+                  />
+                  
+                  <button
+                    type="button"
+                    className="text-primary hover:underline mt-2"
+                    style={{ 
+                      fontSize: 'var(--text-sm)',
+                      fontFamily: 'var(--font-family)'
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+
+                {error && (
+                  <div className="flex items-start gap-3 p-4 bg-error/10 border border-error/20 rounded-[var(--radius)]">
+                    <AlertCircle size={20} className="text-error shrink-0 mt-0.5" />
+                    <p 
+                      className="text-error"
+                      style={{ 
+                        fontSize: 'var(--text-sm)',
+                        fontFamily: 'var(--font-family)'
+                      }}
+                    >
+                      {error}
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full px-4 py-3 bg-primary text-white rounded-[var(--radius)] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+                  style={{ 
+                    fontSize: 'var(--text-base)',
+                    fontWeight: 'var(--font-weight-semibold)',
+                    fontFamily: 'var(--font-family)'
+                  }}
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    <>
+                      Sign In
+                      <ArrowRight size={20} />
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+
+        {/* Debug Panel */}
+        <div className="mt-6 p-4 bg-card/50 border border-border rounded-[var(--radius)] backdrop-blur-sm">
+          <p 
+            className="text-muted mb-3"
+            style={{ 
+              fontSize: 'var(--text-xs)',
+              fontWeight: 'var(--font-weight-bold)',
+              fontFamily: 'var(--font-family)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}
+          >
+            Debug Tools
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={debugFillValid}
+              className="px-3 py-2 bg-background border border-border rounded-[var(--radius)] hover:bg-secondary transition-colors text-left"
+              style={{ 
+                fontSize: 'var(--text-xs)',
+                fontFamily: 'var(--font-family)'
+              }}
+            >
+              <CheckCircle2 size={14} className="inline mr-2 text-success" />
+              Fill Valid Data
+            </button>
+            <button
+              onClick={debugShowEmailError}
+              className="px-3 py-2 bg-background border border-border rounded-[var(--radius)] hover:bg-secondary transition-colors text-left"
+              style={{ 
+                fontSize: 'var(--text-xs)',
+                fontFamily: 'var(--font-family)'
+              }}
+            >
+              <AlertCircle size={14} className="inline mr-2 text-error" />
+              Email Error
+            </button>
+            <button
+              onClick={debugShowPasswordError}
+              className="px-3 py-2 bg-background border border-border rounded-[var(--radius)] hover:bg-secondary transition-colors text-left"
+              style={{ 
+                fontSize: 'var(--text-xs)',
+                fontFamily: 'var(--font-family)'
+              }}
+            >
+              <AlertCircle size={14} className="inline mr-2 text-error" />
+              Password Error
+            </button>
+            <button
+              onClick={debugShowLoginError}
+              className="px-3 py-2 bg-background border border-border rounded-[var(--radius)] hover:bg-secondary transition-colors text-left"
+              style={{ 
+                fontSize: 'var(--text-xs)',
+                fontFamily: 'var(--font-family)'
+              }}
+            >
+              <AlertCircle size={14} className="inline mr-2 text-error" />
+              Login Error
+            </button>
+          </div>
+        </div>
+
+        {/* Sign Up Link */}
+        <p 
+          className="text-center text-muted mt-6"
+          style={{ 
+            fontSize: 'var(--text-sm)',
+            fontFamily: 'var(--font-family)'
+          }}
+        >
+          Don't have an account?{' '}
+          <button 
+            type="button"
+            onClick={onSwitchToSignUp}
+            className="text-primary hover:underline"
+            style={{ fontWeight: 'var(--font-weight-semibold)' }}
+          >
+            Sign up
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+}
