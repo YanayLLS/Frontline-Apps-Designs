@@ -84,7 +84,7 @@ function App3DViewer() {
     <>
       <div className="w-full h-full relative">
         <iframe
-          src="http://localhost:8080/digital-twin-scene.html?embedded=true"
+          src="http://localhost:8080/app/digital-twin-scene.html?embedded=true"
           className="absolute inset-0 w-full h-full border-0"
           title="3D Viewer"
           allow="autoplay; fullscreen"

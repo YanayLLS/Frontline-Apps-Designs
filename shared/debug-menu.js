@@ -1,8 +1,8 @@
 (function() {
   // ==================== PAGE DATA ====================
   const PAGES = [
-    { name: 'Digital Twin Scene', file: 'digital-twin-scene.html', tags: ['3d', 'viewer', 'editor', 'three.js', 'scene', 'twin', 'model', 'camera', 'undo', 'redo', 'parts'] },
-    { name: 'XR App', file: 'xr-app.html', tags: ['xr', 'ar', 'vr', 'mixed reality', 'camera', 'app', 'immersive', 'hololens', 'mobile'] },
+    { name: 'Digital Twin Scene', file: '../app/digital-twin-scene.html', filename: 'digital-twin-scene.html', tags: ['3d', 'viewer', 'editor', 'three.js', 'scene', 'twin', 'model', 'camera', 'undo', 'redo', 'parts'] },
+    { name: 'XR App', file: '../xr/xr-app.html', filename: 'xr-app.html', tags: ['xr', 'ar', 'vr', 'mixed reality', 'camera', 'app', 'immersive', 'hololens', 'mobile'] },
   ];
   const PAGE_ICONS = { 'digital-twin-scene.html':'🎬', 'xr-app.html':'🥽' };
   const currentFile = location.pathname.split('/').pop() || '';
@@ -307,7 +307,7 @@
     // Overlay + panel
     '.gs-overlay{display:none;position:fixed;inset:0;background:rgba(54,65,93,.5);z-index:99999;justify-content:center;align-items:flex-start;padding-top:8vh;font-family:"Open Sans","Inter",sans-serif}',
     '.gs-overlay.gs-open{display:flex}',
-    '.gs-panel{background:#fff;border-radius:12px;box-shadow:0 16px 48px rgba(54,65,93,.25);width:560px;max-width:92vw;overflow:hidden;animation:gs-in .15s ease-out;display:flex;flex-direction:column;max-height:76vh}',
+    '.gs-panel{background:#fff;border-radius:12px;box-shadow:0 16px 48px rgba(54,65,93,.25);width:560px;max-width:92vw;overflow:hidden;animation:gs-in .15s ease-out;display:flex;flex-direction:column;height:76vh}',
     '@keyframes gs-in{from{opacity:0;transform:translateY(-16px) scale(.97)}to{opacity:1;transform:none}}',
     // Header
     '.gs-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid #E9E9E9;flex-shrink:0}',
@@ -483,7 +483,7 @@
     var r = curResults[i];
     if (!r) return;
     if (r.type === 'page') {
-      if (r.data.file === currentFile) { closePanel(); return; }
+      if (r.data.filename === currentFile) { closePanel(); return; }
       window.location.href = r.data.file;
     } else if (r.type === 'feature') {
       showGuide(r.data);

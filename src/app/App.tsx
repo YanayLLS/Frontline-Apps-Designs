@@ -818,7 +818,7 @@ function AppRouter() {
         <Route path="/xr/*" element={
           <div className="w-screen h-screen bg-black">
             <iframe
-              src={`${import.meta.env.BASE_URL}xr-app.html`}
+              src={`${import.meta.env.BASE_URL}xr/xr-app.html`}
               className="w-full h-full border-0"
               title="XR App"
             />
