@@ -639,6 +639,14 @@
     demo = { feat:feat, idx:0, hlEl:null, tipEl:null, cleanup:[] };
     var hlEl = document.createElement('div'); hlEl.className='gd-hl gd-pulse'; document.body.appendChild(hlEl); demo.hlEl=hlEl;
     var tip = document.createElement('div'); tip.className='gd-tip'; document.body.appendChild(tip); demo.tipEl=tip;
+    // Update URL or notify parent
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'debugDemoStarted', featureId: feat.id }, '*');
+    } else {
+      var url = new URL(window.location.href);
+      url.searchParams.set('demo', feat.id);
+      history.replaceState(null, '', url.toString());
+    }
     showStep();
   }
 
@@ -868,6 +876,16 @@
     if (demo.hlEl) demo.hlEl.remove();
     if (demo.tipEl) demo.tipEl.remove();
     demo = null;
+    // Clean URL or notify parent
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'debugDemoEnded' }, '*');
+    } else {
+      var url = new URL(window.location.href);
+      if (url.searchParams.has('demo')) {
+        url.searchParams.delete('demo');
+        history.replaceState(null, '', url.toString());
+      }
+    }
   }
 
   // ==================== GLOBAL HOTKEY ====================

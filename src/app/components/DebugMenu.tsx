@@ -156,7 +156,7 @@ export function DebugMenu() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Listen for iframe messages: toggle hotkey forwarding + demo auto-start
+  // Listen for iframe messages: toggle hotkey forwarding + demo auto-start + URL sync
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.data?.type === 'debugToggle') {
@@ -175,6 +175,19 @@ export function DebugMenu() {
             iframe.contentWindow.postMessage({ type: 'debugStartDemo', featureId }, '*');
           }
         }, 300);
+      }
+      // Sync demo state to URL bar
+      if (e.data?.type === 'debugDemoStarted') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('demo', e.data.featureId);
+        history.replaceState(null, '', url.toString());
+      }
+      if (e.data?.type === 'debugDemoEnded') {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('demo')) {
+          url.searchParams.delete('demo');
+          history.replaceState(null, '', url.toString());
+        }
       }
     };
     window.addEventListener('message', handleMessage);
