@@ -21,7 +21,7 @@ function figmaAssetPlugin() {
 }
 
 export default defineConfig({
-  base: process.env.GITHUB_ACTIONS ? '/web-app-mockup/' : '/',
+  base: process.env.GITHUB_ACTIONS ? '/Frontline-Apps-Designs/' : '/',
   plugins: [
     figmaAssetPlugin(),
     // The React and Tailwind plugins are both required for Make, even if
