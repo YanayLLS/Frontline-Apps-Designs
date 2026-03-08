@@ -402,6 +402,11 @@
       '.gs-guide-demo{background:#2F80ED;color:#fff;display:flex;align-items:center;gap:6px}',
       '.gs-guide-demo:hover{background:#5999F1}',
       '.gs-guide-demo svg{width:14px;height:14px;fill:#fff}',
+      '.gs-guide-share{background:#E9E9E9;color:#36415D;display:flex;align-items:center;gap:6px}',
+      '.gs-guide-share:hover{background:#D9E0F0}',
+      '.gs-guide-share svg{width:14px;height:14px;fill:#36415D}',
+      '.gs-guide-share.copied{background:#11E874;color:#fff}',
+      '.gs-guide-share.copied svg{fill:#fff}',
       '.gs-fab{position:fixed;bottom:20px;right:20px;width:44px;height:44px;border-radius:50%;background:#8404B3;color:#fff;border:none;cursor:pointer;z-index:99998;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(132,4,179,.35);transition:transform .15s,box-shadow .15s}',
       '.gs-fab:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(132,4,179,.45)}',
       '.gs-fab:active{transform:scale(.95)}',
@@ -548,6 +553,7 @@
         feat.flow.map(function(s,i){ return '<div class="gs-guide-step"><div class="gs-guide-num">'+(i+1)+'</div><div class="gs-guide-txt">'+s+'</div></div>'; }).join('') +
       '</div>' +
       '<div class="gs-guide-foot">' +
+        (hasDemo ? '<button class="gs-guide-btn gs-guide-share"><svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>Share</button>' : '') +
         (hasDemo ? '<button class="gs-guide-btn gs-guide-demo"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>Start Demo (' + feat.demo.length + ' steps)</button>' : '') +
       '</div>' +
     '</div>';
@@ -556,8 +562,22 @@
 
     rContainer.querySelector('.gs-guide-back').onclick = function() { backToSearch(); };
     if (hasDemo) {
+      rContainer.querySelector('.gs-guide-share').onclick = function() { shareDemoLink(feat.id, this); };
       rContainer.querySelector('.gs-guide-demo').onclick = function() { closePanel(); startDemo(feat); };
     }
+  }
+
+  function shareDemoLink(featureId, btn) {
+    var url = new URL(window.location.href);
+    url.searchParams.set('demo', featureId);
+    navigator.clipboard.writeText(url.toString()).then(function() {
+      btn.classList.add('copied');
+      btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Link copied!';
+      setTimeout(function() {
+        btn.classList.remove('copied');
+        btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>Share';
+      }, 2000);
+    });
   }
 
   function backToSearch() {
@@ -821,12 +841,24 @@
       '<div class="gd-complete-desc">You\'ve completed the <b>' + feat.name + '</b> tutorial.</div>' +
       '<div class="gd-btns">' +
         '<button class="gd-b gd-b-sec gd-restart">Show again</button>' +
+        '<button class="gd-b gd-b-sec gd-share-complete"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor;vertical-align:-2px;margin-right:4px"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>Share</button>' +
         '<button class="gd-b gd-b-done gd-close">Done</button>' +
       '</div>';
     demo.tipEl.style.left = '50%';
     demo.tipEl.style.top = '40%';
     demo.tipEl.style.transform = 'translate(-50%, -50%)';
     demo.tipEl.querySelector('.gd-restart').onclick = function() { startDemo(feat); };
+    demo.tipEl.querySelector('.gd-share-complete').onclick = function() {
+      var btn = this;
+      var url = new URL(window.location.href);
+      url.searchParams.set('demo', feat.id);
+      navigator.clipboard.writeText(url.toString()).then(function() {
+        btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor;vertical-align:-2px;margin-right:4px"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Copied!';
+        setTimeout(function() {
+          btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor;vertical-align:-2px;margin-right:4px"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>Share';
+        }, 2000);
+      });
+    };
     demo.tipEl.querySelector('.gd-close').onclick = function() { endDemo(); };
   }
 
@@ -873,5 +905,20 @@
     var pageFeatures = FEATURES[currentFile] || [];
     var featureList = pageFeatures.map(function(f) { return { id: f.id, name: f.name, icon: f.icon, desc: f.desc, demoSteps: f.demo ? f.demo.length : 0 }; });
     window.parent.postMessage({ type: 'debugFeatures', page: currentFile, features: featureList }, '*');
+  }
+
+  // ==================== AUTO-START FROM URL ====================
+  var urlParams = new URLSearchParams(window.location.search);
+  var autoDemoId = urlParams.get('demo');
+  if (autoDemoId) {
+    var pageFeats = FEATURES[currentFile] || [];
+    for (var i = 0; i < pageFeats.length; i++) {
+      if (pageFeats[i].id === autoDemoId && pageFeats[i].demo) {
+        var autoFeat = pageFeats[i];
+        // Delay to let the page fully render before starting
+        setTimeout(function() { startDemo(autoFeat); }, 800);
+        break;
+      }
+    }
   }
 })();

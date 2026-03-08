@@ -181,6 +181,24 @@ export function DebugMenu() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  // Auto-start demo from URL ?demo=featureId
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const demoId = params.get('demo');
+    if (demoId) {
+      // Find the feature across all groups
+      for (const group of featureGroups) {
+        const feat = group.features.find(f => f.id === demoId);
+        if (feat) {
+          // Small delay to let iframe load
+          setTimeout(() => startDemo(feat), 1000);
+          break;
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const currentPath = location.pathname + location.search;
   const currentPathname = location.pathname;
   const isApp = currentPathname.startsWith('/app');
