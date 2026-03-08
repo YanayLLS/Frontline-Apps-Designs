@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { MediaFile } from './ProcedureEditor';
-import svgPaths from '../../../imports-procedure-editor/svg-46ve5r1m42';
+import svgPaths from '../../../imports/svg-46ve5r1m42';
 import { Upload, Trash2, AlertCircle } from 'lucide-react';
 
 interface MediaViewerProps {
@@ -8,7 +8,6 @@ interface MediaViewerProps {
   onAddMediaFiles: (files: MediaFile[]) => void;
   onRemoveMediaFile: (id: string) => void;
   onReorderMedia?: (fromIndex: number, toIndex: number) => void;
-  compact?: boolean;
 }
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -16,7 +15,7 @@ const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
 const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES];
 
-export function MediaViewer({ mediaFiles, onAddMediaFiles, onRemoveMediaFile, onReorderMedia, compact = false }: MediaViewerProps) {
+export function MediaViewer({ mediaFiles, onAddMediaFiles, onRemoveMediaFile, onReorderMedia }: MediaViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -127,134 +126,18 @@ export function MediaViewer({ mediaFiles, onAddMediaFiles, onRemoveMediaFile, on
     setIsFullscreen(false);
   };
 
-  // Compact mode: just show a thumbnail row with upload button
-  if (compact) {
-    return (
-      <>
-        <div
-          data-tutorial="media-viewer"
-          className="flex items-center relative w-full"
-          style={{ gap: '8px' }}
-          onDrop={handleDrop}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept={ALLOWED_TYPES.join(',')}
-            onChange={handleFileInput}
-            className="hidden"
-          />
-          {mediaFiles.length === 0 ? (
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center justify-center transition-all hover:bg-gray-100"
-              style={{
-                width: '100%',
-                height: '44px',
-                borderRadius: '6px',
-                border: '1px dashed #C2C9DB',
-                background: '#F8FAFC',
-                cursor: 'pointer',
-                gap: '6px',
-                color: '#868D9E',
-                fontSize: '12px'
-              }}
-            >
-              <Upload className="size-4" />
-              <span>Add media</span>
-            </button>
-          ) : (
-            <div className="flex gap-2 overflow-x-auto w-full scrollbar-hide" style={{ padding: '2px 0' }}>
-              {mediaFiles.map((file, index) => (
-                <div key={file.id} className="relative flex-shrink-0 group">
-                  <button
-                    onClick={() => { setCurrentIndex(index); setIsFullscreen(true); }}
-                    className={`relative rounded overflow-hidden transition-all ${
-                      index === currentIndex ? 'ring-2 ring-[#2F80ED]' : 'opacity-70 hover:opacity-100'
-                    }`}
-                    style={{ width: '44px', height: '44px', border: '1px solid #E2E8F0' }}
-                  >
-                    {file.type.startsWith('image/') ? (
-                      <img src={file.url} alt={file.name} className="w-full h-full object-cover pointer-events-none" />
-                    ) : file.type.startsWith('video/') ? (
-                      <>
-                        <video src={file.url} className="w-full h-full object-cover pointer-events-none" />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 6 8.92679">
-                            <path d={svgPaths.p6f86700} fill="white" />
-                          </svg>
-                        </div>
-                      </>
-                    ) : null}
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemoveMediaFile(file.id);
-                      if (index === currentIndex && index > 0) setCurrentIndex(index - 1);
-                      else if (index < currentIndex) setCurrentIndex(currentIndex - 1);
-                    }}
-                    className="absolute -top-1 -right-1 p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-20"
-                    style={{ background: '#FF1F1F' }}
-                    aria-label={`Remove ${file.name}`}
-                  >
-                    <Trash2 className="size-2.5 text-white" />
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex-shrink-0 rounded overflow-hidden opacity-60 hover:opacity-100 transition-all flex items-center justify-center border border-dashed"
-                style={{ width: '44px', height: '44px', borderColor: '#C2C9DB', background: '#F8FAFC' }}
-                aria-label="Add more files"
-              >
-                <Upload className="size-3.5" style={{ color: '#868D9E' }} />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Fullscreen Modal */}
-        {isFullscreen && currentMedia && (
-          <div
-            className="fixed inset-0 z-[999] flex items-center justify-center bg-black"
-            onClick={handleCloseFullscreen}
-          >
-            <button
-              onClick={handleCloseFullscreen}
-              className="absolute top-4 right-4 text-white hover:opacity-70 transition-opacity"
-              style={{ fontSize: '32px', width: '48px', height: '48px' }}
-              aria-label="Close fullscreen"
-            >×</button>
-            <div className="relative w-full h-full flex items-center justify-center p-8">
-              {currentMedia.type.startsWith('image/') ? (
-                <img src={currentMedia.url} alt={currentMedia.name} className="max-w-full max-h-full object-contain" />
-              ) : currentMedia.type.startsWith('video/') ? (
-                <video src={currentMedia.url} controls autoPlay className="max-w-full max-h-full" />
-              ) : null}
-            </div>
-          </div>
-        )}
-      </>
-    );
-  }
-
   return (
     <>
       {/* Media Holder - Always visible, matches Figma design */}
-      <div
+      <div 
         data-tutorial="media-viewer"
         className="content-stretch flex flex-col items-start relative"
         style={{
-          background: '#F8FAFC',
-          padding: '10px',
-          borderRadius: '8px',
-          border: '1px solid #E2E8F0',
-          gap: '8px'
+          background: 'rgba(0, 0, 0, 0.5)',
+          padding: '12px',
+          borderRadius: 'var(--radius)',
+          border: '1px solid #36415d',
+          gap: '10px'
         }}
         onDrop={handleDrop}
         onDragEnter={handleDrag}
@@ -271,10 +154,10 @@ export function MediaViewer({ mediaFiles, onAddMediaFiles, onRemoveMediaFile, on
         />
 
         {/* Full Screen Media Container */}
-        <div className="content-stretch flex items-start relative w-full">
+        <div className="content-stretch flex items-start relative w-[332px]">
           <div className="content-stretch flex flex-col items-center justify-center overflow-clip relative w-full" style={{ gap: '10px' }}>
             {/* Media Display */}
-            <div
+            <div 
               className="bg-black content-stretch flex flex-col items-start justify-center relative w-full cursor-pointer"
               style={{
                 aspectRatio: '1408/826',

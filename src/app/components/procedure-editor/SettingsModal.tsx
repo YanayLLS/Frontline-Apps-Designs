@@ -1,4 +1,4 @@
-import svgPathsSettings from "../../../imports-procedure-editor/svg-q4dhfj3mj8";
+import svgPathsSettings from "../../../imports/svg-q4dhfj3mj8";
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Image as ImageIcon, X, AlertCircle } from 'lucide-react';
 

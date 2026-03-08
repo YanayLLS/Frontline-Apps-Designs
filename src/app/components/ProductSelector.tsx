@@ -13,10 +13,10 @@ const products = [
   {
     id: 'app',
     name: 'App',
-    description: 'Mobile application for iOS and Android',
+    description: 'Desktop & mobile application for all platforms',
     icon: Smartphone,
-    path: '/app',
-    ready: false,
+    path: '/app/knowledgebase',
+    ready: true,
   },
   {
     id: 'xr',
@@ -24,7 +24,7 @@ const products = [
     description: 'Mixed reality application for XR headsets',
     icon: Glasses,
     path: '/xr',
-    ready: false,
+    ready: true,
   },
 ];
 

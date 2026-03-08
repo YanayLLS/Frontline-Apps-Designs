@@ -11,13 +11,15 @@ import { ValidationPanel } from './ValidationPanel';
 import { OptionsManager } from './OptionsManager';
 import { BookmarksModal } from './BookmarksModal';
 import { PartsCatalogPanel } from './PartsCatalogPanel';
+import type { ModelHierarchyNode } from './Viewer3D';
 import { TableOfContents } from './TableOfContents';
 import { Tutorial } from './Tutorial';
 import { SaveIndicator } from './SaveIndicator';
 import { ARPlacementFlow, type ObjectTarget, type PlacementMethod } from './ARPlacementFlow';
 import { ContextMenu } from './ContextMenu';
-import { GraduationCap, Undo, AlertCircle, MoreVertical } from 'lucide-react';
+import { GraduationCap, Undo, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 
 // Extend window type for validation callback
 declare global {
@@ -46,7 +48,6 @@ export interface Step {
   parentStepId?: string;
   parentActionIndex?: number;
   nextStepId?: string; // For creating loops and custom step connections
-  highlightParts?: string[]; // 3D part names to highlight for this step
 }
 
 export interface Popup {
@@ -71,21 +72,38 @@ export interface MediaFile {
   caption?: string;
 }
 
-export type ValidationMode = 'object' | 'image' | 'both';
+export type CheckpointType = 'visual' | 'measurement' | 'presence' | 'sequence';
+export type CheckpointSeverity = 'critical' | 'warning' | 'info';
 
-export interface ValidationState {
+export interface MeasurementTolerance {
+  nominal: number;
+  min: number;
+  max: number;
+  unit: string; // 'mm' | 'psi' | '°C' | '°F' | 'Nm' | '%' | custom
+}
+
+export interface ValidationOutcome {
   description: string;
   mediaFiles: MediaFile[];
+  remediationSteps?: string;
+}
+
+export interface Checkpoint {
+  id: string;
+  type: CheckpointType;
+  severity: CheckpointSeverity;
+  label: string;
+  selectedParts: string[];
+  arrowDirection?: { x: number; y: number; z: number };
+  tolerance?: MeasurementTolerance;
+  passState: ValidationOutcome;
+  failState: ValidationOutcome;
+  sequenceOrder?: number;
 }
 
 export interface Validation {
   id: string;
-  mode: ValidationMode;
-  passState: ValidationState;
-  failState: ValidationState;
-  selectedParts: string[]; // 3D part names
-  position?: { x: number; y: number }; // Position on 3D model for viewer
-  arrowDirection?: { x: number; y: number; z: number }; // Arrow direction as Vector3
+  checkpoints: Checkpoint[];
 }
 
 export interface PublishInfo {
@@ -96,97 +114,25 @@ export interface PublishInfo {
 
 // No limit on steps - removed MAX_STEPS
 
-const demoStepIds = [
-  'demo-step-1', 'demo-step-2', 'demo-step-3', 'demo-step-4', 'demo-step-5'
-];
-
-const demoSteps: Step[] = [
-  {
-    id: demoStepIds[0],
-    title: 'Inspect the generator housing',
-    description: 'Before beginning maintenance, visually inspect the generator housing and external panels for signs of damage, corrosion, or loose fasteners. Ensure the unit is powered off and disconnected from any load. Confirm the fuel valve is in the OFF position.',
-    actions: [],
-    color: 'var(--primary)',
-    hasAnimation: true,
-    popups: [],
-    mediaFiles: [],
-    highlightParts: ['Part-1', 'Part-2'],
-  },
-  {
-    id: demoStepIds[1],
-    title: 'Check the fuel system',
-    description: 'Open the fuel cap and check the fuel level. Inspect the fuel lines and connections for cracks or leaks. Drain any water or sediment from the fuel filter bowl. Replace the fuel filter if it shows discoloration or debris.',
-    actions: [],
-    color: 'var(--accent)',
-    hasAnimation: false,
-    popups: [{
-      id: 'demo-popup-1',
-      title: 'Fire Safety Warning',
-      description: 'Ensure there are no open flames or ignition sources nearby when inspecting the fuel system. Keep a fire extinguisher within reach at all times.',
-      position: { x: 150, y: 100 },
-      color: 'var(--destructive)',
-      mediaFiles: [],
-      confirmButtonText: 'Understood',
-      requiresConfirmation: true,
-    }],
-    mediaFiles: [],
-    parentStepId: demoStepIds[0],
-    highlightParts: ['Part-3', 'Part-4'],
-  },
-  {
-    id: demoStepIds[2],
-    title: 'Inspect the air filter and cooling system',
-    description: 'Remove the air filter cover and extract the filter element. Tap out loose debris and hold it up to light — if light cannot pass through, replace the filter. Check the cooling fins for blockages and brush away any dirt or debris. Verify the coolant level in the overflow tank.',
-    actions: [],
-    color: 'var(--foreground)',
-    hasAnimation: true,
-    popups: [],
-    mediaFiles: [],
-    parentStepId: demoStepIds[1],
-    highlightParts: ['Part-5', 'Part-6'],
-  },
-  {
-    id: demoStepIds[3],
-    title: 'Test the electrical output',
-    description: 'Reconnect the load panel and start the generator following the standard ignition procedure. Using a multimeter, verify the voltage output is within the rated range. Check for stable frequency and listen for any unusual sounds or vibrations during operation.',
-    actions: [
-      { label: 'Single Phase Test', nextStepId: demoStepIds[4] },
-      { label: 'Three Phase Test', nextStepId: demoStepIds[4] },
-    ],
-    color: 'var(--primary)',
-    hasAnimation: false,
-    popups: [],
-    mediaFiles: [],
-    parentStepId: demoStepIds[2],
-    highlightParts: ['Part-7', 'Part-8'],
-  },
-  {
-    id: demoStepIds[4],
-    title: 'Complete maintenance and log results',
-    description: 'Shut down the generator and allow it to cool. Reattach all covers and panels. Record all maintenance actions, measurements, and any parts replaced in the maintenance log. Update the next service date based on the operating hours.',
-    actions: [],
-    color: 'var(--accent)',
-    hasAnimation: false,
-    popups: [],
-    mediaFiles: [],
-    parentStepId: demoStepIds[3],
-    parentActionIndex: 0,
-    highlightParts: ['Part-1', 'Part-3', 'Part-5', 'Part-7'],
-  },
-];
+const initialStep: Step = {
+  id: crypto.randomUUID(),
+  actions: [],
+  color: 'var(--foreground)',
+  hasAnimation: false,
+  popups: [],
+  mediaFiles: []
+};
 
 export function ProcedureEditor() {
-  const [steps, setSteps] = useState<Step[]>(demoSteps);
+  const navigate = useNavigate();
+  const [steps, setSteps] = useState<Step[]>([initialStep]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [selectedActionPath, setSelectedActionPath] = useState<Map<string, number>>(new Map());
   const [isTtsEnabled, setIsTtsEnabled] = useState(false);
-  const [procedureTitle, setProcedureTitle] = useState('Generator Maintenance');
+  const [procedureTitle, setProcedureTitle] = useState('Elitebook 840 G9');
   const [showSettings, setShowSettings] = useState(false);
-  const [showDebugMenu, setShowDebugMenu] = useState(false);
-  const debugMenuRef = useRef<HTMLDivElement>(null);
-  const debugButtonRef = useRef<HTMLButtonElement>(null);
   const [showPublish, setShowPublish] = useState(false);
-  const [editingEnabled, setEditingEnabled] = useState(false);
+  const [editingEnabled, setEditingEnabled] = useState(true);
   const [showOptionsManager, setShowOptionsManager] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [showPartsCatalog, setShowPartsCatalog] = useState(false);
@@ -195,7 +141,9 @@ export function ProcedureEditor() {
   const [showValidationPanel, setShowValidationPanel] = useState(false);
   const [isSelectingValidationParts, setIsSelectingValidationParts] = useState(false);
   const [tempSelectedParts, setTempSelectedParts] = useState<string[]>([]);
+  const [activeCheckpointId, setActiveCheckpointId] = useState<string | null>(null);
   const [availableParts, setAvailableParts] = useState<string[]>([]);
+  const [modelHierarchy, setModelHierarchy] = useState<ModelHierarchyNode | null>(null);
   const [isSettingArrowDirection, setIsSettingArrowDirection] = useState(false);
   const [tempArrowDirection, setTempArrowDirection] = useState<{ x: number; y: number; z: number } | null>(null);
   const [arrowDirectionCallback, setArrowDirectionCallback] = useState<((direction: { x: number; y: number; z: number }) => void) | null>(null);
@@ -241,7 +189,7 @@ export function ProcedureEditor() {
 
   // Ensure current step has validation property
   const currentStep = (() => {
-    const step = steps[currentStepIndex] || steps[0] || demoSteps[0];
+    const step = steps[currentStepIndex] || steps[0] || initialStep;
     return step;
   })();
 
@@ -605,18 +553,75 @@ export function ProcedureEditor() {
   }, [deletedPopup, steps]);
 
   // Validation handlers
-  const handleAddValidation = useCallback((validation: Validation) => {
-    // Only one validation per step
-    handleUpdateStep({
-      validation
-    });
+  const handleAddValidation = useCallback(() => {
+    const newValidation: Validation = {
+      id: crypto.randomUUID(),
+      checkpoints: []
+    };
+    handleUpdateStep({ validation: newValidation });
   }, [handleUpdateStep]);
 
-  const handleUpdateValidation = useCallback((updates: Partial<Validation>) => {
+  const handleAddCheckpoint = useCallback(() => {
     if (!currentStep.validation) return;
-    
+    const checkpoints = currentStep.validation.checkpoints;
+    if (checkpoints.length >= 10) return;
+
+    const newCheckpoint: Checkpoint = {
+      id: crypto.randomUUID(),
+      type: 'visual',
+      severity: 'warning',
+      label: '',
+      selectedParts: [],
+      passState: { description: '', mediaFiles: [] },
+      failState: { description: '', mediaFiles: [] },
+      sequenceOrder: checkpoints.length
+    };
+
     handleUpdateStep({
-      validation: { ...currentStep.validation, ...updates }
+      validation: {
+        ...currentStep.validation,
+        checkpoints: [...checkpoints, newCheckpoint]
+      }
+    });
+    setActiveCheckpointId(newCheckpoint.id);
+  }, [currentStep.validation, handleUpdateStep]);
+
+  const handleUpdateCheckpoint = useCallback((checkpointId: string, updates: Partial<Checkpoint>) => {
+    if (!currentStep.validation) return;
+
+    handleUpdateStep({
+      validation: {
+        ...currentStep.validation,
+        checkpoints: currentStep.validation.checkpoints.map(cp =>
+          cp.id === checkpointId ? { ...cp, ...updates } : cp
+        )
+      }
+    });
+  }, [currentStep.validation, handleUpdateStep]);
+
+  const handleRemoveCheckpoint = useCallback((checkpointId: string) => {
+    if (!currentStep.validation) return;
+
+    const newCheckpoints = currentStep.validation.checkpoints.filter(cp => cp.id !== checkpointId);
+    handleUpdateStep({
+      validation: {
+        ...currentStep.validation,
+        checkpoints: newCheckpoints
+      }
+    });
+    if (activeCheckpointId === checkpointId) {
+      setActiveCheckpointId(null);
+    }
+  }, [currentStep.validation, handleUpdateStep, activeCheckpointId]);
+
+  const handleReorderCheckpoints = useCallback((newOrder: Checkpoint[]) => {
+    if (!currentStep.validation) return;
+
+    handleUpdateStep({
+      validation: {
+        ...currentStep.validation,
+        checkpoints: newOrder.map((cp, i) => ({ ...cp, sequenceOrder: i }))
+      }
     });
   }, [currentStep.validation, handleUpdateStep]);
 
@@ -624,6 +629,7 @@ export function ProcedureEditor() {
     handleUpdateStep({
       validation: undefined
     });
+    setActiveCheckpointId(null);
   }, [handleUpdateStep]);
 
   const handleSelectPartsForValidation = useCallback((
@@ -1054,6 +1060,24 @@ export function ProcedureEditor() {
     setTimeout(() => setStepPopAnimation(false), 300);
   }, []);
 
+  // Handle back - go back to previous context (3D viewer, projects, etc.)
+  const handleBack = useCallback(() => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/app/knowledgebase');
+    }
+  }, [navigate]);
+
+  // Handle open flow editor - open procedure editor page in a new tab
+  const handleOpenFlowEditor = useCallback(() => {
+    const currentPath = window.location.pathname;
+    // Try to extract procedureId from current URL
+    const match = currentPath.match(/procedure-editor\/([^/]+)/);
+    const procedureId = match ? match[1] : 'default';
+    window.open(`/web/procedure-editor/${procedureId}`, '_blank');
+  }, []);
+
   const handleDeleteStepByIndex = useCallback((index: number) => {
     if (steps.length <= 1) {
       return; // Silently prevent deletion of last step
@@ -1173,18 +1197,6 @@ export function ProcedureEditor() {
   const handleCloseContextMenu = useCallback(() => {
     setContextMenu(null);
   }, []);
-
-  // Close debug menu on click outside
-  useEffect(() => {
-    if (!showDebugMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (debugMenuRef.current && !debugMenuRef.current.contains(e.target as Node) && debugButtonRef.current && !debugButtonRef.current.contains(e.target as Node)) {
-        setShowDebugMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showDebugMenu]);
 
   const handleResetAllParts = useCallback(() => {
     console.log('Reset all parts');
@@ -1313,121 +1325,44 @@ export function ProcedureEditor() {
   }, [currentStepIndex, steps, isTtsEnabled, publishInfo, handleStepChange]);
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen w-screen overflow-hidden">
+    <div className="flex flex-col items-center justify-center h-full w-full overflow-hidden">
       {/* Save Indicator - Hidden on /mobile path */}
       {!isMobilePath && <SaveIndicator isSaving={isSaving} lastSaved={lastSaved} />}
       
-      {/* Debug menu is now triggered via 3-dots button in the 3D viewer area */}
-
       <div
-        className="flex-1 w-full relative overflow-hidden flex flex-col sm:flex-row"
+        className="h-full w-full relative overflow-hidden"
         onContextMenu={handleContextMenu}
+        style={{
+          background: isARMode 
+            ? 'url(https://images.unsplash.com/photo-1764114441123-586d13fc6ece?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxpbmR1c3RyaWFsJTIwZmFjdG9yeSUyMGZsb29yJTIwY2FtZXJhJTIwdmlld3xlbnwxfHx8fDE3NzA4MTUwNDV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral) center/cover'
+            : 'linear-gradient(to bottom, #4362aa, #00091d)'
+        }}
       >
-        {/* Side Panel — left column on desktop, bottom sheet on mobile */}
-        {showARPlacement ? null : (
-          <div
-            className="order-2 sm:order-1 shrink-0 relative z-10 flex flex-col h-[45vh] sm:h-full sm:w-[340px] w-full border-t sm:border-t-0 sm:border-r border-[#E8ECF1]"
-            style={{ backgroundColor: '#FFFFFF' }}
-          >
-            {/* Step Content */}
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              <ProcedurePanel
-                step={currentStep}
-                stepIndex={tocDisplayNumber - 1}
-                totalSteps={tocTotalSteps}
-                isTtsEnabled={isTtsEnabled}
-                onStepChange={handleStepChange}
-                onNext={handleNext}
-                onPrevious={handlePrevious}
-                onUpdateStep={handleUpdateStep}
-                onToggleTts={() => setIsTtsEnabled(!isTtsEnabled)}
-                onAddTitle={handleAddTitle}
-                onRemoveTitle={handleRemoveTitle}
-                onAddDescription={handleAddDescription}
-                onRemoveDescription={handleRemoveDescription}
-                onRemoveAction={handleRemoveAction}
-                onAddStep={handleAddStep}
-                onDeleteStep={handleDeleteStep}
-                popups={currentStep.popups}
-                onRemovePopup={handleRemovePopup}
-                onAddPopup={handleAddPopup}
-                onShowPopupPanel={() => setShowPopupPanel(true)}
-                editingEnabled={editingEnabled}
-                showNewStepAnimation={showNewStepAnimation}
-                stepPopAnimation={stepPopAnimation}
-                flashStepShadow={flashStepShadow}
-                allSteps={steps}
-                onToggleTOC={() => setShowTOC(!showTOC)}
-                isTOCOpen={showTOC}
-                isFirstVisibleStep={isFirstVisibleStep}
-                onChangeColor={handleChangeColor}
-                onAddAction={handleAddAction}
-                onEditAction={handleEditAction}
-                onRestart={handleRestart}
-                mediaSlot={
-                  <>
-                    <div className="sm:hidden">
-                      <MediaViewer
-                        mediaFiles={currentStep.mediaFiles}
-                        onAddMediaFiles={handleAddMediaFiles}
-                        onRemoveMediaFile={handleRemoveMediaFile}
-                        onReorderMedia={handleReorderMedia}
-                        compact
-                      />
-                    </div>
-                    <div className="hidden sm:block">
-                      <MediaViewer
-                        mediaFiles={currentStep.mediaFiles}
-                        onAddMediaFiles={handleAddMediaFiles}
-                        onRemoveMediaFile={handleRemoveMediaFile}
-                        onReorderMedia={handleReorderMedia}
-                      />
-                    </div>
-                  </>
-                }
-              />
-            </div>
-          </div>
-        )}
-
-        {/* 3D Viewer Area */}
-        <div
-          className="flex-1 relative overflow-hidden order-1 sm:order-2"
-          style={{
-            background: isARMode
-              ? 'url(https://images.unsplash.com/photo-1764114441123-586d13fc6ece?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxpbmR1c3RyaWFsJTIwZmFjdG9yeSUyMGZsb29yJTIwY2FtZXJhJTIwdmlld3xlbnwxfHx8fDE3NzA4MTUwNDV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral) center/cover'
-              : 'linear-gradient(to bottom, #4362aa, #00091d)'
-          }}
-        >
-          {/* 3D Viewer - Hidden during AR placement */}
+        <div className="content-stretch flex flex-col items-center justify-center overflow-clip py-2 sm:py-2 relative size-full">
+          {/* 3D Scene - Embedded from external server */}
           {!showARPlacement && (
-            <Viewer3D
-              validation={currentStep.validation}
-              editingEnabled={editingEnabled}
-              isSelectingParts={isSelectingValidationParts}
-              selectedParts={tempSelectedParts}
-              onPartClick={handlePartClick}
-              onPartsLoaded={setAvailableParts}
-              isSettingArrowDirection={isSettingArrowDirection}
-              onArrowDirectionChange={setTempArrowDirection}
-              stepHighlightParts={currentStep.highlightParts}
+            <iframe
+              src="http://localhost:8080/digital-twin-scene.html?embedded=true&mode=procedure"
+              className="absolute inset-0 w-full h-full border-0"
+              style={{ zIndex: 0 }}
+              title="3D Scene"
+              allow="autoplay; fullscreen"
             />
           )}
 
           {/* Header - Only show when editing is enabled and not during AR placement */}
           {editingEnabled && !showARPlacement && (
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
-              <Header
-                hasAnimation={currentStep.hasAnimation}
-                onOpenSettings={() => setShowSettings(true)}
-                onOpenBookmarks={() => setShowBookmarks(true)}
-                onTogglePartsCatalog={() => setShowPartsCatalog(!showPartsCatalog)}
-                isPartsCatalogOpen={showPartsCatalog}
-                onOpenPublish={() => setShowPublish(true)}
-                onOpenValidation={() => setShowValidationPanel(true)}
-                hasValidation={!!currentStep.validation}
-              />
-            </div>
+            <Header
+              hasAnimation={currentStep.hasAnimation}
+              onOpenSettings={() => setShowSettings(true)}
+              onOpenBookmarks={() => setShowBookmarks(true)}
+              onTogglePartsCatalog={() => setShowPartsCatalog(!showPartsCatalog)}
+              isPartsCatalogOpen={showPartsCatalog}
+              onOpenPublish={() => setShowPublish(true)}
+              onOpenValidation={() => setShowValidationPanel(true)}
+              checkpointCount={currentStep.validation?.checkpoints?.length ?? 0}
+              hasCritical={currentStep.validation?.checkpoints?.some(cp => cp.severity === 'critical') ?? false}
+            />
           )}
 
           {/* Part Selection Banner - Shows when selecting validation parts */}
@@ -1758,113 +1693,89 @@ export function ProcedureEditor() {
             </motion.div>
           )}
 
+          {/* Spacer - Only show when not in AR placement */}
+          {!showARPlacement && (
+            <div className="flex-[1_0_0] min-h-px min-w-px w-full" />
+          )}
+
+          {/* Conditional rendering: AR Placement Flow or Procedure Panel with Media Viewer */}
+          {showARPlacement ? (
+            // AR Placement Flow in full screen
+            <ARPlacementFlow
+              onComplete={handleARPlacementComplete}
+              onCancel={handleARPlacementCancel}
+              availableTargets={availableTargets}
+            />
+          ) : (
+            <div className="w-full flex justify-center relative z-10 px-4 sm:px-0">
+                {/* Step card - Always centered */}
+                <ProcedurePanel
+                  step={currentStep}
+                  stepIndex={tocDisplayNumber - 1}
+                  totalSteps={tocTotalSteps}
+                  isTtsEnabled={isTtsEnabled}
+                  onStepChange={handleStepChange}
+                  onNext={handleNext}
+                  onPrevious={handlePrevious}
+                  onUpdateStep={handleUpdateStep}
+                  onToggleTts={() => setIsTtsEnabled(!isTtsEnabled)}
+                  onAddTitle={handleAddTitle}
+                  onRemoveTitle={handleRemoveTitle}
+                  onAddDescription={handleAddDescription}
+                  onRemoveDescription={handleRemoveDescription}
+                  onRemoveAction={handleRemoveAction}
+                  onAddStep={handleAddStep}
+                  onDeleteStep={handleDeleteStep}
+                  popups={currentStep.popups}
+                  onRemovePopup={handleRemovePopup}
+                  onAddPopup={handleAddPopup}
+                  onShowPopupPanel={() => setShowPopupPanel(true)}
+                  editingEnabled={editingEnabled}
+                  showNewStepAnimation={showNewStepAnimation}
+                  stepPopAnimation={stepPopAnimation}
+                  flashStepShadow={flashStepShadow}
+                  allSteps={steps}
+                  onToggleTOC={() => setShowTOC(!showTOC)}
+                  isTOCOpen={showTOC}
+                  isFirstVisibleStep={isFirstVisibleStep}
+                  onChangeColor={handleChangeColor}
+                  onAddAction={handleAddAction}
+                  onEditAction={handleEditAction}
+                  onRestart={handleRestart}
+                  onBack={handleBack}
+                  onOpenFlowEditor={handleOpenFlowEditor}
+                  checkpointCount={currentStep.validation?.checkpoints?.length ?? 0}
+                  hasCritical={currentStep.validation?.checkpoints?.some(cp => cp.severity === 'critical') ?? false}
+                  onOpenValidation={() => setShowValidationPanel(true)}
+                />
+                
+                {/* Media Viewer - Positioned absolutely to attach to left side of step card */}
+                <div
+                  className="absolute right-1/2 hidden lg:flex flex-col justify-end pointer-events-none h-full"
+                  style={{
+                    marginRight: 'calc(350px + 8px)',
+                    paddingBottom: 'var(--spacing-sm)'
+                  }}
+                >
+                  <div className="pointer-events-auto max-h-full flex flex-col">
+                    <MediaViewer 
+                      mediaFiles={currentStep.mediaFiles}
+                      onAddMediaFiles={handleAddMediaFiles}
+                      onRemoveMediaFile={handleRemoveMediaFile}
+                      onReorderMedia={handleReorderMedia}
+                    />
+                  </div>
+                </div>
+            </div>
+          )}
+
           {/* Side Buttons */}
-          <SideButtons
+          <SideButtons 
             onEnterAR={handleEnterAR}
             onOpenPlacement={handleEnterAR}
             isARMode={isARMode}
             isMobileView={isMobileView}
           />
-
-          {/* 3-dots Menu Button */}
-          {!isMobilePath && (
-            <div className="absolute top-3 right-3 z-20">
-              <button
-                ref={debugButtonRef}
-                onClick={() => setShowDebugMenu(!showDebugMenu)}
-                className="flex items-center justify-center rounded-lg transition-all hover:bg-white/20"
-                style={{
-                  width: '32px', height: '32px',
-                  background: showDebugMenu ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.35)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  cursor: 'pointer', backdropFilter: 'blur(8px)',
-                }}
-                title="Options"
-              >
-                <MoreVertical className="size-4 text-white" />
-              </button>
-
-              {showDebugMenu && (
-                <div
-                  ref={debugMenuRef}
-                  className="absolute top-[36px] right-0 rounded-lg overflow-hidden"
-                  style={{
-                    background: 'white',
-                    border: '1px solid #E2E8F0',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                    minWidth: '180px',
-                    padding: '6px',
-                  }}
-                >
-                  {/* Enable Editing */}
-                  <label
-                    className="flex items-center cursor-pointer rounded-md transition-colors hover:bg-gray-50"
-                    style={{ padding: '8px 10px', gap: '10px' }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={editingEnabled}
-                      onChange={(e) => setEditingEnabled(e.target.checked)}
-                      className="cursor-pointer accent-[#2F80ED]"
-                      style={{ width: '15px', height: '15px' }}
-                    />
-                    <span style={{ fontSize: '13px', color: '#1E293B', fontWeight: 500 }}>
-                      Enable Editing
-                    </span>
-                  </label>
-
-                  {/* Mobile View */}
-                  <label
-                    className="flex items-center cursor-pointer rounded-md transition-colors hover:bg-gray-50"
-                    style={{ padding: '8px 10px', gap: '10px' }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isMobileView}
-                      onChange={(e) => {
-                        const isEnabled = e.target.checked;
-                        setIsMobileView(isEnabled);
-                        if (isEnabled) setEditingEnabled(false);
-                      }}
-                      className="cursor-pointer accent-[#2F80ED]"
-                      style={{ width: '15px', height: '15px' }}
-                    />
-                    <span style={{ fontSize: '13px', color: '#1E293B', fontWeight: 500 }}>
-                      Mobile View
-                    </span>
-                  </label>
-
-                  {/* Divider */}
-                  <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
-
-                  {/* Start Tutorial */}
-                  <button
-                    onClick={() => { handleStartTutorial(); setShowDebugMenu(false); }}
-                    className="flex items-center w-full rounded-md transition-colors hover:bg-gray-50"
-                    style={{
-                      padding: '8px 10px', gap: '10px',
-                      background: 'none', border: 'none', cursor: 'pointer',
-                    }}
-                  >
-                    <GraduationCap className="size-4" style={{ color: '#2F80ED' }} />
-                    <span style={{ fontSize: '13px', color: '#1E293B', fontWeight: 500 }}>
-                      Start Tutorial
-                    </span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* AR Placement Flow (replaces side panel when active) */}
-        {showARPlacement && (
-          <ARPlacementFlow
-            onComplete={handleARPlacementComplete}
-            onCancel={handleARPlacementCancel}
-            availableTargets={availableTargets}
-          />
-        )}
 
           {/* Settings Modal */}
           {showSettings && (
@@ -1901,8 +1812,13 @@ export function ProcedureEditor() {
             <ValidationPanel
               validation={currentStep.validation}
               onAddValidation={handleAddValidation}
-              onUpdateValidation={handleUpdateValidation}
+              onAddCheckpoint={handleAddCheckpoint}
+              onUpdateCheckpoint={handleUpdateCheckpoint}
+              onRemoveCheckpoint={handleRemoveCheckpoint}
+              onReorderCheckpoints={handleReorderCheckpoints}
               onRemoveValidation={handleRemoveValidation}
+              activeCheckpointId={activeCheckpointId}
+              onSetActiveCheckpointId={setActiveCheckpointId}
               editingEnabled={editingEnabled}
               onClose={() => setShowValidationPanel(false)}
               onSelectParts={handleSelectPartsForValidation}
@@ -1927,6 +1843,7 @@ export function ProcedureEditor() {
           {showBookmarks && (
             <BookmarksModal onClose={() => setShowBookmarks(false)} />
           )}
+        </div>
       </div>
 
       {/* Table of Contents - Overlay on left */}
@@ -2137,9 +2054,10 @@ export function ProcedureEditor() {
       )}
 
       {/* Parts Catalog Panel - Outside main container for proper overlay */}
-      <PartsCatalogPanel 
+      <PartsCatalogPanel
         isOpen={showPartsCatalog}
-        onClose={() => setShowPartsCatalog(false)} 
+        onClose={() => setShowPartsCatalog(false)}
+        hierarchy={modelHierarchy}
       />
 
       {/* Tutorial */}

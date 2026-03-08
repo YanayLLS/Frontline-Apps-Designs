@@ -1,4 +1,4 @@
-import svgPaths from "../../../imports-procedure-editor/svg-hd561eopnw";
+import svgPaths from "../../../imports/svg-hd561eopnw";
 
 interface SideButtonsProps {
   onEnterAR?: () => void;

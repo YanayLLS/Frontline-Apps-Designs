@@ -14,7 +14,15 @@
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --font-family: 'Open Sans', sans-serif;
-  
+
+  /* Spacing variables */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+
   /* The default background color for the application. */
   --background: rgba(245, 245, 245, 1.00);
   /* The default color for elements or text that appears on top of the background. */

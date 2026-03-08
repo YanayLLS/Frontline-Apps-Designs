@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XR App</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --xr-normal: #1D2B6D;
+  --xr-hover: #24388E;
+  --xr-outline: #6383D8;
+  --xr-pin-outline: #688FD8;
+  --xr-selected: #85A5F5;
+  --xr-radius-window: 38px;
+  --xr-radius-btn: 26px;
+  --xr-radius-inner: 32px;
+  --xr-border: 3px solid var(--xr-outline);
+  --xr-gradient: linear-gradient(135deg, rgba(35,45,116,0.8) 5%, rgba(40,62,152,0.8) 47%, rgba(35,50,127,0.8) 95%);
+  --xr-gradient-over: linear-gradient(135deg, rgba(0,0,0,0.75), rgba(0,0,0,0.75));
+  --xr-bg-combined: linear-gradient(135deg, rgba(35,45,116,0.85) 5%, rgba(40,62,152,0.85) 47%, rgba(35,50,127,0.85) 95%);
+  --xr-item-bg: rgba(151,216,255,0.09);
+  --xr-item-hover: rgba(151,216,255,0.16);
+  --xr-inner-bg: rgba(255,255,255,0.05);
+  --xr-btn-bg: linear-gradient(90deg, #293B7A, #293B7A);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Open Sans', sans-serif;
+  background: #000;
+  color: #fff;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== 3D AR SPACE ===== */
+#ar-space {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: radial-gradient(ellipse at center, #0a0a1a 0%, #000 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* AR grid floor - moves with parallax for depth feel */
+#ar-grid {
+  position: absolute;
+  width: 400%; height: 400%;
+  top: -150%; left: -150%;
+  background:
+    linear-gradient(rgba(99,131,216,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,131,216,0.04) 1px, transparent 1px);
+  background-size: 80px 80px;
+  transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+  pointer-events: none;
+}
+
+/* Subtle star/dot layer for depth */
+#ar-dots {
+  position: absolute;
+  width: 200%; height: 200%;
+  top: -50%; left: -50%;
+  background:
+    radial-gradient(1px 1px at 20% 30%, rgba(99,131,216,0.15), transparent),
+    radial-gradient(1px 1px at 60% 70%, rgba(99,131,216,0.1), transparent),
+    radial-gradient(1px 1px at 80% 20%, rgba(99,131,216,0.12), transparent),
+    radial-gradient(1.5px 1.5px at 40% 80%, rgba(99,131,216,0.08), transparent),
+    radial-gradient(1px 1px at 10% 60%, rgba(99,131,216,0.1), transparent);
+  transition: transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1);
+  pointer-events: none;
+}
+
+/* Floating UI container - follows with delay (translate only, no rotation) */
+#ui-layer {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.9s cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform;
+}
+
+/* Subtle floating bob animation */
+@keyframes floatBob {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+.xr-window { animation: floatBob 6s ease-in-out infinite; }
+
+/* Direction indicator */
+#direction-hint {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(99,131,216,0.5);
+  pointer-events: none;
+  z-index: 300;
+  text-align: center;
+  transition: opacity 0.5s;
+}
+#direction-hint.hidden { opacity: 0; }
+
+/* ===== SCREEN CONTAINERS ===== */
+.screen { display: none; position: absolute; }
+.screen.active { display: block; }
+
+/* ===== FLOATING WINDOW ===== */
+.xr-window {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 480px;
+}
+
+/* ===== TOP BAR ===== */
+.xr-topbar {
+  background: var(--xr-bg-combined);
+  border: var(--xr-border);
+  border-radius: var(--xr-radius-window);
+  backdrop-filter: blur(48px);
+  -webkit-backdrop-filter: blur(48px);
+  height: 120px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+.xr-topbar .pin-btn {
+  position: absolute;
+  left: -131px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 120px; height: 120px;
+  background: var(--xr-normal);
+  border: 3px solid var(--xr-pin-outline);
+  border-radius: var(--xr-radius-window);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.xr-topbar .pin-btn:hover { background: var(--xr-hover); }
+.xr-topbar .pin-btn svg { width: 32px; height: 32px; fill: #fff; }
+.drag-handle {
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+.drag-handle svg { width: 24px; height: 24px; fill: #fff; }
+.xr-topbar .back-btn {
+  width: 96px; height: 96px;
+  background: var(--xr-btn-bg);
+  border: 3px solid transparent;
+  border-radius: var(--xr-radius-btn);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.xr-topbar .back-btn:hover { background: var(--xr-hover); }
+.xr-topbar .back-btn svg { width: 28px; height: 28px; fill: #fff; }
+.xr-topbar .title {
+  flex: 1;
+  font-size: 24px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+}
+.xr-topbar .mic-btn {
+  width: 89px; height: 89px;
+  background: var(--xr-hover);
+  border: 3px solid transparent;
+  border-radius: var(--xr-radius-btn);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.xr-topbar .mic-btn:hover { background: #2d4599; }
+.xr-topbar .mic-btn svg { width: 24px; height: 24px; fill: #fff; }
+.xr-topbar .top-info {
+  display: flex; gap: 12px; align-items: center;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+.xr-topbar .top-info .info-col {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+}
+.xr-topbar .top-info .battery { display: flex; align-items: center; gap: 4px; font-size: 24px; font-weight: 600; }
+.xr-topbar .top-info .battery svg { width: 34px; height: 34px; fill: #fff; }
+.xr-topbar .top-info .time { font-size: 24px; font-weight: 600; }
+.xr-topbar .user-btn {
+  width: 96px; height: 96px;
+  background: var(--xr-item-bg);
+  border: 3px solid transparent;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.15s;
+}
+.xr-topbar .user-btn:hover { background: var(--xr-item-hover); }
+.xr-topbar .user-btn .gem {
+  width: 100%; height: 100%;
+  background: linear-gradient(135deg, #d4a0cc, #9b59b6, #7d3c98);
+  border-radius: 50%;
+}
+
+/* ===== BODY PANEL ===== */
+.xr-body {
+  background: var(--xr-bg-combined);
+  border: var(--xr-border);
+  border-radius: var(--xr-radius-window);
+  backdrop-filter: blur(48px);
+  -webkit-backdrop-filter: blur(48px);
+  margin-top: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ===== INNER PLATE (content area inside body) ===== */
+.xr-inner {
+  background: var(--xr-inner-bg);
+  border-radius: var(--xr-radius-inner);
+}
+
+/* ===== XR BUTTONS ===== */
+.xr-btn {
+  background: var(--xr-hover);
+  border: 3px solid transparent;
+  border-radius: var(--xr-radius-btn);
+  color: #fff;
+  font-family: 'Open Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px 32px;
+}
+.xr-btn:hover { background: #2d4599; }
+.xr-btn:active { background: var(--xr-normal); }
+
+/* List-style items */
+.xr-list-btn {
+  padding: 20px 29px;
+  border-radius: var(--xr-radius-btn);
+  background: var(--xr-item-bg);
+  border: 3px solid transparent;
+  cursor: pointer;
+  font-size: 24px;
+  font-weight: 600;
+  color: #fff;
+  transition: background 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  width: 100%;
+}
+.xr-list-btn:hover { background: var(--xr-item-hover); }
+.xr-list-btn.selected { background: var(--xr-selected); }
+
+/* Small icon button */
+.xr-icon-btn {
+  background: var(--xr-item-bg);
+  border: 3px solid transparent;
+  border-radius: var(--xr-radius-btn);
+  width: 96px; height: 96px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.xr-icon-btn:hover { background: var(--xr-item-hover); }
+.xr-icon-btn svg { width: 32px; height: 32px; fill: #fff; }
+
+/* ===== DROPDOWN ===== */
+.xr-dropdown {
+  background: var(--xr-normal);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  transition: background 0.15s;
+  color: #fff;
+}
+.xr-dropdown:hover { background: var(--xr-hover); }
+.xr-dropdown .chev { margin-left: auto; opacity: 0.6; }
+
+/* ===== INPUT ===== */
+.xr-input {
+  width: 100%;
+  background: var(--xr-normal);
+  border: 1px solid #2E80ED;
+  border-radius: 20px;
+  padding: 16px;
+  color: #fff;
+  font-size: 18px;
+  font-family: 'Open Sans', sans-serif;
+  outline: none;
+}
+.xr-input::placeholder { color: rgba(255,255,255,0.5); }
+.xr-input:focus { border-color: #5999F1; }
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+/* ===== ANIMATIONS ===== */
+.fade-in { animation: fadeIn 0.3s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* ===== NOTIFICATION ===== */
+#notification {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+  background: var(--xr-bg-combined);
+  border: 2px solid var(--xr-outline);
+  border-radius: 20px;
+  padding: 14px 28px;
+  font-size: 18px; font-weight: 600;
+  display: none; z-index: 300;
+  backdrop-filter: blur(20px);
+}
+
+/* =========================================
+   SCREEN-SPECIFIC LAYOUTS
+   ========================================= */
+
+/* --- LOGIN --- */
+#login-screen { display: none; }
+#login-screen.active { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+.login-window {
+  background: var(--xr-bg-combined);
+  border: var(--xr-border);
+  border-radius: var(--xr-radius-window);
+  backdrop-filter: blur(48px);
+  padding: 40px;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  width: 600px;
+}
+.login-welcome { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+.login-method {
+  width: 100%;
+  background: rgba(0,0,0,0.2);
+  border-radius: var(--xr-radius-inner);
+  padding: 24px;
+  display: flex; align-items: flex-start; gap: 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.login-method:hover { background: rgba(0,0,0,0.35); }
+.login-method svg.method-icon { width: 36px; height: 36px; fill: #fff; flex-shrink: 0; margin-top: 2px; }
+.login-method .method-content { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.login-method .method-title { font-size: 20px; font-weight: 700; }
+.login-method .method-detail { font-size: 16px; opacity: 0.7; line-height: 1.4; }
+.login-method .method-code {
+  font-size: 28px; font-weight: 700; letter-spacing: 8px;
+  padding: 8px 0 4px;
+}
+.login-method .method-url { font-size: 14px; opacity: 0.5; }
+.login-method .email-row { display: flex; gap: 8px; align-items: center; }
+.login-method .email-row .xr-input { flex: 1; padding: 12px 16px; font-size: 16px; }
+.login-method .email-row .xr-btn { padding: 12px 24px; font-size: 16px; white-space: nowrap; }
+.login-guest {
+  font-size: 16px; color: rgba(255,255,255,0.5);
+  cursor: pointer; padding: 12px;
+  transition: color 0.15s;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.login-guest:hover { color: rgba(255,255,255,0.8); }
+.login-footer {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 4px;
+}
+.login-footer .login-version { font-size: 14px; opacity: 0.4; }
+.login-footer .settings-btn {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0.4; transition: opacity 0.15s;
+  border-radius: 50%;
+}
+.login-footer .settings-btn:hover { opacity: 0.8; background: rgba(255,255,255,0.05); }
+.login-footer .settings-btn svg { width: 20px; height: 20px; fill: #fff; }
+/* Settings popover */
+.login-settings-popover {
+  display: none;
+  position: absolute;
+  bottom: 60px; right: 40px;
+  background: var(--xr-bg-combined);
+  border: var(--xr-border);
+  border-radius: var(--xr-radius-btn);
+  backdrop-filter: blur(48px);
+  padding: 16px;
+  width: 280px;
+  flex-direction: column; gap: 12px;
+  z-index: 10;
+}
+.login-settings-popover.open { display: flex; }
+.login-settings-popover label { font-size: 14px; font-weight: 600; opacity: 0.7; margin-bottom: 4px; }
+.login-settings-popover .xr-dropdown { width: 100%; }
+
+/* --- LOBBY --- */
+#lobby-screen .xr-window { width: 860px; }
+#lobby-screen .xr-topbar { width: 100%; }
+#lobby-screen .xr-body {
+  width: 100%;
+  padding: 40px 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px;
+}
+.lobby-cards { display: flex; gap: 10px; }
+.lobby-card {
+  width: 144px; height: 144px;
+  background: var(--xr-inner-bg);
+  border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  padding: 12px;
+}
+.lobby-card:hover { background: rgba(255,255,255,0.12); transform: scale(1.03); }
+.lobby-card:active { transform: scale(0.98); }
+.lobby-card svg { width: 48px; height: 48px; fill: #fff; }
+.lobby-card .card-label { font-size: 16px; font-weight: 600; text-align: center; }
+.lobby-info { text-align: center; font-size: 16px; font-weight: 600; opacity: 0.6; line-height: 1.6; }
+
+/* --- PROJECTS --- */
+#projects-screen .xr-window { width: 1180px; }
+#projects-screen .xr-body { width: 100%; }
+.projects-content {
+  display: flex; gap: 12px;
+  padding: 12px;
+  height: 670px;
+}
+.project-sidebar {
+  width: 384px; flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 6px;
+  overflow: hidden;
+}
+.project-sidebar-title { font-size: 32px; font-weight: 700; padding: 12px 8px 6px; }
+.project-detail {
+  flex: 1;
+  display: flex; flex-direction: column;
+  padding: 3px;
+  min-width: 0;
+}
+.project-detail .xr-inner {
+  flex: 1;
+  padding: 12px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.project-image {
+  flex: 1;
+  background: linear-gradient(to bottom, #e8e8e8, #a0a0a0);
+  border-radius: 22px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  min-height: 0;
+}
+.project-image svg { width: 120px; height: 120px; fill: rgba(0,0,0,0.15); }
+.project-info { flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.project-info h3 { font-size: 38px; font-weight: 600; }
+.project-info p { font-size: 24px; color: #e2e2e2; line-height: 1.3; overflow: hidden; flex: 1; min-height: 0; }
+.project-info .launch-btn {
+  background: linear-gradient(90deg, #6173c6, #4a5dac, #324892);
+  border: 3px solid transparent;
+  border-radius: var(--xr-radius-btn);
+  padding: 20px;
+  color: #fff; font-size: 24px; font-weight: 600;
+  text-align: center; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.project-info .launch-btn:hover { opacity: 0.85; }
+
+/* --- KNOWLEDGE BASE --- */
+#kb-screen .xr-window { width: 1180px; }
+#kb-screen .xr-body { width: 100%; }
+.kb-content { display: flex; gap: 12px; padding: 12px; height: 670px; }
+.kb-sidebar {
+  width: 384px; flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.kb-main {
+  flex: 1; display: flex; min-width: 0; padding: 3px;
+}
+.kb-main .xr-inner {
+  flex: 1;
+  padding: 12px;
+  display: flex; gap: 12px;
+}
+.kb-list-col {
+  flex: 1;
+  display: flex; flex-direction: column; gap: 6px;
+  min-height: 0;
+}
+.kb-items-scroll {
+  flex: 1;
+  display: flex; flex-direction: column; gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.kb-item {
+  padding: 20px 24px;
+  border-radius: var(--xr-radius-btn);
+  background: var(--xr-item-bg);
+  border: 3px solid transparent;
+  cursor: pointer;
+  font-size: 24px; font-weight: 600;
+  transition: background 0.15s;
+  display: flex; align-items: center; gap: 10px;
+}
+.kb-item:hover { background: var(--xr-item-hover); }
+.kb-item svg { width: 24px; height: 24px; fill: #fff; flex-shrink: 0; opacity: 0.7; }
+.kb-bottom {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  font-size: 24px; font-weight: 600;
+}
+.kb-scroll-col {
+  width: 21px; flex-shrink: 0;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.scroll-arrow {
+  background: var(--xr-item-bg);
+  border: none; border-radius: 8px;
+  color: #fff; padding: 6px 2px;
+  cursor: pointer; transition: background 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.scroll-arrow:hover { background: var(--xr-item-hover); }
+.scroll-arrow svg { width: 20px; height: 20px; fill: #fff; }
+
+/* --- ITEM LOADING --- */
+#item-screen .xr-window { width: 920px; }
+#item-screen .xr-body { width: 100%; }
+.item-content { padding: 28px; display: flex; flex-direction: column; gap: 12px; }
+.item-lang-row { display: flex; justify-content: flex-end; }
+.item-header { display: flex; gap: 12px; }
+.item-thumb {
+  width: 206px; height: 116px;
+  border-radius: 10px;
+  background: #2a2a4a;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.item-thumb svg { width: 60px; height: 60px; fill: rgba(255,255,255,0.2); }
+.item-meta { display: flex; flex-direction: column; gap: 10px; }
+.item-meta h3 { font-size: 24px; font-weight: 700; line-height: 1.3; }
+.item-meta .meta-row {
+  display: flex; gap: 10px; font-size: 18px; opacity: 0.8;
+  flex-wrap: wrap; align-items: center;
+}
+.item-dt-row {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 40px;
+}
+.item-dt-row label { font-size: 18px; font-weight: 700; }
+.item-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.item-ghost-btn {
+  background: none; border: 3px solid transparent;
+  border-radius: var(--xr-radius-btn);
+  color: #fff; font-size: 18px; font-weight: 400;
+  font-family: 'Open Sans', sans-serif;
+  padding: 14px; cursor: pointer; text-align: center;
+  transition: background 0.15s;
+}
+.item-ghost-btn:hover { background: rgba(255,255,255,0.05); }
+
+/* --- PROCEDURE --- */
+#procedure-screen .xr-window { width: 864px; }
+#procedure-screen .xr-body { width: 100%; }
+.proc-layout { display: flex; height: 660px; position: relative; }
+/* Options panel floats to the left */
+.proc-options-panel {
+  position: absolute;
+  left: -440px; top: 0; bottom: 0;
+  width: 429px;
+  background: var(--xr-bg-combined);
+  border: var(--xr-border);
+  border-radius: var(--xr-radius-window);
+  backdrop-filter: blur(48px);
+  padding: 12px;
+  display: flex; flex-direction: column; gap: 3px;
+  overflow-y: auto;
+}
+.proc-option {
+  padding: 18px 29px;
+  border-radius: var(--xr-radius-btn);
+  background: var(--xr-item-bg);
+  border: 3px solid transparent;
+  cursor: pointer;
+  font-size: 24px; font-weight: 600; color: #fff;
+  transition: background 0.15s;
+  white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.proc-option:hover { background: var(--xr-item-hover); }
+.proc-option.selected { background: var(--xr-selected); }
+.proc-main {
+  flex: 1;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 12px;
+}
+.proc-text-frame {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.proc-text-frame .xr-inner {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+}
+.proc-text {
+  flex: 1;
+  font-size: 32px; color: #e2e2e2; line-height: 1.35;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.proc-text-scroll {
+  width: 21px; flex-shrink: 0;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.proc-step-row {
+  display: flex; align-items: center; padding: 0 12px; gap: 6px;
+}
+.proc-step-num { font-size: 32px; color: #e2e2e2; flex: 1; }
+.proc-media-btn {
+  width: 58px; height: 58px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0.6; transition: opacity 0.15s;
+}
+.proc-media-btn:hover { opacity: 1; }
+.proc-media-btn svg { width: 32px; height: 32px; fill: #fff; }
+.proc-nav {
+  display: flex; gap: 6px;
+}
+.proc-nav-btn {
+  flex: 1;
+  background: var(--xr-item-bg);
+  border: 3px solid transparent;
+  border-radius: var(--xr-radius-btn);
+  padding: 20px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.15s;
+}
+.proc-nav-btn:hover { background: var(--xr-item-hover); }
+.proc-nav-btn svg { width: 32px; height: 32px; fill: #fff; }
+
+/* --- REMOTE SUPPORT --- */
+#rs-screen .xr-window { width: 1182px; }
+#rs-screen .xr-body {
+  width: 100%;
+  padding: 12px;
+  height: 671px;
+  display: flex; align-items: center; justify-content: center; gap: 24px;
+}
+
+/* --- REMOTE CALL --- */
+#call-screen .xr-window { width: 1089px; }
+#call-screen .xr-body {
+  width: 100%;
+  padding: 12px;
+}
+.call-content {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.call-video-area {
+  border-radius: var(--xr-radius-btn);
+  background: linear-gradient(135deg, #2a2a3a, #1a1a2e);
+  height: 520px;
+  position: relative;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.call-video-area .caller-label {
+  position: absolute; bottom: 12px; left: 12px;
+  background: rgba(128,128,128,0.5);
+  padding: 8px 16px; border-radius: 12px;
+  font-size: 24px; font-weight: 700;
+}
+.call-video-area svg { width: 120px; height: 120px; fill: rgba(255,255,255,0.08); }
+.call-participants-row {
+  display: flex; gap: 6px; align-items: center; justify-content: flex-end;
+}
+.call-avatar {
+  width: 96px; height: 96px;
+  border-radius: 45px;
+  background: var(--xr-item-bg);
+  border: 3px solid transparent;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+  overflow: hidden;
+}
+.call-avatar:hover { background: var(--xr-item-hover); }
+.call-avatar.active { background: #518EEF; }
+.call-avatar .gem-icon {
+  width: 70px; height: 70px;
+  background: linear-gradient(135deg, #d4a0cc, #9b59b6, #7d3c98);
+  border-radius: 50%;
+}
+/* Call actions bar - separate floating panel below */
+.call-actions-bar {
+  position: absolute;
+  bottom: -140px; left: 50%; transform: translateX(-50%);
+  background: var(--xr-bg-combined);
+  border: var(--xr-border);
+  border-radius: var(--xr-radius-window);
+  backdrop-filter: blur(48px);
+  padding: 12px;
+  display: flex; gap: 6px;
+  z-index: 5;
+}
+.call-act-btn {
+  width: 96px; height: 96px;
+  background: var(--xr-item-bg);
+  border: 3px solid transparent;
+  border-radius: var(--xr-radius-btn);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.call-act-btn:hover { background: var(--xr-item-hover); }
+.call-act-btn svg { width: 28px; height: 28px; fill: #fff; }
+
+/* --- SIDE PANEL (media viewer) --- */
+.side-panel-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.side-panel-overlay.active { display: flex; }
+.side-panel-window { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.side-panel-close-bar {
+  background: var(--xr-bg-combined);
+  border: var(--xr-border);
+  border-radius: var(--xr-radius-window);
+  backdrop-filter: blur(48px);
+  width: 120px; height: 120px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.side-panel-close-bar:hover { opacity: 0.85; }
+.side-panel-close-bar svg { width: 36px; height: 36px; fill: #fff; }
+.side-panel-body {
+  background: var(--xr-bg-combined);
+  border: var(--xr-border);
+  border-radius: var(--xr-radius-window);
+  backdrop-filter: blur(48px);
+  padding: 12px;
+}
+.side-panel-body .xr-inner {
+  width: 1280px; height: 720px;
+  display: flex; align-items: center; justify-content: center;
+}
+.side-panel-body .play-btn { cursor: pointer; transition: opacity 0.15s; }
+.side-panel-body .play-btn:hover { opacity: 0.8; }
+.side-panel-body .play-btn svg { width: 120px; height: 150px; fill: #fff; }
+
+/* --- USER CONTEXT MENU --- */
+#user-context-menu {
+  position: fixed;
+  display: none;
+  z-index: 400;
+  background: var(--xr-bg-combined);
+  border: var(--xr-border);
+  border-radius: var(--xr-radius-window);
+  backdrop-filter: blur(48px);
+  -webkit-backdrop-filter: blur(48px);
+  padding: 12px;
+  width: 288px;
+  flex-direction: column;
+  gap: 6px;
+}
+#user-context-menu.active { display: flex; }
+
+/* --- KB FOLDER DRILL-IN --- */
+.kb-breadcrumb {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.kb-breadcrumb:hover { color: #fff; }
+.kb-breadcrumb.active { display: flex; }
+.kb-breadcrumb svg { width: 20px; height: 20px; fill: #fff; opacity: 0.7; }
+
+/* --- CALL SIDE PANELS (Chat & Participants) --- */
+.call-chat-panel,
+.call-participants-panel {
+  position: absolute;
+  left: calc(100% + 20px);
+  top: 130px;
+  background: var(--xr-bg-combined);
+  border: var(--xr-border);
+  border-radius: var(--xr-radius-window);
+  backdrop-filter: blur(48px);
+  -webkit-backdrop-filter: blur(48px);
+  padding: 20px;
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 10;
+}
+.call-chat-panel { width: 379px; }
+.call-participants-panel { width: 355px; }
+.call-chat-panel.active,
+.call-participants-panel.active { display: flex; }
+
+.call-panel-title {
+  font-size: 38px;
+  font-weight: 600;
+  padding-bottom: 4px;
+}
+.call-panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.call-panel-title-row svg { width: 28px; height: 28px; fill: #fff; cursor: pointer; opacity: 0.7; transition: opacity 0.15s; }
+.call-panel-title-row svg:hover { opacity: 1; }
+
+/* Chat messages */
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 200px;
+}
+.chat-bubble {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 18px;
+  line-height: 1.4;
+}
+.chat-bubble.left {
+  align-self: flex-start;
+  background: rgba(255,255,255,0.08);
+}
+.chat-bubble.right {
+  align-self: flex-end;
+  background: rgba(81,142,239,0.3);
+}
+.chat-bubble .chat-sender {
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+.chat-bubble .chat-shared {
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-top: 6px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chat-bubble .chat-shared svg { width: 18px; height: 18px; fill: #fff; opacity: 0.6; flex-shrink: 0; }
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.chat-input-row .xr-input { flex: 1; }
+
+/* Participants list */
+.participant-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 14px;
+  padding: 12px;
+}
+.participant-row .p-name { flex: 1; font-size: 20px; font-weight: 600; }
+.participant-row .p-icons { display: flex; gap: 8px; }
+.participant-row .p-icons svg { width: 22px; height: 22px; fill: #fff; opacity: 0.6; }
+.participant-avatar {
+  width: 42px; height: 42px;
+  background: linear-gradient(135deg, #d4a0cc, #9b59b6, #7d3c98);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Call action button active state */
+.call-act-btn.active { background: var(--xr-selected); }
+
+/* SVG Icons inline */
+</style>
+</head>
+<body>
+
+<div id="ar-space">
+<div id="ar-grid"></div>
+<div id="ar-dots"></div>
+<div id="ui-layer">
+
+  <!-- ==================== LOGIN ==================== -->
+  <div id="login-screen" class="screen active">
+    <div class="login-window fade-in" style="position:relative;">
+      <div class="login-welcome">Welcome</div>
+
+      <!-- Device login -->
+      <div class="login-method" onclick="showNotification('Waiting for device login...')">
+        <svg class="method-icon" viewBox="0 0 24 24"><path d="M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm20 2h-8c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h8c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 9h-6v-7h6v7z"/></svg>
+        <div class="method-content">
+          <div class="method-title">Login with another device</div>
+          <div class="method-url">HP-device-login.frontline.io</div>
+          <div class="method-code">564430</div>
+        </div>
+      </div>
+
+      <!-- Email login -->
+      <div class="login-method" onclick="document.getElementById('email-input').focus()">
+        <svg class="method-icon" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+        <div class="method-content">
+          <div class="method-title">Login with email</div>
+          <div class="email-row">
+            <input id="email-input" class="xr-input" type="email" placeholder="Enter email" onclick="event.stopPropagation()">
+            <div class="xr-btn" onclick="event.stopPropagation(); navigateTo('lobby')">Confirm</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QR code login -->
+      <div class="login-method" onclick="showNotification('Point headset camera at QR code')">
+        <svg class="method-icon" viewBox="0 0 24 24"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm8-12v8h8V3h-8zm6 6h-4V5h4v4zm-5.99 4h2v2h-2zm2 2h2v2h-2zm-2 2h2v2h-2zm4 0h2v2h-2zm2 2h2v2h-2zm0-4h2v2h-2zm2-2h2v2h-2z"/></svg>
+        <div class="method-content">
+          <div class="method-title">Scan personal QR code</div>
+          <div class="method-detail">Point your headset at your QR code</div>
+        </div>
+      </div>
+
+      <!-- Guest -->
+      <div class="login-guest" onclick="navigateTo('lobby')">Continue as guest</div>
+
+      <!-- Footer -->
+      <div class="login-footer">
+        <span class="login-version">v25.3</span>
+        <div class="settings-btn" onclick="event.stopPropagation(); document.getElementById('login-settings').classList.toggle('open')">
+          <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4 2.81c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41L9.25 5.35c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        </div>
+      </div>
+
+      <!-- Settings popover -->
+      <div class="login-settings-popover" id="login-settings">
+        <div>
+          <label>Language</label>
+          <div class="xr-dropdown">
+            <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#fff;flex-shrink:0;"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96z"/></svg>
+            <span>English</span>
+            <span class="chev">&#9662;</span>
+          </div>
+        </div>
+        <div>
+          <label>Region</label>
+          <div class="xr-dropdown">
+            <span>Global</span>
+            <span class="chev">&#9662;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== LOBBY ==================== -->
+  <div id="lobby-screen" class="screen">
+    <div class="xr-window fade-in">
+      <div class="xr-topbar">
+        <div class="pin-btn">
+          <svg viewBox="0 0 24 24"><path d="M14 4v5c0 1.12.37 2.16 1 3H9c.65-.86 1-1.9 1-3V4h4m3-2H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3V4h1c.55 0 1-.45 1-1s-.45-1-1-1z"/></svg>
+        </div>
+        <div class="drag-handle"><svg viewBox="0 0 24 24"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></div>
+        <div class="back-btn" onclick="navigateTo('login')">
+          <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </div>
+        <div class="title">Username</div>
+        <div class="mic-btn"><svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg></div>
+        <div class="top-info">
+          <div class="info-col">
+            <div class="battery"><span>98%</span><svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.34V5.33C17 4.6 16.4 4 15.67 4z"/></svg></div>
+            <div class="time">3:21 PM</div>
+          </div>
+        </div>
+        <div class="user-btn"><div class="gem"></div></div>
+      </div>
+      <div class="xr-body">
+        <div class="lobby-cards">
+          <div class="lobby-card" onclick="navigateTo('projects')">
+            <svg viewBox="0 0 24 24"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/></svg>
+            <div class="card-label">Knowledge Base</div>
+          </div>
+          <div class="lobby-card" onclick="navigateTo('rs')">
+            <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+            <div class="card-label">Remote Support</div>
+          </div>
+          <div class="lobby-card" onclick="showNotification('Immersive Room coming soon')">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#fff" stroke-width="2"/></svg>
+            <div class="card-label">Immersive Room</div>
+          </div>
+        </div>
+        <div class="lobby-info">
+          Device ID<br>### ### ###<br><br>v26.1
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PROJECTS ==================== -->
+  <div id="projects-screen" class="screen">
+    <div class="xr-window fade-in">
+      <div class="xr-topbar">
+        <div class="pin-btn"><svg viewBox="0 0 24 24"><path d="M14 4v5c0 1.12.37 2.16 1 3H9c.65-.86 1-1.9 1-3V4h4m3-2H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3V4h1c.55 0 1-.45 1-1s-.45-1-1-1z"/></svg></div>
+        <div class="drag-handle"><svg viewBox="0 0 24 24"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></div>
+        <div class="back-btn" onclick="navigateTo('lobby')"><svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></div>
+        <div class="title">Username</div>
+        <div class="mic-btn"><svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg></div>
+        <div class="top-info"><div class="info-col"><div class="battery"><span>98%</span><svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.34V5.33C17 4.6 16.4 4 15.67 4z"/></svg></div><div class="time">3:21 PM</div></div></div>
+        <div class="user-btn"><div class="gem"></div></div>
+      </div>
+      <div class="xr-body">
+        <div class="projects-content">
+          <div class="project-sidebar">
+            <div class="project-sidebar-title">Select Project</div>
+            <div class="xr-list-btn selected" onclick="selectProject(this,0)">Crimson 15000</div>
+            <div class="xr-list-btn" onclick="selectProject(this,1)">Emerald 20000</div>
+            <div class="xr-list-btn" onclick="selectProject(this,2)">Sapphire 18000</div>
+            <div class="xr-list-btn" onclick="selectProject(this,3)">Amber 25000</div>
+            <div class="xr-list-btn" onclick="selectProject(this,4)">Obsidian 30000</div>
+          </div>
+          <div class="project-detail">
+            <div class="xr-inner">
+              <div class="project-image">
+                <svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+              </div>
+              <div class="project-info">
+                <h3 id="proj-title">Indigo 12000</h3>
+                <p id="proj-desc">Lorem ipsum dolor sit amet consectetur adipiscing elit, scelerisque netus nam a non litora justo, libero porttitor pulvinar ullamcorper massa posuere. Orci mi scelerisque sociosqu aliqu...</p>
+                <div class="launch-btn" onclick="navigateTo('kb')">Launch</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== KNOWLEDGE BASE ==================== -->
+  <div id="kb-screen" class="screen">
+    <div class="xr-window fade-in">
+      <div class="xr-topbar">
+        <div class="pin-btn"><svg viewBox="0 0 24 24"><path d="M14 4v5c0 1.12.37 2.16 1 3H9c.65-.86 1-1.9 1-3V4h4m3-2H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3V4h1c.55 0 1-.45 1-1s-.45-1-1-1z"/></svg></div>
+        <div class="drag-handle"><svg viewBox="0 0 24 24"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></div>
+        <div class="back-btn" onclick="navigateTo('projects')"><svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></div>
+        <div class="title">Knowledge Zone</div>
+        <div class="mic-btn"><svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg></div>
+        <div class="top-info"><div class="info-col"><div class="battery"><span>98%</span><svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.34V5.33C17 4.6 16.4 4 15.67 4z"/></svg></div><div class="time">3:21 PM</div></div></div>
+        <div class="user-btn"><div class="gem"></div></div>
+      </div>
+      <div class="xr-body">
+        <div class="kb-content">
+          <div class="kb-sidebar">
+            <div class="xr-list-btn selected" onclick="selKb(this)">All</div>
+            <div class="xr-list-btn" onclick="selKb(this)">Procedures</div>
+            <div class="xr-list-btn" onclick="selKb(this)">Digital assets</div>
+            <div class="xr-list-btn" onclick="selKb(this)">Media assets</div>
+          </div>
+          <div class="kb-main">
+            <div class="xr-inner">
+              <div class="kb-list-col">
+                <div class="kb-breadcrumb" id="kb-breadcrumb" onclick="kbGoBack()">
+                  <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                  <span id="kb-breadcrumb-text">Go Back</span>
+                </div>
+                <div class="kb-items-scroll" id="kb-items-scroll">
+                  <div class="kb-item" onclick="kbOpenFolder('Maintenance Procedures')">
+                    <svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
+                    Maintenance Procedures
+                  </div>
+                  <div class="kb-item" onclick="kbOpenFolder('Digital Assets')">
+                    <svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
+                    Digital Assets
+                  </div>
+                  <div class="kb-item" onclick="navigateTo('item')">Procedure item</div>
+                  <div class="kb-item" onclick="showNotification('Digital twin viewer')">Digital twin item</div>
+                  <div class="kb-item" onclick="openSidePanel()">Media item</div>
+                </div>
+                <div class="kb-bottom">
+                  <div class="spinner"></div>
+                  <span>Updating</span>
+                </div>
+              </div>
+              <div class="kb-scroll-col">
+                <div class="scroll-arrow"><svg viewBox="0 0 24 24"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg></div>
+                <div class="scroll-arrow"><svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== ITEM LOADING ==================== -->
+  <div id="item-screen" class="screen">
+    <div class="xr-window fade-in">
+      <div class="xr-topbar">
+        <div class="pin-btn"><svg viewBox="0 0 24 24"><path d="M14 4v5c0 1.12.37 2.16 1 3H9c.65-.86 1-1.9 1-3V4h4m3-2H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3V4h1c.55 0 1-.45 1-1s-.45-1-1-1z"/></svg></div>
+        <div class="drag-handle"><svg viewBox="0 0 24 24"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></div>
+        <div class="back-btn" onclick="navigateTo('kb')"><svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></div>
+        <div class="title">Procedure Preview</div>
+        <div class="mic-btn"><svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg></div>
+        <div class="top-info"><div class="info-col"><div class="battery"><span>98%</span><svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.34V5.33C17 4.6 16.4 4 15.67 4z"/></svg></div><div class="time">3:21 PM</div></div></div>
+        <div class="user-btn"><div class="gem"></div></div>
+      </div>
+      <div class="xr-body">
+        <div class="item-content">
+          <div class="item-lang-row">
+            <div class="xr-dropdown">
+              <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#fff;flex-shrink:0;"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2 0 .68.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2 0-.68.07-1.35.16-2h4.68c.09.65.16 1.32.16 2 0 .68-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2 0-.68-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z"/></svg>
+              <span>English</span>
+              <span class="chev">&#9662;</span>
+            </div>
+          </div>
+          <div class="item-header">
+            <div class="item-thumb">
+              <svg viewBox="0 0 24 24"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg>
+            </div>
+            <div class="item-meta">
+              <h3>Routine Maintenance for High-Volume Printing Equipment</h3>
+              <div class="meta-row">
+                <span>35 steps estimated</span>
+                <span>&#8226;</span>
+                <span>Last updated 01/05/2025</span>
+                <span>&#8226;</span>
+                <span>1.5</span>
+              </div>
+            </div>
+          </div>
+          <div class="item-dt-row">
+            <label>Digital twin</label>
+            <div class="xr-dropdown" style="width:220px;">
+              <span>Digital Twin Name</span>
+              <span class="chev">&#9662;</span>
+            </div>
+          </div>
+          <div class="item-actions">
+            <div class="xr-btn" style="width:100%; padding:24px; font-size:18px;" onclick="navigateTo('procedure')">Run</div>
+            <div class="item-ghost-btn" onclick="navigateTo('procedure')">Run without a digital twin</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PROCEDURE ==================== -->
+  <div id="procedure-screen" class="screen">
+    <div class="xr-window fade-in">
+      <div class="xr-topbar">
+        <div class="pin-btn"><svg viewBox="0 0 24 24"><path d="M14 4v5c0 1.12.37 2.16 1 3H9c.65-.86 1-1.9 1-3V4h4m3-2H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3V4h1c.55 0 1-.45 1-1s-.45-1-1-1z"/></svg></div>
+        <div class="drag-handle"><svg viewBox="0 0 24 24"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></div>
+        <div class="back-btn" onclick="navigateTo('item')"><svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></div>
+        <div class="title">Procedure</div>
+        <div class="mic-btn"><svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg></div>
+        <div class="top-info"><div class="info-col"><div class="battery"><span>98%</span><svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.34V5.33C17 4.6 16.4 4 15.67 4z"/></svg></div><div class="time">3:21 PM</div></div></div>
+        <div class="user-btn"><div class="gem"></div></div>
+      </div>
+      <div class="xr-body">
+        <div class="proc-layout">
+          <!-- Floating options panel to the left -->
+          <div class="proc-options-panel">
+            <div class="proc-option selected" onclick="selStep(this,0)">Option 1</div>
+            <div class="proc-option" onclick="selStep(this,1)">Option 2</div>
+            <div class="proc-option" onclick="selStep(this,2)">Option 3</div>
+            <div class="proc-option" onclick="selStep(this,3)">Option 4</div>
+            <div class="proc-option" onclick="selStep(this,4)">Option 5</div>
+            <div class="proc-option" onclick="selStep(this,5)">Option 6</div>
+            <div class="proc-option" onclick="selStep(this,6)">Option 7</div>
+            <div style="flex:1;"></div>
+            <div style="display:flex;justify-content:flex-end;gap:4px;">
+              <div class="scroll-arrow"><svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg></div>
+            </div>
+          </div>
+          <!-- Main procedure content -->
+          <div class="proc-main">
+            <div class="proc-text-frame" style="flex:1; min-height:0;">
+              <div class="xr-inner" style="flex:1; display:flex;">
+                <div class="proc-text" id="proc-text">Lorem ipsum dolor sit amet consectetur adipiscing elit, scelerisque netus nam a non litora justo, libero porttitor pulvinar ullamcorper massa posuere. Orci mi scelerisque sociosqu aliquam magna felis ante tincidunt metus sem quam, lectus vestibulum convallis congue eu eget ut justo viverra habitasse dictumst, maecenas nostra nascetur purus consequat ligula lacinia non primis vivamus. Metus lectus habitant massa posuere...</div>
+                <div class="proc-text-scroll">
+                  <div class="scroll-arrow"><svg viewBox="0 0 24 24"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg></div>
+                  <div class="scroll-arrow"><svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg></div>
+                </div>
+              </div>
+            </div>
+            <div class="proc-step-row">
+              <span class="proc-step-num" id="step-num">2/10</span>
+              <div class="proc-media-btn" onclick="openSidePanel()">
+                <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM8 15l4.5-6 3.5 4.51 2.5-3.01L21 15z"/></svg>
+              </div>
+            </div>
+            <div class="proc-nav">
+              <div class="proc-nav-btn" onclick="prevStep()"><svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></div>
+              <div class="proc-nav-btn" onclick="resetStep()"><svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg></div>
+              <div class="proc-nav-btn" onclick="nextStep()"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== REMOTE SUPPORT ==================== -->
+  <div id="rs-screen" class="screen">
+    <div class="xr-window fade-in">
+      <div class="xr-topbar">
+        <div class="pin-btn"><svg viewBox="0 0 24 24"><path d="M14 4v5c0 1.12.37 2.16 1 3H9c.65-.86 1-1.9 1-3V4h4m3-2H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3V4h1c.55 0 1-.45 1-1s-.45-1-1-1z"/></svg></div>
+        <div class="drag-handle"><svg viewBox="0 0 24 24"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></div>
+        <div class="back-btn" onclick="navigateTo('lobby')"><svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></div>
+        <div class="title">Remote Support</div>
+        <div class="mic-btn"><svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg></div>
+        <div class="top-info"><div class="info-col"><div class="battery"><span>98%</span><svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.34V5.33C17 4.6 16.4 4 15.67 4z"/></svg></div><div class="time">3:21 PM</div></div></div>
+        <div class="user-btn"><div class="gem"></div></div>
+      </div>
+      <div class="xr-body" style="height:671px; display:flex; align-items:center; justify-content:center; gap:24px;">
+        <div class="xr-btn" style="width:238px; height:89px;" onclick="navigateTo('call')">Join call</div>
+        <div class="xr-btn" style="width:238px; height:89px;" onclick="navigateTo('call')">Create Meeting</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== REMOTE CALL ==================== -->
+  <div id="call-screen" class="screen">
+    <div class="xr-window fade-in" style="position:relative;">
+      <div class="xr-topbar">
+        <div class="pin-btn"><svg viewBox="0 0 24 24"><path d="M14 4v5c0 1.12.37 2.16 1 3H9c.65-.86 1-1.9 1-3V4h4m3-2H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3V4h1c.55 0 1-.45 1-1s-.45-1-1-1z"/></svg></div>
+        <div class="drag-handle"><svg viewBox="0 0 24 24"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></div>
+        <div class="back-btn" onclick="navigateTo('rs')"><svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></div>
+        <div class="title">Remote Call</div>
+        <div class="mic-btn"><svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg></div>
+        <div class="top-info"><div class="info-col"><div class="battery"><span>98%</span><svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.34V5.33C17 4.6 16.4 4 15.67 4z"/></svg></div><div class="time">3:21 PM</div></div></div>
+        <div class="user-btn"><div class="gem"></div></div>
+      </div>
+      <div class="xr-body">
+        <div style="padding:12px;">
+          <div class="xr-inner" style="padding:12px; display:flex; flex-direction:column; gap:6px;">
+            <div class="call-video-area">
+              <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+              <div class="caller-label">Jane S.</div>
+            </div>
+            <div class="call-participants-row">
+              <div class="call-avatar active"><div class="gem-icon"></div></div>
+              <div class="call-avatar"><div class="gem-icon"></div></div>
+              <div class="call-avatar"><div class="gem-icon"></div></div>
+              <div class="call-avatar"><div class="gem-icon"></div></div>
+              <div class="call-avatar"><div class="gem-icon"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Call actions - separate floating bar below body -->
+      <div class="call-actions-bar">
+        <div class="call-act-btn" onclick="navigateTo('rs')" title="End call"><svg viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg></div>
+        <div class="call-act-btn" title="Video off"><svg viewBox="0 0 24 24"><path d="M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82L21 17.18V6.5zM3.27 2L2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z"/></svg></div>
+        <div class="call-act-btn" title="Mic off"><svg viewBox="0 0 24 24"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/></svg></div>
+        <div class="call-act-btn" id="call-chat-btn" onclick="toggleCallChat()" title="Chat"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg></div>
+        <div class="call-act-btn" id="call-participants-btn" onclick="toggleCallParticipants()" title="Participants"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></div>
+        <div class="call-act-btn" title="Info"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></div>
+        <div class="call-act-btn" title="Captions"><svg viewBox="0 0 24 24"><path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/></svg></div>
+      </div>
+
+      <!-- Chat Side Panel -->
+      <div class="call-chat-panel" id="call-chat-panel">
+        <div class="call-panel-title">Chat</div>
+        <div class="chat-messages">
+          <div class="chat-bubble left">
+            <div class="chat-sender">John D.</div>
+            Hi there!
+          </div>
+          <div class="chat-bubble right">
+            <div class="chat-sender">Jane S.</div>
+            How are you doing?
+          </div>
+          <div class="chat-bubble right">
+            <div class="chat-sender">Jane S.</div>
+            Check out this procedure:
+            <div class="chat-shared">
+              <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+              Routine Maintenance Procedure
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input class="xr-input" type="text" placeholder="Message..." onclick="event.stopPropagation()">
+        </div>
+      </div>
+
+      <!-- Participants Side Panel -->
+      <div class="call-participants-panel" id="call-participants-panel">
+        <div class="call-panel-title-row">
+          <span class="call-panel-title">Participants</span>
+          <svg viewBox="0 0 24 24" onclick="showNotification('Add participant')"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        </div>
+        <div class="participant-row">
+          <div class="participant-avatar"></div>
+          <div class="p-name">Jane S.</div>
+          <div class="p-icons">
+            <svg viewBox="0 0 24 24"><path d="M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82L21 17.18V6.5zM3.27 2L2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/></svg>
+          </div>
+        </div>
+        <div class="participant-row">
+          <div class="participant-avatar"></div>
+          <div class="p-name">John D.</div>
+          <div class="p-icons">
+            <svg viewBox="0 0 24 24"><path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SIDE PANEL ==================== -->
+  <div class="side-panel-overlay" id="side-panel">
+    <div class="side-panel-window">
+      <div class="side-panel-close-bar" onclick="closeSidePanel()">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </div>
+      <div class="side-panel-body">
+        <div class="xr-inner">
+          <div class="play-btn" onclick="showNotification('Playing media...')">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div><!-- /ui-layer -->
+
+<!-- USER CONTEXT MENU -->
+<div id="user-context-menu">
+  <div class="xr-list-btn" onclick="showNotification('Voice commands activated'); closeUserMenu();">Voice commands</div>
+  <div class="xr-list-btn" onclick="closeUserMenu(); navigateTo('login');">Sign out</div>
+  <div class="xr-list-btn" onclick="showNotification('App closed'); closeUserMenu();">Close app</div>
+</div>
+
+<!-- NOTIFICATION -->
+<div id="notification"></div>
+<div id="direction-hint">Use arrow keys to look around in 3D space</div>
+
+<script>
+const screenIds = ['login-screen','lobby-screen','projects-screen','kb-screen','item-screen','procedure-screen','rs-screen','call-screen'];
+const screenMap = { login:'login-screen', lobby:'lobby-screen', projects:'projects-screen', kb:'kb-screen', item:'item-screen', procedure:'procedure-screen', rs:'rs-screen', call:'call-screen' };
+
+let currentStep = 2;
+const totalSteps = 10;
+let callChatOpen = false;
+let callParticipantsOpen = false;
+
+function navigateTo(key) {
+  screenIds.forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById(screenMap[key]).classList.add('active');
+  closeSidePanel();
+  closeUserMenu();
+  // Close call panels
+  const cp = document.getElementById('call-chat-panel');
+  const pp = document.getElementById('call-participants-panel');
+  if (cp) cp.classList.remove('active');
+  if (pp) pp.classList.remove('active');
+  const cb = document.getElementById('call-chat-btn');
+  const pb = document.getElementById('call-participants-btn');
+  if (cb) cb.classList.remove('active');
+  if (pb) pb.classList.remove('active');
+  callChatOpen = false;
+  callParticipantsOpen = false;
+  updateClock();
+}
+
+// Projects
+const projects = [
+  { name:'Indigo 12000', desc:'Lorem ipsum dolor sit amet consectetur adipiscing elit, scelerisque netus nam a non litora justo, libero porttitor pulvinar ullamcorper massa posuere. Orci mi scelerisque sociosqu aliqu...' },
+  { name:'Emerald 20000', desc:'High-performance industrial printing system with advanced color management capabilities. Features automated calibration and remote monitoring support.' },
+  { name:'Sapphire 18000', desc:'Mid-range production printer optimized for variable data printing and short-run packaging. Includes integrated finishing options.' },
+  { name:'Amber 25000', desc:'Next-generation digital press with enhanced substrate flexibility and inline quality inspection for high-volume environments.' },
+  { name:'Obsidian 30000', desc:'Flagship industrial printing platform with multi-pass technology for maximum print quality. Supports a wide range of media types.' }
+];
+function selectProject(el, idx) {
+  el.parentElement.querySelectorAll('.xr-list-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('proj-title').textContent = projects[idx].name;
+  document.getElementById('proj-desc').textContent = projects[idx].desc;
+}
+
+// KB filter
+function selKb(el) {
+  el.parentElement.querySelectorAll('.xr-list-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  kbGoBack(); // reset to root when changing filter
+}
+
+// KB folder navigation
+const kbFolderContents = {
+  'Maintenance Procedures': [
+    { type: 'procedure', name: 'Routine Maintenance Check', action: "navigateTo('item')" },
+    { type: 'procedure', name: 'Emergency Shutdown Procedure', action: "navigateTo('item')" },
+    { type: 'procedure', name: 'Calibration Sequence', action: "navigateTo('item')" },
+    { type: 'media', name: 'Maintenance Video Guide', action: "openSidePanel()" },
+  ],
+  'Digital Assets': [
+    { type: 'digital', name: 'Indigo 12000 Digital Twin', action: "showNotification('Digital twin viewer')" },
+    { type: 'digital', name: 'Emerald 20000 Digital Twin', action: "showNotification('Digital twin viewer')" },
+    { type: 'media', name: 'Assembly Animation', action: "openSidePanel()" },
+    { type: 'procedure', name: 'Asset Inspection Procedure', action: "navigateTo('item')" },
+  ]
+};
+
+let kbCurrentFolder = null;
+const kbRootHTML = null; // will be captured on first use
+
+function kbOpenFolder(folderName) {
+  const scroll = document.getElementById('kb-items-scroll');
+  const breadcrumb = document.getElementById('kb-breadcrumb');
+  const breadcrumbText = document.getElementById('kb-breadcrumb-text');
+
+  // Save root HTML on first folder open
+  if (!kbCurrentFolder && !window._kbRootHTML) {
+    window._kbRootHTML = scroll.innerHTML;
+  }
+
+  kbCurrentFolder = folderName;
+  breadcrumbText.textContent = folderName;
+  breadcrumb.classList.add('active');
+
+  const items = kbFolderContents[folderName] || [];
+  let html = '';
+  const iconMap = {
+    procedure: '<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>',
+    digital: '<svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM8 15l4.5-6 3.5 4.51 2.5-3.01L21 15z"/></svg>',
+    media: '<svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/></svg>'
+  };
+  items.forEach(item => {
+    const icon = iconMap[item.type] || '';
+    html += '<div class="kb-item" onclick="' + item.action + '">' + icon + ' ' + item.name + '</div>';
+  });
+  scroll.innerHTML = html;
+}
+
+function kbGoBack() {
+  const scroll = document.getElementById('kb-items-scroll');
+  const breadcrumb = document.getElementById('kb-breadcrumb');
+  if (window._kbRootHTML) {
+    scroll.innerHTML = window._kbRootHTML;
+  }
+  kbCurrentFolder = null;
+  breadcrumb.classList.remove('active');
+}
+
+// Procedure steps
+const stepTexts = [
+  'Before beginning the maintenance procedure, ensure the printing equipment has been powered down for at least 15 minutes to allow components to cool. Gather all required tools including the maintenance kit, cleaning supplies, and replacement parts as specified in the equipment manual.',
+  'Lorem ipsum dolor sit amet consectetur adipiscing elit, scelerisque netus nam a non litora justo, libero porttitor pulvinar ullamcorper massa posuere. Orci mi scelerisque sociosqu aliquam magna felis ante tincidunt metus sem quam, lectus vestibulum convallis congue eu eget ut justo viverra habitasse dictumst, maecenas nostra nascetur purus consequat ligula lacinia non primis vivamus. Metus lectus habitant massa posuere...',
+  'Carefully remove the front access panel by releasing the two securing clips on each side. Inspect the paper path rollers for wear or debris accumulation. Clean each roller using the approved cleaning solution and lint-free cloth.',
+  'Locate the printhead assembly and verify the alignment markers are within specification. If adjustment is needed, use the calibration tool provided in the maintenance kit.',
+  'Inspect the ink delivery system including all tubing connections and reservoir levels. Replace any tubing showing degradation or discoloration.',
+  'Check the fuser assembly temperature sensors and clean the fuser rollers. Replace the fuser unit if it has exceeded its rated lifecycle.',
+  'Run the automated diagnostic sequence from the service menu. Review results and address any error codes before proceeding.',
+  'Perform a test print using the standard diagnostic pattern. Verify color accuracy, registration alignment, and print density.',
+  'Reassemble all panels and covers. Reset the maintenance counter in the service menu. Document the maintenance performed.',
+  'Power on the equipment and allow startup calibration. Verify all systems are operational and ready for production.'
+];
+
+function selStep(el, idx) {
+  document.querySelectorAll('.proc-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  currentStep = idx + 1;
+  updateProc();
+}
+function prevStep() { if (currentStep > 1) { currentStep--; updateProc(); updateOptSel(); } }
+function nextStep() { if (currentStep < totalSteps) { currentStep++; updateProc(); updateOptSel(); } else showNotification('Procedure complete!'); }
+function resetStep() { currentStep = 1; updateProc(); updateOptSel(); }
+function updateProc() {
+  document.getElementById('step-num').textContent = currentStep + '/' + totalSteps;
+  document.getElementById('proc-text').textContent = stepTexts[currentStep - 1] || stepTexts[0];
+}
+function updateOptSel() {
+  document.querySelectorAll('.proc-option').forEach((o, i) => o.classList.toggle('selected', i === currentStep - 1));
+}
+
+// Side panel
+function openSidePanel() { document.getElementById('side-panel').classList.add('active'); }
+function closeSidePanel() { document.getElementById('side-panel').classList.remove('active'); }
+
+// Notifications
+let nt;
+function showNotification(msg) {
+  const el = document.getElementById('notification');
+  el.textContent = msg; el.style.display = 'block';
+  clearTimeout(nt);
+  nt = setTimeout(() => el.style.display = 'none', 2000);
+}
+
+// Clock
+function updateClock() {
+  const d = new Date();
+  const h = d.getHours(), m = d.getMinutes().toString().padStart(2,'0');
+  const t = (h % 12 || 12) + ':' + m + ' ' + (h >= 12 ? 'PM' : 'AM');
+  document.querySelectorAll('.time').forEach(el => el.textContent = t);
+}
+updateClock();
+setInterval(updateClock, 30000);
+
+// ===== 3D CAMERA MOVEMENT =====
+let camX = 0, camY = 0; // target camera rotation
+let curX = 0, curY = 0; // current (displayed) camera rotation
+const CAM_STEP = 3;     // degrees per key press
+const CAM_MAX_X = 20;   // max horizontal rotation
+const CAM_MAX_Y = 12;   // max vertical rotation
+const arSpace = document.getElementById('ar-space');
+const uiLayer = document.getElementById('ui-layer');
+const dirHint = document.getElementById('direction-hint');
+let hintTimer;
+
+const arGrid = document.getElementById('ar-grid');
+const arDots = document.getElementById('ar-dots');
+
+function updateCamera() {
+  // Background layers shift with parallax (different speeds for depth)
+  const gridX = camX * 8;   // grid moves a lot (far layer)
+  const gridY = -camY * 6;
+  arGrid.style.transform = `translate(${gridX}px, ${gridY}px)`;
+
+  const dotsX = camX * 4;   // dots move less (mid layer)
+  const dotsY = -camY * 3;
+  arDots.style.transform = `translate(${dotsX}px, ${dotsY}px)`;
+
+  // UI shifts slightly in opposite direction with delay (CSS handles the easing)
+  const uiX = -camX * 2;
+  const uiY = camY * 1.5;
+  uiLayer.style.transform = `translate(${uiX}px, ${uiY}px)`;
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeSidePanel(); return; }
+
+  // Don't move camera if typing in an input
+  if (e.target.tagName === 'INPUT') return;
+
+  let moved = false;
+  switch(e.key) {
+    case 'ArrowLeft':  camX = Math.min(camX + CAM_STEP, CAM_MAX_X); moved = true; break;
+    case 'ArrowRight': camX = Math.max(camX - CAM_STEP, -CAM_MAX_X); moved = true; break;
+    case 'ArrowUp':    camY = Math.min(camY + CAM_STEP, CAM_MAX_Y); moved = true; break;
+    case 'ArrowDown':  camY = Math.max(camY - CAM_STEP, -CAM_MAX_Y); moved = true; break;
+  }
+  if (moved) {
+    e.preventDefault();
+    updateCamera();
+    // Hide hint after first use
+    dirHint.classList.add('hidden');
+    clearTimeout(hintTimer);
+  }
+});
+
+// Also support mouse drag for camera
+let isDragging = false, dragStartX, dragStartY, dragCamX, dragCamY;
+document.addEventListener('mousedown', e => {
+  if (e.target.closest('.xr-window, .login-window, .side-panel-overlay, .call-actions-bar, .proc-options-panel, #user-context-menu, .call-chat-panel, .call-participants-panel')) return;
+  isDragging = true;
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  dragCamX = camX; dragCamY = camY;
+  document.body.style.cursor = 'grabbing';
+});
+document.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const dx = (e.clientX - dragStartX) * 0.08;
+  const dy = (e.clientY - dragStartY) * 0.08;
+  camX = Math.max(-CAM_MAX_X, Math.min(CAM_MAX_X, dragCamX + dx));
+  camY = Math.max(-CAM_MAX_Y, Math.min(CAM_MAX_Y, dragCamY + dy));
+  updateCamera();
+  dirHint.classList.add('hidden');
+});
+document.addEventListener('mouseup', () => {
+  isDragging = false;
+  document.body.style.cursor = '';
+});
+
+// Auto-hide hint after 5s
+hintTimer = setTimeout(() => dirHint.classList.add('hidden'), 8000);
+
+// ===== USER CONTEXT MENU =====
+const userMenu = document.getElementById('user-context-menu');
+document.querySelectorAll('.user-btn').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (userMenu.classList.contains('active')) {
+      closeUserMenu();
+      return;
+    }
+    const rect = this.getBoundingClientRect();
+    userMenu.style.top = (rect.bottom + 8) + 'px';
+    userMenu.style.left = (rect.right - 288) + 'px';
+    userMenu.classList.add('active');
+  });
+});
+function closeUserMenu() {
+  userMenu.classList.remove('active');
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#user-context-menu') && !e.target.closest('.user-btn')) {
+    closeUserMenu();
+  }
+});
+
+// ===== CALL SIDE PANELS =====
+function toggleCallChat() {
+  const chatPanel = document.getElementById('call-chat-panel');
+  const partPanel = document.getElementById('call-participants-panel');
+  const chatBtn = document.getElementById('call-chat-btn');
+  const partBtn = document.getElementById('call-participants-btn');
+
+  if (callChatOpen) {
+    chatPanel.classList.remove('active');
+    chatBtn.classList.remove('active');
+    callChatOpen = false;
+  } else {
+    partPanel.classList.remove('active');
+    partBtn.classList.remove('active');
+    callParticipantsOpen = false;
+    chatPanel.classList.add('active');
+    chatBtn.classList.add('active');
+    callChatOpen = true;
+  }
+}
+
+function toggleCallParticipants() {
+  const chatPanel = document.getElementById('call-chat-panel');
+  const partPanel = document.getElementById('call-participants-panel');
+  const chatBtn = document.getElementById('call-chat-btn');
+  const partBtn = document.getElementById('call-participants-btn');
+
+  if (callParticipantsOpen) {
+    partPanel.classList.remove('active');
+    partBtn.classList.remove('active');
+    callParticipantsOpen = false;
+  } else {
+    chatPanel.classList.remove('active');
+    chatBtn.classList.remove('active');
+    callChatOpen = false;
+    partPanel.classList.add('active');
+    partBtn.classList.add('active');
+    callParticipantsOpen = true;
+  }
+}
+
+// ===== SCROLL WHEEL ZOOM =====
+let uiScale = 1;
+const SCALE_MIN = 0.4;
+const SCALE_MAX = 1.5;
+const SCALE_STEP = 0.05;
+
+document.addEventListener('wheel', function(e) {
+  // Don't zoom if scrolling inside a scrollable element
+  if (e.target.closest('.kb-items-scroll, .proc-options-panel, .proc-text, .chat-messages')) return;
+
+  e.preventDefault();
+  if (e.deltaY < 0) {
+    uiScale = Math.min(uiScale + SCALE_STEP, SCALE_MAX);
+  } else {
+    uiScale = Math.max(uiScale - SCALE_STEP, SCALE_MIN);
+  }
+  updateCamera();
+}, { passive: false });
+
+// Patch updateCamera to include scale
+const _origUpdateCamera = updateCamera;
+updateCamera = function() {
+  const gridX = camX * 8;
+  const gridY = -camY * 6;
+  arGrid.style.transform = `translate(${gridX}px, ${gridY}px)`;
+
+  const dotsX = camX * 4;
+  const dotsY = -camY * 3;
+  arDots.style.transform = `translate(${dotsX}px, ${dotsY}px)`;
+
+  const uiX = -camX * 2;
+  const uiY = camY * 1.5;
+  uiLayer.style.transform = `translate(${uiX}px, ${uiY}px) scale(${uiScale})`;
+};
+</script>
+<script src="debug-menu.js"></script>
+</body>
+</html>

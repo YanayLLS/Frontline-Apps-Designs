@@ -1,4 +1,4 @@
-import svgPaths from "../../../imports-procedure-editor/svg-hd561eopnw";
+import svgPaths from "../../../imports/svg-hd561eopnw";
 import { useState, useEffect, useRef } from 'react';
 import { Settings, X, RotateCw, Upload, Save, Zap, Bookmark, Package, AlertCircle, Undo, List, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -12,10 +12,11 @@ interface HeaderProps {
   isPartsCatalogOpen: boolean;
   onOpenPublish: () => void;
   onOpenValidation: () => void;
-  hasValidation: boolean;
+  checkpointCount: number;
+  hasCritical: boolean;
 }
 
-export function Header({ 
+export function Header({
   hasAnimation,
   onOpenSettings,
   onOpenBookmarks,
@@ -23,7 +24,8 @@ export function Header({
   isPartsCatalogOpen,
   onOpenPublish,
   onOpenValidation,
-  hasValidation
+  checkpointCount,
+  hasCritical
 }: HeaderProps) {
   const [digitalTwinStateActive, setDigitalTwinStateActive] = useState(false);
   const [showDigitalTwinMenu, setShowDigitalTwinMenu] = useState(false);
@@ -163,30 +165,38 @@ export function Header({
           <Zap className="size-4 text-foreground" />
         </button>
 
-        {/* Validation Button - Icon only with badge if validations exist */}
+        {/* Validation Button - Icon only with count badge */}
         <div className="relative shrink-0">
           <button
             onClick={onOpenValidation}
             className={`content-stretch flex gap-2 items-center p-2 relative rounded-lg shrink-0 w-8 h-8 transition-colors ${
-              hasValidation ? 'bg-accent/20 hover:bg-accent/30' : 'hover:bg-secondary/50'
+              checkpointCount > 0 ? 'bg-accent/20 hover:bg-accent/30' : 'hover:bg-secondary/50'
             }`}
             title="Validation Point"
             aria-label="Validation Point"
           >
             <CheckCircle className="size-4 text-foreground" />
           </button>
-          {hasValidation && (
-            <div 
+          {checkpointCount > 0 && (
+            <div
               className="absolute rounded-full flex items-center justify-center"
               style={{
-                top: '-4px',
-                right: '-4px',
-                minWidth: '8px',
-                height: '8px',
-                backgroundColor: 'var(--accent)',
-                pointerEvents: 'none'
+                top: '-6px',
+                right: '-6px',
+                minWidth: '16px',
+                height: '16px',
+                padding: '0 4px',
+                backgroundColor: hasCritical ? '#ef4444' : 'var(--accent)',
+                pointerEvents: 'none',
+                fontSize: '10px',
+                fontWeight: 600,
+                fontFamily: 'var(--font-family)',
+                color: 'white',
+                lineHeight: 1
               }}
-            />
+            >
+              {checkpointCount}
+            </div>
           )}
         </div>
 

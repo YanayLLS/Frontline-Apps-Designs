@@ -1,3 +1,6 @@
 node_modules
 dist
 .vite
+.claude/
+_bmad/
+_bmad-output/

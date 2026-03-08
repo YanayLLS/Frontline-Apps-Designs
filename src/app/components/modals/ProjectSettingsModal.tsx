@@ -3,6 +3,7 @@ import { X, ChevronDown, Trash2 } from 'lucide-react';
 import { MemberAvatarsRow } from './MemberAvatarsRow';
 import { AddMembersContextMenu, MemberOption, GroupOption } from './AddMembersContextMenu';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
+import { useGroups } from '@/app/contexts/GroupsContext';
 
 interface Owner {
   id: string;
@@ -52,12 +53,7 @@ const allMembersData: MemberOption[] = [
   { id: '8', name: 'Olivia Thomas', email: 'olivia@company.com', initials: 'OT', color: '#b171ed' },
 ];
 
-// Mock available groups data
-const availableGroups: GroupOption[] = [
-  { id: 'Asia Pacific', name: 'Asia Pacific', memberCount: 3 },
-  { id: 'Europe', name: 'Europe', memberCount: 5 },
-  { id: 'North America', name: 'North America', memberCount: 8 },
-];
+// availableGroups is now derived dynamically from GroupsContext inside the component
 
 export function ProjectSettingsModal({
   isOpen,
@@ -68,6 +64,13 @@ export function ProjectSettingsModal({
   initialData,
   publicFeatureEnabled = false,
 }: ProjectSettingsModalProps) {
+  const { groups } = useGroups();
+  const dynamicGroups: GroupOption[] = groups.map(g => ({
+    id: g.name,
+    name: g.name,
+    memberCount: g.members.length,
+  }));
+
   const [projectName, setProjectName] = useState(initialData?.name || '');
   const [owners, setOwners] = useState<Owner[]>(initialData?.owners || [
     { id: '1', name: 'Alex Johnson', initials: 'AJ', color: '#71edaa' }
@@ -191,7 +194,7 @@ export function ProjectSettingsModal({
         };
       }),
       ...sharedGroupIds.map(id => {
-        const group = availableGroups.find(g => g.id === id);
+        const group = dynamicGroups.find(g => g.id === id);
         return {
           id,
           name: group?.name || '',
@@ -310,7 +313,7 @@ export function ProjectSettingsModal({
     color: m.color,
   }));
 
-  const sharedGroups = availableGroups.filter(g => sharedGroupIds.includes(g.id)).map(g => ({
+  const sharedGroups = dynamicGroups.filter(g => sharedGroupIds.includes(g.id)).map(g => ({
     id: g.id,
     name: g.name,
     memberCount: g.memberCount,
@@ -571,7 +574,7 @@ export function ProjectSettingsModal({
             setShowShareContextMenu(false);
           }}
           availableMembers={allMembersData}
-          availableGroups={availableGroups}
+          availableGroups={dynamicGroups}
           selectedMemberIds={sharedUserIds}
           selectedGroupIds={sharedGroupIds}
           showGroups={true}

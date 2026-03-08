@@ -27,6 +27,8 @@ import { PayPerClickPage } from './components/pages/workspace/PayPerClickPage';
 import { SSOPage } from './components/pages/workspace/SSOPage';
 import { StaticQRCodesPage } from './components/pages/workspace/StaticQRCodesPage';
 import { IntegrationsPage } from './components/pages/workspace/IntegrationsPage';
+import { GroupsPage } from './components/pages/workspace/GroupsPage';
+import { GroupsProvider } from './contexts/GroupsContext';
 import { KnowledgeBasePage } from './components/pages/KnowledgeBasePage';
 import { AnalyticsPage } from './components/pages/AnalyticsPage';
 import { ActivityLogPage } from './components/pages/ActivityLogPage';
@@ -44,6 +46,8 @@ import { SignUpScreen } from './components/SignUpScreen';
 import { WorkspaceSelector } from './components/WorkspaceSelector';
 import { ProductSelector } from './components/ProductSelector';
 import { ProcedureEditorPage } from './components/pages/ProcedureEditorPage';
+import { AppLayout } from './components/app-design/AppLayout';
+import { DebugMenu } from './components/DebugMenu';
 import {
   IconHome,
   IconNotifications,
@@ -226,6 +230,7 @@ function MainApp({ isMobile }: { isMobile: boolean }) {
       'ws-pay-per-click': '/web/workspace/pay-per-click',
       'ws-sso': '/web/workspace/sso',
       'ws-qr-codes': '/web/workspace/qr-codes',
+      'ws-groups': '/web/workspace/groups',
       'ws-integrations': '/web/workspace/integrations',
     };
 
@@ -420,6 +425,13 @@ function MainApp({ isMobile }: { isMobile: boolean }) {
           icon: <IconHome />,
           title: 'Static QR Codes',
           content: <StaticQRCodesPage />,
+          hideHeader: true,
+        };
+      case 'ws-groups':
+        return {
+          icon: <IconHome />,
+          title: 'Groups',
+          content: <GroupsPage />,
           hideHeader: true,
         };
       case 'ws-integrations':
@@ -730,40 +742,91 @@ function MainApp({ isMobile }: { isMobile: boolean }) {
   );
 }
 
+// Update document title based on current route
+function usePageTitle() {
+  const location = useLocation();
+  useEffect(() => {
+    const path = location.pathname;
+    let title = 'Mockup Design';
+    if (path === '/') {
+      title = 'Select Platform';
+    } else if (path.startsWith('/app')) {
+      const segment = path.replace(/^\/app\/?/, '').split('/')[0] || 'knowledgebase';
+      const titleMap: Record<string, string> = {
+        'knowledgebase': 'Knowledge Base',
+        'project': 'Project',
+        'remote-support': 'Remote Support',
+        'ai-chat': 'AI Chat',
+        'immersive': 'Immersive Room',
+        'call-device': 'Call Device',
+        'schedule-meeting': 'Schedule Meeting',
+        'join-meeting': 'Join Meeting',
+        'notifications': 'Notifications',
+        'search': 'Search',
+        'procedure-editor': 'Procedure Editor',
+        '3d-viewer': '3D Viewer',
+      };
+      title = `${titleMap[segment] || 'App'} — App`;
+    } else if (path.startsWith('/web')) {
+      const segment = path.replace(/^\/web\/?/, '').split('/')[0] || 'home';
+      const titleMap: Record<string, string> = {
+        'home': 'Home',
+        'notifications': 'Notifications',
+        'remote-support': 'Remote Support',
+        'ai-studio': 'AI Studio',
+        'archive': 'Archive',
+        'project': 'Project',
+        'workspace': 'Workspace Settings',
+        'procedure-editor': 'Procedure Editor',
+      };
+      title = `${titleMap[segment] || 'Web'} — Web`;
+    } else if (path.startsWith('/xr')) {
+      title = 'XR Experience';
+    }
+    document.title = title;
+  }, [location.pathname]);
+}
+
 // Router wrapper that handles product selection and platform routing
 function AppRouter() {
+  usePageTitle();
   return (
-    <Routes>
-      <Route path="/" element={<ProductSelector />} />
-      <Route path="/web/*" element={
-        <AvatarProvider>
-          <RoleProvider>
-            <ProjectProvider>
-              <FavoritesProvider>
-                <ActiveCallProvider>
-                  <ToastProvider>
-                    <Routes>
-                      <Route path="procedure-editor/:procedureId" element={<ProcedureEditorPage />} />
-                      <Route path="*" element={<AppContent />} />
-                    </Routes>
-                  </ToastProvider>
-                </ActiveCallProvider>
-              </FavoritesProvider>
-            </ProjectProvider>
-          </RoleProvider>
-        </AvatarProvider>
-      } />
-      <Route path="/app/*" element={
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <p className="text-muted">App design coming soon</p>
-        </div>
-      } />
-      <Route path="/xr/*" element={
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <p className="text-muted">XR App design coming soon</p>
-        </div>
-      } />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<ProductSelector />} />
+        <Route path="/web/*" element={
+          <AvatarProvider>
+            <RoleProvider>
+              <ProjectProvider>
+                <GroupsProvider>
+                <FavoritesProvider>
+                  <ActiveCallProvider>
+                    <ToastProvider>
+                      <Routes>
+                        <Route path="procedure-editor/:procedureId" element={<ProcedureEditorPage />} />
+                        <Route path="*" element={<AppContent />} />
+                      </Routes>
+                    </ToastProvider>
+                  </ActiveCallProvider>
+                </FavoritesProvider>
+                </GroupsProvider>
+              </ProjectProvider>
+            </RoleProvider>
+          </AvatarProvider>
+        } />
+        <Route path="/app/*" element={<AppLayout />} />
+        <Route path="/xr/*" element={
+          <div className="w-screen h-screen bg-black">
+            <iframe
+              src={`${import.meta.env.BASE_URL}xr-app.html`}
+              className="w-full h-full border-0"
+              title="XR App"
+            />
+          </div>
+        } />
+      </Routes>
+      <DebugMenu />
+    </>
   );
 }
 

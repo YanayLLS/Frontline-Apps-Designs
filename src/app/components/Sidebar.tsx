@@ -31,6 +31,7 @@ const mainMenuItems = [
 
 const workspaceManagementItems = [
   { id: 'ws-members', label: 'Members', icon: 'members' },
+  { id: 'ws-groups', label: 'Groups', icon: 'members' },
   { id: 'ws-design', label: 'Workspace Design', icon: 'palette' },
   { id: 'ws-remote-support', label: 'Remote Support Settings', icon: 'headphones' },
   { id: 'ws-subworkspaces', label: 'Sub-Workspaces', icon: 'grid' },

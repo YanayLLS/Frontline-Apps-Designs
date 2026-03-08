@@ -1,13 +1,18 @@
-import { Validation, ValidationMode, ValidationState, MediaFile } from './ProcedureEditor';
-import { X, Plus, Upload, Trash2, CheckCircle, XCircle, Box, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Info, HelpCircle, ArrowRight, Crosshair } from 'lucide-react';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { Validation, Checkpoint, CheckpointType, CheckpointSeverity, MeasurementTolerance, MediaFile } from './ProcedureEditor';
+import { X, Plus, Upload, Trash2, CheckCircle, XCircle, Camera, ChevronDown, ChevronUp, Eye, Ruler, CheckSquare, ListOrdered, Crosshair, ArrowRight, GripVertical, AlertTriangle, Info } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface ValidationPanelProps {
   validation?: Validation;
-  onAddValidation: (validation: Validation) => void;
-  onUpdateValidation: (updates: Partial<Validation>) => void;
+  onAddValidation: () => void;
+  onAddCheckpoint: () => void;
+  onUpdateCheckpoint: (checkpointId: string, updates: Partial<Checkpoint>) => void;
+  onRemoveCheckpoint: (checkpointId: string) => void;
+  onReorderCheckpoints: (newOrder: Checkpoint[]) => void;
   onRemoveValidation: () => void;
+  activeCheckpointId: string | null;
+  onSetActiveCheckpointId: (id: string | null) => void;
   editingEnabled: boolean;
   onClose: () => void;
   onSelectParts: (callback: (parts: string[]) => void) => void;
@@ -17,8 +22,22 @@ interface ValidationPanelProps {
 }
 
 const MAX_DESCRIPTION_LENGTH = 500;
+const MAX_CHECKPOINTS = 10;
 
-type StateTab = 'pass' | 'fail';
+const SEVERITY_CONFIG: Record<CheckpointSeverity, { color: string; bg: string; label: string }> = {
+  critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', label: 'Critical' },
+  warning: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', label: 'Warning' },
+  info: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', label: 'Info' }
+};
+
+const TYPE_CONFIG: Record<CheckpointType, { icon: typeof Eye; label: string; desc: string }> = {
+  visual: { icon: Eye, label: 'Visual', desc: 'Check visual condition of parts' },
+  measurement: { icon: Ruler, label: 'Measurement', desc: 'Verify a measurement is within tolerance' },
+  presence: { icon: CheckSquare, label: 'Presence', desc: 'Confirm a component is present' },
+  sequence: { icon: ListOrdered, label: 'Sequence', desc: 'Verify steps done in correct order' }
+};
+
+const UNIT_OPTIONS = ['mm', 'psi', '°C', '°F', 'Nm', '%'];
 
 // Tooltip component
 function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
@@ -61,177 +80,54 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
   );
 }
 
-// Step indicator badge
-function StepBadge({ number, status }: { number: number; status: 'pending' | 'active' | 'done' }) {
-  const bgColor = status === 'done'
-    ? '#22c55e'
-    : status === 'active'
-      ? 'var(--primary)'
-      : 'var(--secondary)';
-  const textColor = status === 'pending' ? 'var(--muted-foreground)' : 'white';
-
-  return (
-    <motion.div
-      initial={false}
-      animate={{
-        backgroundColor: bgColor,
-        scale: status === 'active' ? 1.1 : 1
-      }}
-      transition={{ duration: 0.2 }}
-      className="flex items-center justify-center shrink-0"
-      style={{
-        width: '22px',
-        height: '22px',
-        borderRadius: '50%',
-        fontSize: '11px',
-        fontFamily: 'var(--font-family)',
-        fontWeight: 'var(--font-weight-bold)',
-        color: textColor
-      }}
-    >
-      {status === 'done' ? (
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M20 6L9 17l-5-5"/>
-        </svg>
-      ) : (
-        number
-      )}
-    </motion.div>
-  );
-}
-
-export function ValidationPanel({
-  validation,
-  onAddValidation,
-  onUpdateValidation,
-  onRemoveValidation,
+// Pass/Fail outcome editor for a single checkpoint
+function OutcomeEditor({
+  checkpoint,
+  tab,
   editingEnabled,
-  onClose,
-  onSelectParts,
-  onSetArrowDirection,
-  isMobileView,
-  availableParts
-}: ValidationPanelProps) {
-  const [activeStateTab, setActiveStateTab] = useState<StateTab>('pass');
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [localDescription, setLocalDescription] = useState('');
-  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
-  const [isSelectingParts, setIsSelectingParts] = useState(false);
-
+  onUpdate
+}: {
+  checkpoint: Checkpoint;
+  tab: 'pass' | 'fail';
+  editingEnabled: boolean;
+  onUpdate: (updates: Partial<Checkpoint>) => void;
+}) {
+  const stateKey = tab === 'pass' ? 'passState' : 'failState';
+  const state = checkpoint[stateKey];
+  const [localDesc, setLocalDesc] = useState(state.description);
+  const [localRemediation, setLocalRemediation] = useState(state.remediationSteps || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const captureInputRef = useRef<HTMLInputElement>(null);
 
-  const isActualMobileDevice = typeof window !== 'undefined' &&
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-  const currentState = validation ?
-    (activeStateTab === 'pass' ? validation.passState : validation.failState) : null;
-
-  // Compute completion state
-  const completionState = useMemo(() => {
-    if (!validation) return { mode: false, target: false, outcome: false, total: 0, max: 3 };
-
-    const mode = true; // always set once validation exists
-    const target = validation.mode === 'object'
-      ? (validation.selectedParts?.length > 0)
-      : (validation.passState.mediaFiles?.length > 0 || validation.failState.mediaFiles?.length > 0);
-    const outcome = !!(validation.passState.description || validation.failState.description);
-
-    const total = [mode, target, outcome].filter(Boolean).length;
-    return { mode, target, outcome, total, max: 3 };
-  }, [validation]);
-
-  // Update local state when validation or tab changes
-  useEffect(() => {
-    if (currentState && !isEditingDescription) {
-      setLocalDescription(currentState.description || '');
-    }
-  }, [currentState, isEditingDescription, activeStateTab]);
-
-  // Reset media index when tab changes
-  useEffect(() => {
-    setCurrentMediaIndex(0);
-  }, [activeStateTab]);
-
-  const handleAddValidation = () => {
-    const newValidation: Validation = {
-      id: crypto.randomUUID(),
-      mode: 'image',
-      passState: {
-        description: '',
-        mediaFiles: []
-      },
-      failState: {
-        description: '',
-        mediaFiles: []
-      },
-      selectedParts: []
-    };
-
-    onAddValidation(newValidation);
-    setActiveStateTab('pass');
-  };
-
-  const handleUpdateMode = (mode: ValidationMode) => {
-    if (!validation) return;
-    onUpdateValidation({ mode });
-  };
-
-  const handleUpdateDescription = (description: string) => {
-    if (!validation) return;
-
-    const stateKey = activeStateTab === 'pass' ? 'passState' : 'failState';
-    const updatedState = {
-      ...validation[stateKey],
-      description
-    };
-
-    onUpdateValidation({
-      [stateKey]: updatedState
-    });
-  };
-
-  const handleDescriptionBlur = () => {
-    setIsEditingDescription(false);
-    if (localDescription.trim() !== (currentState?.description || '')) {
-      handleUpdateDescription(localDescription.trim());
+  const handleDescBlur = () => {
+    if (localDesc.trim() !== state.description) {
+      onUpdate({
+        [stateKey]: { ...state, description: localDesc.trim() }
+      });
     }
   };
 
-  const handleSelectParts = () => {
-    setIsSelectingParts(true);
-    onSelectParts((parts: string[]) => {
-      if (validation) {
-        onUpdateValidation({ selectedParts: parts });
-      }
-      setIsSelectingParts(false);
-    });
-    onClose();
+  const handleRemediationBlur = () => {
+    if (localRemediation.trim() !== (state.remediationSteps || '')) {
+      onUpdate({
+        [stateKey]: { ...state, remediationSteps: localRemediation.trim() || undefined }
+      });
+    }
   };
 
-  const handleMediaUpload = (files: FileList | null, type: 'image' | 'video') => {
-    if (!files || !validation) return;
-
-    const stateKey = activeStateTab === 'pass' ? 'passState' : 'failState';
-    const currentFiles = validation[stateKey].mediaFiles || [];
-
+  const handleMediaUpload = (files: FileList | null) => {
+    if (!files) return;
     Array.from(files).forEach(file => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const newMedia: MediaFile = {
           id: crypto.randomUUID(),
           url: e.target?.result as string,
-          type,
-          filename: file.name
+          name: file.name,
+          type: file.type.startsWith('video') ? 'video' : 'image',
+          size: file.size
         };
-
-        const updatedState = {
-          ...validation[stateKey],
-          mediaFiles: [...currentFiles, newMedia]
-        };
-
-        onUpdateValidation({
-          [stateKey]: updatedState
+        onUpdate({
+          [stateKey]: { ...state, mediaFiles: [...state.mediaFiles, newMedia] }
         });
       };
       reader.readAsDataURL(file);
@@ -239,48 +135,595 @@ export function ValidationPanel({
   };
 
   const handleDeleteMedia = (mediaId: string) => {
-    if (!validation) return;
-
-    const stateKey = activeStateTab === 'pass' ? 'passState' : 'failState';
-    const updatedFiles = (validation[stateKey].mediaFiles || []).filter(m => m.id !== mediaId);
-
-    const updatedState = {
-      ...validation[stateKey],
-      mediaFiles: updatedFiles
-    };
-
-    onUpdateValidation({
-      [stateKey]: updatedState
+    onUpdate({
+      [stateKey]: { ...state, mediaFiles: state.mediaFiles.filter(m => m.id !== mediaId) }
     });
-
-    setCurrentMediaIndex(0);
   };
 
-  const currentMediaFiles = currentState?.mediaFiles || [];
-  const currentMedia = currentMediaFiles[currentMediaIndex];
+  const placeholder = tab === 'pass'
+    ? 'e.g., "All mounting bolts installed and properly tightened"'
+    : 'e.g., "Missing bolts on the left side or bolts are loose"';
 
-  const getPlaceholderText = () => {
-    if (validation?.mode === 'object') {
-      return activeStateTab === 'pass'
-        ? 'e.g., "All four mounting bolts are installed and properly tightened"'
-        : 'e.g., "Missing two bolts on the left side or bolts are loose"';
-    } else {
-      return activeStateTab === 'pass'
-        ? 'e.g., "Both cable connectors are plugged in and LED indicator is green"'
-        : 'e.g., "Cable is not connected or LED indicator is red/off"';
+  return (
+    <div className="flex flex-col" style={{ gap: 'var(--spacing-md)' }}>
+      {/* Description */}
+      <div>
+        <label style={{
+          fontSize: 'var(--text-xs)',
+          fontFamily: 'var(--font-family)',
+          fontWeight: 'var(--font-weight-bold)',
+          color: 'var(--foreground)',
+          display: 'block',
+          marginBottom: 'var(--spacing-xs)'
+        }}>
+          Description
+        </label>
+        {editingEnabled ? (
+          <textarea
+            value={localDesc}
+            onChange={(e) => {
+              if (e.target.value.length <= MAX_DESCRIPTION_LENGTH) setLocalDesc(e.target.value);
+            }}
+            onBlur={handleDescBlur}
+            placeholder={placeholder}
+            className="w-full rounded-lg resize-none"
+            style={{
+              padding: 'var(--spacing-sm)',
+              fontSize: 'var(--text-sm)',
+              fontFamily: 'var(--font-family)',
+              backgroundColor: 'var(--card)',
+              color: 'var(--foreground)',
+              border: '1px solid var(--border)',
+              outline: 'none',
+              minHeight: '60px',
+              lineHeight: '1.5'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--primary)';
+              e.target.style.boxShadow = '0 0 0 2px rgba(59,130,246,0.1)';
+            }}
+            onBlurCapture={(e) => {
+              (e.target as HTMLTextAreaElement).style.borderColor = 'var(--border)';
+              (e.target as HTMLTextAreaElement).style.boxShadow = 'none';
+            }}
+          />
+        ) : (
+          <p style={{
+            fontSize: 'var(--text-sm)',
+            fontFamily: 'var(--font-family)',
+            color: state.description ? 'var(--foreground)' : 'var(--muted-foreground)',
+            margin: 0, padding: 'var(--spacing-sm)',
+            backgroundColor: 'var(--card)', borderRadius: 'var(--radius)',
+            border: '1px solid var(--border)', minHeight: '40px', lineHeight: '1.5'
+          }}>
+            {state.description || 'No description'}
+          </p>
+        )}
+      </div>
+
+      {/* Remediation (fail tab only) */}
+      {tab === 'fail' && (
+        <div>
+          <label style={{
+            fontSize: 'var(--text-xs)',
+            fontFamily: 'var(--font-family)',
+            fontWeight: 'var(--font-weight-bold)',
+            color: 'var(--foreground)',
+            display: 'block',
+            marginBottom: 'var(--spacing-xs)'
+          }}>
+            Remediation Steps
+          </label>
+          {editingEnabled ? (
+            <textarea
+              value={localRemediation}
+              onChange={(e) => setLocalRemediation(e.target.value)}
+              onBlur={handleRemediationBlur}
+              placeholder="What should be done if this check fails?"
+              className="w-full rounded-lg resize-none"
+              style={{
+                padding: 'var(--spacing-sm)',
+                fontSize: 'var(--text-sm)',
+                fontFamily: 'var(--font-family)',
+                backgroundColor: 'var(--card)',
+                color: 'var(--foreground)',
+                border: '1px solid var(--border)',
+                outline: 'none',
+                minHeight: '48px',
+                lineHeight: '1.5'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--primary)';
+                e.target.style.boxShadow = '0 0 0 2px rgba(59,130,246,0.1)';
+              }}
+              onBlurCapture={(e) => {
+                (e.target as HTMLTextAreaElement).style.borderColor = 'var(--border)';
+                (e.target as HTMLTextAreaElement).style.boxShadow = 'none';
+              }}
+            />
+          ) : (
+            <p style={{
+              fontSize: 'var(--text-sm)',
+              fontFamily: 'var(--font-family)',
+              color: state.remediationSteps ? 'var(--foreground)' : 'var(--muted-foreground)',
+              margin: 0, padding: 'var(--spacing-sm)',
+              backgroundColor: 'var(--card)', borderRadius: 'var(--radius)',
+              border: '1px solid var(--border)', minHeight: '40px', lineHeight: '1.5'
+            }}>
+              {state.remediationSteps || 'No remediation steps'}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Media thumbnails */}
+      {state.mediaFiles.length > 0 && (
+        <div className="flex flex-wrap" style={{ gap: '6px' }}>
+          {state.mediaFiles.map(media => (
+            <div key={media.id} className="relative rounded overflow-hidden" style={{ width: '56px', height: '56px', border: '1px solid var(--border)' }}>
+              {media.type === 'video' ? (
+                <video src={media.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <img src={media.url} alt={media.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              )}
+              {editingEnabled && (
+                <button
+                  onClick={() => handleDeleteMedia(media.id)}
+                  className="absolute top-0 right-0 rounded-bl"
+                  style={{ padding: '2px', backgroundColor: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', color: 'white', lineHeight: 0 }}
+                >
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Upload button */}
+      {editingEnabled && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            onChange={(e) => handleMediaUpload(e.target.files)}
+            style={{ display: 'none' }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center justify-center rounded-lg transition-colors"
+            style={{
+              gap: 'var(--spacing-xs)',
+              padding: 'var(--spacing-sm)',
+              backgroundColor: 'var(--secondary)',
+              color: 'var(--muted-foreground)',
+              border: '1px dashed var(--border)',
+              cursor: 'pointer',
+              fontSize: 'var(--text-xs)',
+              fontFamily: 'var(--font-family)',
+              fontWeight: 'var(--font-weight-medium)'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted-foreground)'; }}
+          >
+            <Upload className="size-3" />
+            Add Media
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Checkpoint editor — expanded content
+function CheckpointEditor({
+  checkpoint,
+  editingEnabled,
+  onUpdate,
+  onSelectParts,
+  onSetArrowDirection,
+  onClose: panelClose
+}: {
+  checkpoint: Checkpoint;
+  editingEnabled: boolean;
+  onUpdate: (updates: Partial<Checkpoint>) => void;
+  onSelectParts: (callback: (parts: string[]) => void) => void;
+  onSetArrowDirection: (callback: (direction: { x: number; y: number; z: number }) => void) => void;
+  onClose: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<'pass' | 'fail'>('pass');
+  const [localLabel, setLocalLabel] = useState(checkpoint.label);
+
+  const handleLabelBlur = () => {
+    if (localLabel.trim() !== checkpoint.label) {
+      onUpdate({ label: localLabel.trim() });
     }
   };
 
-  // No validation yet - empty state
+  const handleSelectParts = () => {
+    onSelectParts((parts: string[]) => {
+      onUpdate({ selectedParts: parts });
+    });
+    panelClose();
+  };
+
+  const handleSetArrow = () => {
+    onSetArrowDirection((direction) => {
+      onUpdate({ arrowDirection: direction });
+    });
+  };
+
+  const handleToleranceChange = (field: keyof MeasurementTolerance, value: string) => {
+    const current = checkpoint.tolerance || { nominal: 0, min: 0, max: 0, unit: 'mm' };
+    if (field === 'unit') {
+      onUpdate({ tolerance: { ...current, unit: value } });
+    } else {
+      const num = parseFloat(value);
+      if (!isNaN(num) || value === '' || value === '-') {
+        onUpdate({ tolerance: { ...current, [field]: value === '' || value === '-' ? 0 : num } });
+      }
+    }
+  };
+
+  return (
+    <div className="flex flex-col" style={{ gap: 'var(--spacing-md)', padding: 'var(--spacing-md) 0 0 0' }}>
+      {/* Label input */}
+      <div>
+        <label style={{
+          fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)',
+          fontWeight: 'var(--font-weight-bold)', color: 'var(--muted-foreground)',
+          textTransform: 'uppercase', letterSpacing: '0.5px',
+          display: 'block', marginBottom: 'var(--spacing-xs)'
+        }}>
+          Checkpoint Name
+        </label>
+        {editingEnabled ? (
+          <input
+            value={localLabel}
+            onChange={(e) => setLocalLabel(e.target.value)}
+            onBlur={handleLabelBlur}
+            placeholder='e.g., "Weld Integrity Check"'
+            className="w-full rounded-lg"
+            style={{
+              padding: 'var(--spacing-sm) var(--spacing-md)',
+              fontSize: 'var(--text-sm)', fontFamily: 'var(--font-family)',
+              backgroundColor: 'var(--card)', color: 'var(--foreground)',
+              border: '1px solid var(--border)', outline: 'none'
+            }}
+            onFocus={(e) => { e.target.style.borderColor = 'var(--primary)'; }}
+            onBlurCapture={(e) => { (e.target as HTMLInputElement).style.borderColor = 'var(--border)'; }}
+          />
+        ) : (
+          <span style={{ fontSize: 'var(--text-sm)', fontFamily: 'var(--font-family)', color: 'var(--foreground)' }}>
+            {checkpoint.label || 'Untitled checkpoint'}
+          </span>
+        )}
+      </div>
+
+      {/* Type selector */}
+      <div>
+        <label style={{
+          fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)',
+          fontWeight: 'var(--font-weight-bold)', color: 'var(--muted-foreground)',
+          textTransform: 'uppercase', letterSpacing: '0.5px',
+          display: 'block', marginBottom: 'var(--spacing-xs)'
+        }}>
+          Type
+        </label>
+        <div className="flex rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--secondary)', padding: '3px', gap: '3px', border: '1px solid var(--border)' }}>
+          {(Object.keys(TYPE_CONFIG) as CheckpointType[]).map(type => {
+            const cfg = TYPE_CONFIG[type];
+            const Icon = cfg.icon;
+            const isActive = checkpoint.type === type;
+            return (
+              <button
+                key={type}
+                onClick={() => editingEnabled && onUpdate({ type })}
+                disabled={!editingEnabled}
+                className="flex-1 flex items-center justify-center rounded-md transition-all"
+                style={{
+                  gap: '4px', padding: '6px 4px',
+                  backgroundColor: isActive ? 'var(--card)' : 'transparent',
+                  color: isActive ? 'var(--foreground)' : 'var(--muted-foreground)',
+                  border: 'none', cursor: editingEnabled ? 'pointer' : 'default',
+                  fontSize: '11px', fontFamily: 'var(--font-family)',
+                  fontWeight: isActive ? 'var(--font-weight-bold)' : 'var(--font-weight-medium)',
+                  boxShadow: isActive ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
+                }}
+                title={cfg.desc}
+              >
+                <Icon className="size-3.5" />
+                {cfg.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Severity selector */}
+      <div>
+        <label style={{
+          fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)',
+          fontWeight: 'var(--font-weight-bold)', color: 'var(--muted-foreground)',
+          textTransform: 'uppercase', letterSpacing: '0.5px',
+          display: 'block', marginBottom: 'var(--spacing-xs)'
+        }}>
+          Severity
+        </label>
+        <div className="flex" style={{ gap: 'var(--spacing-sm)' }}>
+          {(Object.keys(SEVERITY_CONFIG) as CheckpointSeverity[]).map(sev => {
+            const cfg = SEVERITY_CONFIG[sev];
+            const isActive = checkpoint.severity === sev;
+            return (
+              <button
+                key={sev}
+                onClick={() => editingEnabled && onUpdate({ severity: sev })}
+                disabled={!editingEnabled}
+                className="flex-1 flex items-center justify-center rounded-lg transition-all"
+                style={{
+                  gap: '6px', padding: '8px',
+                  backgroundColor: isActive ? cfg.bg : 'var(--secondary)',
+                  color: isActive ? cfg.color : 'var(--muted-foreground)',
+                  border: isActive ? `1.5px solid ${cfg.color}` : '1.5px solid var(--border)',
+                  cursor: editingEnabled ? 'pointer' : 'default',
+                  fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)',
+                  fontWeight: isActive ? 'var(--font-weight-bold)' : 'var(--font-weight-medium)'
+                }}
+              >
+                <span className="rounded-full" style={{ width: '8px', height: '8px', backgroundColor: cfg.color, display: 'inline-block' }} />
+                {cfg.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Part selection */}
+      <div>
+        <label style={{
+          fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)',
+          fontWeight: 'var(--font-weight-bold)', color: 'var(--muted-foreground)',
+          textTransform: 'uppercase', letterSpacing: '0.5px',
+          display: 'block', marginBottom: 'var(--spacing-xs)'
+        }}>
+          Parts
+        </label>
+        <div
+          className="rounded-lg flex items-center transition-all"
+          style={{
+            border: checkpoint.selectedParts.length > 0 ? '1.5px solid var(--primary)' : '1.5px dashed var(--border)',
+            padding: 'var(--spacing-sm) var(--spacing-md)',
+            backgroundColor: checkpoint.selectedParts.length > 0 ? 'rgba(59,130,246,0.05)' : 'var(--secondary)',
+            gap: 'var(--spacing-sm)',
+            minHeight: '40px',
+            cursor: editingEnabled ? 'pointer' : 'default',
+            flexWrap: 'wrap'
+          }}
+          onClick={editingEnabled ? handleSelectParts : undefined}
+        >
+          {checkpoint.selectedParts.length > 0 ? (
+            <>
+              <Crosshair className="size-3.5 shrink-0" style={{ color: 'var(--primary)' }} />
+              {checkpoint.selectedParts.map((part, i) => (
+                <span key={i} className="rounded-full" style={{
+                  fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)',
+                  fontWeight: 'var(--font-weight-medium)', backgroundColor: 'rgba(59,130,246,0.1)',
+                  color: 'var(--primary)', padding: '2px 8px'
+                }}>
+                  {part}
+                </span>
+              ))}
+            </>
+          ) : (
+            <>
+              <Crosshair className="size-3.5 shrink-0" style={{ color: 'var(--muted-foreground)' }} />
+              <span style={{ fontSize: 'var(--text-sm)', fontFamily: 'var(--font-family)', color: 'var(--muted-foreground)' }}>
+                {editingEnabled ? 'Click to select parts' : 'No parts selected'}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Arrow direction - compact */}
+      <div className="flex items-center" style={{ gap: 'var(--spacing-sm)' }}>
+        <ArrowRight className="size-3.5 shrink-0" style={{ color: 'var(--muted-foreground)' }} />
+        {checkpoint.arrowDirection ? (
+          <div className="flex items-center" style={{ gap: 'var(--spacing-sm)' }}>
+            <span style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)', color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums' }}>
+              ({checkpoint.arrowDirection.x.toFixed(1)}, {checkpoint.arrowDirection.y.toFixed(1)}, {checkpoint.arrowDirection.z.toFixed(1)})
+            </span>
+            {editingEnabled && (
+              <>
+                <button onClick={handleSetArrow} style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Change</button>
+                <button onClick={() => onUpdate({ arrowDirection: undefined })} style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)', color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Clear</button>
+              </>
+            )}
+          </div>
+        ) : (
+          editingEnabled ? (
+            <button onClick={handleSetArrow} style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              Set arrow direction
+            </button>
+          ) : (
+            <span style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)', color: 'var(--muted-foreground)' }}>No direction set</span>
+          )
+        )}
+      </div>
+
+      {/* Measurement tolerance fields */}
+      {checkpoint.type === 'measurement' && (
+        <div>
+          <label style={{
+            fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)',
+            fontWeight: 'var(--font-weight-bold)', color: 'var(--muted-foreground)',
+            textTransform: 'uppercase', letterSpacing: '0.5px',
+            display: 'block', marginBottom: 'var(--spacing-xs)'
+          }}>
+            Tolerance
+          </label>
+          <div className="flex items-center" style={{ gap: 'var(--spacing-sm)' }}>
+            <div className="flex flex-col flex-1" style={{ gap: '2px' }}>
+              <span style={{ fontSize: '10px', fontFamily: 'var(--font-family)', color: 'var(--muted-foreground)' }}>Min</span>
+              <input
+                type="number"
+                value={checkpoint.tolerance?.min ?? ''}
+                onChange={(e) => handleToleranceChange('min', e.target.value)}
+                disabled={!editingEnabled}
+                className="w-full rounded"
+                style={{ padding: '4px 6px', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-family)', backgroundColor: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border)', outline: 'none' }}
+              />
+            </div>
+            <div className="flex flex-col flex-1" style={{ gap: '2px' }}>
+              <span style={{ fontSize: '10px', fontFamily: 'var(--font-family)', color: 'var(--muted-foreground)' }}>Nominal</span>
+              <input
+                type="number"
+                value={checkpoint.tolerance?.nominal ?? ''}
+                onChange={(e) => handleToleranceChange('nominal', e.target.value)}
+                disabled={!editingEnabled}
+                className="w-full rounded"
+                style={{ padding: '4px 6px', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-family)', backgroundColor: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border)', outline: 'none', fontWeight: 'var(--font-weight-bold)' }}
+              />
+            </div>
+            <div className="flex flex-col flex-1" style={{ gap: '2px' }}>
+              <span style={{ fontSize: '10px', fontFamily: 'var(--font-family)', color: 'var(--muted-foreground)' }}>Max</span>
+              <input
+                type="number"
+                value={checkpoint.tolerance?.max ?? ''}
+                onChange={(e) => handleToleranceChange('max', e.target.value)}
+                disabled={!editingEnabled}
+                className="w-full rounded"
+                style={{ padding: '4px 6px', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-family)', backgroundColor: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border)', outline: 'none' }}
+              />
+            </div>
+            <div className="flex flex-col" style={{ gap: '2px', minWidth: '60px' }}>
+              <span style={{ fontSize: '10px', fontFamily: 'var(--font-family)', color: 'var(--muted-foreground)' }}>Unit</span>
+              <select
+                value={checkpoint.tolerance?.unit ?? 'mm'}
+                onChange={(e) => handleToleranceChange('unit', e.target.value)}
+                disabled={!editingEnabled}
+                className="rounded"
+                style={{ padding: '4px 4px', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-family)', backgroundColor: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border)', outline: 'none' }}
+              >
+                {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pass/Fail tabs */}
+      <div>
+        <div className="flex" style={{ gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-sm)' }}>
+          <button
+            onClick={() => setActiveTab('pass')}
+            className="flex-1 flex items-center justify-center rounded-lg transition-all"
+            style={{
+              gap: '6px', padding: '8px',
+              backgroundColor: activeTab === 'pass' ? '#ecfdf5' : 'var(--secondary)',
+              color: activeTab === 'pass' ? '#059669' : 'var(--muted-foreground)',
+              border: activeTab === 'pass' ? '1.5px solid #10b981' : '1.5px solid var(--border)',
+              cursor: 'pointer', fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)',
+              fontWeight: activeTab === 'pass' ? 'var(--font-weight-bold)' : 'var(--font-weight-medium)'
+            }}
+          >
+            <CheckCircle className="size-3.5" style={{ color: activeTab === 'pass' ? '#10b981' : 'var(--muted-foreground)' }} />
+            Pass
+          </button>
+          <button
+            onClick={() => setActiveTab('fail')}
+            className="flex-1 flex items-center justify-center rounded-lg transition-all"
+            style={{
+              gap: '6px', padding: '8px',
+              backgroundColor: activeTab === 'fail' ? '#fef2f2' : 'var(--secondary)',
+              color: activeTab === 'fail' ? '#dc2626' : 'var(--muted-foreground)',
+              border: activeTab === 'fail' ? '1.5px solid #ef4444' : '1.5px solid var(--border)',
+              cursor: 'pointer', fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)',
+              fontWeight: activeTab === 'fail' ? 'var(--font-weight-bold)' : 'var(--font-weight-medium)'
+            }}
+          >
+            <XCircle className="size-3.5" style={{ color: activeTab === 'fail' ? '#ef4444' : 'var(--muted-foreground)' }} />
+            Fail
+          </button>
+        </div>
+
+        <div className="rounded-lg" style={{ backgroundColor: 'var(--secondary)', padding: 'var(--spacing-md)', border: '1px solid var(--border)' }}>
+          <OutcomeEditor
+            key={`${checkpoint.id}-${activeTab}`}
+            checkpoint={checkpoint}
+            tab={activeTab}
+            editingEnabled={editingEnabled}
+            onUpdate={onUpdate}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ValidationPanel({
+  validation,
+  onAddValidation,
+  onAddCheckpoint,
+  onUpdateCheckpoint,
+  onRemoveCheckpoint,
+  onReorderCheckpoints,
+  onRemoveValidation,
+  activeCheckpointId,
+  onSetActiveCheckpointId,
+  editingEnabled,
+  onClose,
+  onSelectParts,
+  onSetArrowDirection,
+  isMobileView,
+  availableParts
+}: ValidationPanelProps) {
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const checkpoints = validation?.checkpoints ?? [];
+  const criticalCount = checkpoints.filter(cp => cp.severity === 'critical').length;
+
+  const handleToggleCheckpoint = (id: string) => {
+    onSetActiveCheckpointId(activeCheckpointId === id ? null : id);
+  };
+
+  const handleDragStart = (idx: number) => {
+    setDraggedIdx(idx);
+  };
+
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    setDragOverIdx(idx);
+  };
+
+  const handleDrop = (idx: number) => {
+    if (draggedIdx === null || draggedIdx === idx) {
+      setDraggedIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+    const newOrder = [...checkpoints];
+    const [moved] = newOrder.splice(draggedIdx, 1);
+    newOrder.splice(idx, 0, moved);
+    onReorderCheckpoints(newOrder);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
+  // No validation yet - show empty state with "Add Validation" CTA
   if (!validation) {
     return (
       <div
         className="fixed inset-0 flex items-center justify-center"
-        style={{
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          backdropFilter: 'blur(8px)',
-          zIndex: 9999
-        }}
+        style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', zIndex: 9999 }}
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -289,24 +732,15 @@ export function ValidationPanel({
           transition={{ duration: 0.2 }}
           className="relative rounded-lg flex flex-col items-center"
           style={{
-            backgroundColor: 'var(--card)',
-            border: '1px solid var(--border)',
-            boxShadow: 'var(--elevation-lg)',
-            padding: 'var(--spacing-2xl)',
-            maxWidth: '500px',
-            margin: 'var(--spacing-lg)'
+            backgroundColor: 'var(--card)', border: '1px solid var(--border)',
+            boxShadow: 'var(--elevation-lg)', padding: 'var(--spacing-2xl)',
+            maxWidth: '500px', margin: 'var(--spacing-lg)'
           }}
         >
           <button
             onClick={onClose}
             className="absolute top-4 right-4 rounded-lg transition-colors"
-            style={{
-              padding: 'var(--spacing-sm)',
-              backgroundColor: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--foreground)'
-            }}
+            style={{ padding: 'var(--spacing-sm)', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--foreground)' }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--secondary)'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
@@ -314,57 +748,26 @@ export function ValidationPanel({
           </button>
 
           <div className="flex flex-col items-center" style={{ gap: 'var(--spacing-lg)' }}>
-            <div
-              className="rounded-full flex items-center justify-center"
-              style={{
-                backgroundColor: 'var(--secondary)',
-                width: '64px',
-                height: '64px'
-              }}
-            >
+            <div className="rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--secondary)', width: '64px', height: '64px' }}>
               <CheckCircle className="size-8" style={{ color: 'var(--accent)' }} />
             </div>
-
-            <div className="text-center" style={{ gap: 'var(--spacing-sm)' }}>
-              <h3
-                style={{
-                  fontSize: 'var(--text-h3)',
-                  fontFamily: 'var(--font-family)',
-                  fontWeight: 'var(--font-weight-bold)',
-                  color: 'var(--foreground)',
-                  margin: 0,
-                  marginBottom: 'var(--spacing-sm)'
-                }}
-              >
-                No Validation Yet
+            <div className="text-center">
+              <h3 style={{ fontSize: 'var(--text-h3)', fontFamily: 'var(--font-family)', fontWeight: 'var(--font-weight-bold)', color: 'var(--foreground)', margin: 0, marginBottom: 'var(--spacing-sm)' }}>
+                No Checkpoints Yet
               </h3>
-              <p
-                style={{
-                  fontSize: 'var(--text-sm)',
-                  fontFamily: 'var(--font-family)',
-                  fontWeight: 'var(--font-weight-normal)',
-                  color: 'var(--muted-foreground)',
-                  margin: 0
-                }}
-              >
-                Create a validation point to verify step completion with pass/fail states.
+              <p style={{ fontSize: 'var(--text-sm)', fontFamily: 'var(--font-family)', color: 'var(--muted-foreground)', margin: 0 }}>
+                Add validation checkpoints to verify step completion with multiple pass/fail checks.
               </p>
             </div>
-
             {editingEnabled && (
               <button
-                onClick={handleAddValidation}
+                onClick={() => { onAddValidation(); }}
                 className="flex items-center rounded-lg transition-all"
                 style={{
-                  gap: 'var(--spacing-sm)',
-                  padding: 'var(--spacing-md) var(--spacing-lg)',
-                  backgroundColor: 'var(--primary)',
-                  color: 'var(--primary-foreground)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 'var(--text-sm)',
-                  fontFamily: 'var(--font-family)',
-                  fontWeight: 'var(--font-weight-medium)'
+                  gap: 'var(--spacing-sm)', padding: 'var(--spacing-md) var(--spacing-lg)',
+                  backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)',
+                  border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm)',
+                  fontFamily: 'var(--font-family)', fontWeight: 'var(--font-weight-medium)'
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
@@ -379,14 +782,13 @@ export function ValidationPanel({
     );
   }
 
+  // Validation exists but no checkpoints yet — show empty checkpoint list
+  const hasCheckpoints = checkpoints.length > 0;
+
   return (
     <div
       className="fixed inset-0 flex items-center justify-center"
-      style={{
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        backdropFilter: 'blur(8px)',
-        zIndex: 9999
-      }}
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', zIndex: 9999 }}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -395,72 +797,30 @@ export function ValidationPanel({
         transition={{ duration: 0.2 }}
         className="relative rounded-lg flex flex-col"
         style={{
-          backgroundColor: 'var(--card)',
-          border: '1px solid var(--border)',
-          boxShadow: 'var(--elevation-lg)',
-          width: '90vw',
-          maxWidth: '560px',
-          height: '85vh',
-          maxHeight: '720px',
-          margin: 'var(--spacing-md)'
+          backgroundColor: 'var(--card)', border: '1px solid var(--border)',
+          boxShadow: 'var(--elevation-lg)', width: '90vw', maxWidth: '580px',
+          height: '85vh', maxHeight: '780px', margin: 'var(--spacing-md)'
         }}
       >
         {/* Header */}
-        <div
-          className="flex items-center justify-between shrink-0"
-          style={{
-            padding: 'var(--spacing-lg) var(--spacing-xl)',
-            borderBottom: '1px solid var(--border)'
-          }}
-        >
+        <div className="flex items-center justify-between shrink-0" style={{ padding: 'var(--spacing-lg) var(--spacing-xl)', borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center" style={{ gap: 'var(--spacing-sm)' }}>
-            <div
-              className="rounded-lg flex items-center justify-center shrink-0"
-              style={{
-                width: '32px',
-                height: '32px',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)'
-              }}
-            >
+            <div className="rounded-lg flex items-center justify-center shrink-0" style={{ width: '32px', height: '32px', backgroundColor: 'rgba(59,130,246,0.1)' }}>
               <CheckCircle className="size-4" style={{ color: 'var(--primary)' }} />
             </div>
             <div>
-              <h2
-                style={{
-                  fontSize: 'var(--text-base)',
-                  fontFamily: 'var(--font-family)',
-                  fontWeight: 'var(--font-weight-bold)',
-                  color: 'var(--foreground)',
-                  margin: 0,
-                  lineHeight: '1.3'
-                }}
-              >
-                Validation Point
+              <h2 style={{ fontSize: 'var(--text-base)', fontFamily: 'var(--font-family)', fontWeight: 'var(--font-weight-bold)', color: 'var(--foreground)', margin: 0, lineHeight: '1.3' }}>
+                Validation Checkpoints
               </h2>
-              <p
-                style={{
-                  fontSize: 'var(--text-xs)',
-                  fontFamily: 'var(--font-family)',
-                  fontWeight: 'var(--font-weight-normal)',
-                  color: 'var(--muted-foreground)',
-                  margin: 0
-                }}
-              >
-                Define what to check and the expected result
+              <p style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)', color: 'var(--muted-foreground)', margin: 0 }}>
+                {checkpoints.length} checkpoint{checkpoints.length !== 1 ? 's' : ''} for this step
               </p>
             </div>
           </div>
-
           <button
             onClick={onClose}
             className="rounded-lg transition-colors shrink-0"
-            style={{
-              padding: 'var(--spacing-sm)',
-              backgroundColor: 'var(--secondary)',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--foreground)'
-            }}
+            style={{ padding: 'var(--spacing-sm)', backgroundColor: 'var(--secondary)', border: 'none', cursor: 'pointer', color: 'var(--foreground)' }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--border)'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--secondary)'}
           >
@@ -468,821 +828,228 @@ export function ValidationPanel({
           </button>
         </div>
 
-        {/* Progress bar */}
-        <div style={{ height: '3px', backgroundColor: 'var(--secondary)' }}>
-          <motion.div
-            initial={false}
-            animate={{ width: `${(completionState.total / completionState.max) * 100}%` }}
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-            style={{
-              height: '100%',
-              background: completionState.total === completionState.max
-                ? '#22c55e'
-                : 'linear-gradient(90deg, var(--primary), #6366f1)',
-              borderRadius: '0 3px 3px 0'
-            }}
-          />
-        </div>
-
-        {/* Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto" style={{ padding: 'var(--spacing-xl)' }}>
-          <div className="flex flex-col" style={{ gap: 'var(--spacing-xl)' }}>
-
-            {/* Step 1: What are you validating? */}
-            <div>
-              <div className="flex items-center" style={{ gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-md)' }}>
-                <StepBadge number={1} status={completionState.mode ? 'done' : 'active'} />
-                <span
-                  style={{
-                    fontSize: 'var(--text-xs)',
-                    fontFamily: 'var(--font-family)',
-                    fontWeight: 'var(--font-weight-bold)',
-                    color: 'var(--muted-foreground)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}
-                >
-                  What are you validating?
-                </span>
-                <Tooltip text="Choose how users will verify this step - by inspecting a 3D object or comparing against a reference image.">
-                  <HelpCircle className="size-3" style={{ color: 'var(--muted-foreground)', cursor: 'help' }} />
-                </Tooltip>
+        {/* Checkpoint list - scrollable */}
+        <div className="flex-1 overflow-y-auto" style={{ padding: 'var(--spacing-lg)' }}>
+          {!hasCheckpoints ? (
+            // Empty checkpoints state
+            <div className="flex flex-col items-center justify-center" style={{ padding: 'var(--spacing-2xl) 0', gap: 'var(--spacing-md)' }}>
+              <div className="rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--secondary)', width: '48px', height: '48px' }}>
+                <CheckCircle className="size-6" style={{ color: 'var(--muted-foreground)' }} />
               </div>
-
-              <div
-                className="flex rounded-lg overflow-hidden"
-                style={{
-                  backgroundColor: 'var(--secondary)',
-                  padding: '4px',
-                  gap: '4px',
-                  border: '1px solid var(--border)'
-                }}
-              >
+              <p style={{ fontSize: 'var(--text-sm)', fontFamily: 'var(--font-family)', color: 'var(--muted-foreground)', margin: 0 }}>
+                No checkpoints yet. Add one to get started.
+              </p>
+              {editingEnabled && (
                 <button
-                  onClick={() => handleUpdateMode('object')}
-                  disabled={!editingEnabled}
-                  className="flex-1 flex items-center justify-center rounded-lg transition-all"
+                  onClick={onAddCheckpoint}
+                  className="flex items-center rounded-lg transition-all"
                   style={{
-                    gap: 'var(--spacing-sm)',
-                    padding: 'var(--spacing-md) var(--spacing-lg)',
-                    backgroundColor: validation.mode === 'object' ? 'var(--card)' : 'transparent',
-                    color: validation.mode === 'object' ? 'var(--foreground)' : 'var(--muted-foreground)',
-                    border: 'none',
-                    cursor: editingEnabled ? 'pointer' : 'not-allowed',
-                    fontSize: 'var(--text-sm)',
-                    fontFamily: 'var(--font-family)',
-                    fontWeight: validation.mode === 'object' ? 'var(--font-weight-bold)' : 'var(--font-weight-medium)',
-                    boxShadow: validation.mode === 'object' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                    opacity: editingEnabled ? 1 : 0.5
+                    gap: 'var(--spacing-sm)', padding: 'var(--spacing-md) var(--spacing-lg)',
+                    backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)',
+                    border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm)',
+                    fontFamily: 'var(--font-family)', fontWeight: 'var(--font-weight-medium)'
                   }}
                 >
-                  <Box className="size-4" />
-                  3D Object
+                  <Plus className="size-4" />
+                  Add Checkpoint
                 </button>
-                <button
-                  onClick={() => handleUpdateMode('image')}
-                  disabled={!editingEnabled}
-                  className="flex-1 flex items-center justify-center rounded-lg transition-all"
-                  style={{
-                    gap: 'var(--spacing-sm)',
-                    padding: 'var(--spacing-md) var(--spacing-lg)',
-                    backgroundColor: validation.mode === 'image' ? 'var(--card)' : 'transparent',
-                    color: validation.mode === 'image' ? 'var(--foreground)' : 'var(--muted-foreground)',
-                    border: 'none',
-                    cursor: editingEnabled ? 'pointer' : 'not-allowed',
-                    fontSize: 'var(--text-sm)',
-                    fontFamily: 'var(--font-family)',
-                    fontWeight: validation.mode === 'image' ? 'var(--font-weight-bold)' : 'var(--font-weight-medium)',
-                    boxShadow: validation.mode === 'image' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                    opacity: editingEnabled ? 1 : 0.5
-                  }}
-                >
-                  <ImageIcon className="size-4" />
-                  Image
-                </button>
-              </div>
+              )}
             </div>
+          ) : (
+            <div className="flex flex-col" style={{ gap: 'var(--spacing-sm)' }}>
+              {checkpoints.map((cp, idx) => {
+                const isExpanded = activeCheckpointId === cp.id;
+                const sevCfg = SEVERITY_CONFIG[cp.severity];
+                const typeCfg = TYPE_CONFIG[cp.type];
+                const TypeIcon = typeCfg.icon;
+                const isDragOver = dragOverIdx === idx && draggedIdx !== idx;
 
-            {/* Divider */}
-            <div style={{ height: '1px', backgroundColor: 'var(--border)' }} />
-
-            {/* Step 2: Select target & orientation */}
-            <div>
-              <div className="flex items-center" style={{ gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-md)' }}>
-                <StepBadge
-                  number={2}
-                  status={completionState.target ? 'done' : completionState.mode ? 'active' : 'pending'}
-                />
-                <span
-                  style={{
-                    fontSize: 'var(--text-xs)',
-                    fontFamily: 'var(--font-family)',
-                    fontWeight: 'var(--font-weight-bold)',
-                    color: 'var(--muted-foreground)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}
-                >
-                  {validation.mode === 'object' ? 'Select target & orientation' : 'Set orientation'}
-                </span>
-                <Tooltip text={validation.mode === 'object'
-                  ? "Pick which part(s) to inspect and set the arrow direction that guides the inspector's view."
-                  : "Set an optional arrow direction to guide where the inspector should look."
-                }>
-                  <HelpCircle className="size-3" style={{ color: 'var(--muted-foreground)', cursor: 'help' }} />
-                </Tooltip>
-              </div>
-
-              <div className="flex" style={{ gap: 'var(--spacing-md)' }}>
-                {/* Part selector card - only for object mode */}
-                {validation.mode === 'object' && (
-                  <div
-                    className="flex-1 rounded-lg flex flex-col items-center justify-center transition-all"
+                return (
+                  <motion.div
+                    key={cp.id}
+                    layout
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    draggable={editingEnabled}
+                    onDragStart={() => handleDragStart(idx)}
+                    onDragOver={(e) => handleDragOver(e as any, idx)}
+                    onDrop={() => handleDrop(idx)}
+                    onDragEnd={handleDragEnd}
+                    className="rounded-lg overflow-hidden transition-shadow"
                     style={{
-                      border: validation.selectedParts?.length > 0
-                        ? '1.5px solid var(--primary)'
-                        : '1.5px dashed var(--border)',
-                      padding: 'var(--spacing-lg)',
-                      backgroundColor: validation.selectedParts?.length > 0
-                        ? 'rgba(59, 130, 246, 0.05)'
-                        : 'var(--secondary)',
-                      gap: 'var(--spacing-sm)',
-                      minHeight: '130px',
-                      cursor: editingEnabled ? 'pointer' : 'default'
+                      border: '1px solid var(--border)',
+                      backgroundColor: 'var(--card)',
+                      boxShadow: isDragOver ? '0 0 0 2px var(--primary)' : isExpanded ? 'var(--elevation-sm)' : 'none',
+                      opacity: draggedIdx === idx ? 0.5 : 1
                     }}
-                    onClick={editingEnabled ? handleSelectParts : undefined}
                   >
-                    {validation.selectedParts?.length > 0 ? (
-                      <>
-                        <div
-                          className="rounded-lg flex items-center justify-center"
-                          style={{
-                            width: '36px',
-                            height: '36px',
-                            backgroundColor: 'var(--primary)',
-                            color: 'white'
-                          }}
-                        >
-                          <Crosshair className="size-4" />
-                        </div>
-                        <div className="flex flex-wrap justify-center" style={{ gap: '4px' }}>
-                          {validation.selectedParts.map((part, index) => (
-                            <span
-                              key={index}
-                              className="rounded-full"
-                              style={{
-                                fontSize: 'var(--text-xs)',
-                                fontFamily: 'var(--font-family)',
-                                fontWeight: 'var(--font-weight-medium)',
-                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                                color: 'var(--primary)',
-                                padding: '3px var(--spacing-sm)'
-                              }}
-                            >
-                              {part}
-                            </span>
-                          ))}
-                        </div>
-                        {editingEnabled && (
-                          <span
-                            style={{
-                              fontSize: 'var(--text-xs)',
-                              fontFamily: 'var(--font-family)',
-                              color: 'var(--muted-foreground)'
-                            }}
-                          >
-                            Click to change
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <div
-                          className="rounded-lg flex items-center justify-center"
-                          style={{
-                            width: '36px',
-                            height: '36px',
-                            backgroundColor: 'var(--border)',
-                            color: 'var(--muted-foreground)'
-                          }}
-                        >
-                          <Crosshair className="size-4" />
-                        </div>
-                        <span
-                          style={{
-                            fontSize: 'var(--text-sm)',
-                            fontFamily: 'var(--font-family)',
-                            fontWeight: 'var(--font-weight-bold)',
-                            color: 'var(--foreground)'
-                          }}
-                        >
-                          Select Parts
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 'var(--text-xs)',
-                            fontFamily: 'var(--font-family)',
-                            color: 'var(--muted-foreground)'
-                          }}
-                        >
-                          Click to pick objects
-                        </span>
-                      </>
-                    )}
-                  </div>
-                )}
+                    {/* Checkpoint card header */}
+                    <div
+                      className="flex items-center cursor-pointer"
+                      style={{ padding: 'var(--spacing-md)', gap: 'var(--spacing-sm)' }}
+                      onClick={() => handleToggleCheckpoint(cp.id)}
+                    >
+                      {/* Severity color bar */}
+                      <div className="shrink-0 rounded-sm" style={{ width: '4px', height: '32px', backgroundColor: sevCfg.color }} />
 
-                {/* Arrow direction card */}
-                <div
-                  className="flex-1 rounded-lg flex flex-col items-center justify-center"
-                  style={{
-                    border: validation.arrowDirection
-                      ? '1.5px solid var(--primary)'
-                      : '1.5px dashed var(--border)',
-                    padding: 'var(--spacing-lg)',
-                    backgroundColor: validation.arrowDirection
-                      ? 'rgba(59, 130, 246, 0.05)'
-                      : 'var(--secondary)',
-                    gap: 'var(--spacing-sm)',
-                    minHeight: '130px'
-                  }}
-                >
-                  {validation.arrowDirection ? (
-                    <>
-                      <div
-                        className="rounded-lg flex items-center justify-center"
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          backgroundColor: 'var(--primary)',
-                          color: 'white'
-                        }}
-                      >
-                        <ArrowRight className="size-4" />
-                      </div>
-                      <span
-                        style={{
-                          fontSize: 'var(--text-xs)',
-                          fontFamily: 'var(--font-family)',
-                          fontWeight: 'var(--font-weight-medium)',
-                          color: 'var(--foreground)',
-                          fontVariantNumeric: 'tabular-nums'
-                        }}
-                      >
-                        ({validation.arrowDirection.x.toFixed(1)}, {validation.arrowDirection.y.toFixed(1)}, {validation.arrowDirection.z.toFixed(1)})
-                      </span>
-                      <div className="flex items-center" style={{ gap: 'var(--spacing-xs)' }}>
-                        {editingEnabled && (
-                          <>
-                            <button
-                              onClick={() => {
-                                onSetArrowDirection((direction) => {
-                                  onUpdateValidation({ arrowDirection: direction });
-                                });
-                              }}
-                              style={{
-                                fontSize: 'var(--text-xs)',
-                                fontFamily: 'var(--font-family)',
-                                color: 'var(--primary)',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                padding: 0
-                              }}
-                            >
-                              Change
-                            </button>
-                            <span style={{ color: 'var(--border)' }}>|</span>
-                            <button
-                              onClick={() => onUpdateValidation({ arrowDirection: undefined })}
-                              style={{
-                                fontSize: 'var(--text-xs)',
-                                fontFamily: 'var(--font-family)',
-                                color: 'var(--muted-foreground)',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                padding: 0
-                              }}
-                            >
-                              Clear
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div
-                        className="rounded-lg flex items-center justify-center"
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          backgroundColor: 'var(--border)',
-                          color: 'var(--muted-foreground)'
-                        }}
-                      >
-                        <ArrowRight className="size-4" />
-                      </div>
-                      {editingEnabled ? (
-                        <button
-                          onClick={() => {
-                            onSetArrowDirection((direction) => {
-                              onUpdateValidation({ arrowDirection: direction });
-                            });
-                          }}
-                          style={{
-                            fontSize: 'var(--text-sm)',
-                            fontFamily: 'var(--font-family)',
-                            fontWeight: 'var(--font-weight-bold)',
-                            color: 'var(--foreground)',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: 0
-                          }}
-                        >
-                          Set Direction
-                        </button>
-                      ) : (
-                        <span
-                          style={{
-                            fontSize: 'var(--text-sm)',
-                            fontFamily: 'var(--font-family)',
-                            color: 'var(--muted-foreground)'
-                          }}
-                        >
-                          No direction set
-                        </span>
+                      {/* Drag handle */}
+                      {editingEnabled && (
+                        <div className="shrink-0 cursor-grab" style={{ color: 'var(--muted-foreground)' }} onClick={(e) => e.stopPropagation()}>
+                          <GripVertical className="size-3.5" />
+                        </div>
                       )}
-                      <span
-                        style={{
-                          fontSize: 'var(--text-xs)',
-                          fontFamily: 'var(--font-family)',
-                          color: 'var(--muted-foreground)'
-                        }}
-                      >
-                        Guides inspector view
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
 
-            {/* Divider */}
-            <div style={{ height: '1px', backgroundColor: 'var(--border)' }} />
+                      {/* Type icon */}
+                      <TypeIcon className="size-4 shrink-0" style={{ color: sevCfg.color }} />
 
-            {/* Step 3: Define pass/fail criteria */}
-            <div>
-              <div className="flex items-center" style={{ gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-md)' }}>
-                <StepBadge
-                  number={3}
-                  status={completionState.outcome ? 'done' : completionState.target ? 'active' : 'pending'}
-                />
-                <span
-                  style={{
-                    fontSize: 'var(--text-xs)',
-                    fontFamily: 'var(--font-family)',
-                    fontWeight: 'var(--font-weight-bold)',
-                    color: 'var(--muted-foreground)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}
-                >
-                  Define pass & fail criteria
-                </span>
-                <Tooltip text="Describe what a correct (pass) and incorrect (fail) outcome looks like so inspectors know exactly what to check.">
-                  <HelpCircle className="size-3" style={{ color: 'var(--muted-foreground)', cursor: 'help' }} />
-                </Tooltip>
-              </div>
+                      {/* Label + meta */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center" style={{ gap: 'var(--spacing-xs)' }}>
+                          <span style={{
+                            fontSize: 'var(--text-sm)', fontFamily: 'var(--font-family)',
+                            fontWeight: 'var(--font-weight-bold)', color: 'var(--foreground)',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                          }}>
+                            {cp.label || 'Untitled checkpoint'}
+                          </span>
+                        </div>
+                        <div className="flex items-center" style={{ gap: '6px', marginTop: '2px' }}>
+                          <span className="rounded-full" style={{
+                            fontSize: '10px', fontFamily: 'var(--font-family)',
+                            fontWeight: 'var(--font-weight-bold)', backgroundColor: sevCfg.bg,
+                            color: sevCfg.color, padding: '1px 6px', textTransform: 'uppercase',
+                            letterSpacing: '0.3px'
+                          }}>
+                            {sevCfg.label}
+                          </span>
+                          <span style={{ fontSize: '10px', fontFamily: 'var(--font-family)', color: 'var(--muted-foreground)' }}>
+                            {typeCfg.label}
+                          </span>
+                          {cp.selectedParts.length > 0 && (
+                            <span style={{ fontSize: '10px', fontFamily: 'var(--font-family)', color: 'var(--muted-foreground)' }}>
+                              · {cp.selectedParts.length} part{cp.selectedParts.length !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {cp.type === 'measurement' && cp.tolerance && (
+                            <span style={{ fontSize: '10px', fontFamily: 'var(--font-family)', color: 'var(--muted-foreground)' }}>
+                              · {cp.tolerance.nominal}{cp.tolerance.unit} ({cp.tolerance.min}–{cp.tolerance.max})
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-              {/* Pass/Fail tabs - compact pill style */}
-              <div
-                className="flex"
-                style={{ gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-md)' }}
-              >
-                <button
-                  onClick={() => setActiveStateTab('pass')}
-                  className="flex-1 flex items-center justify-center rounded-lg transition-all"
-                  style={{
-                    gap: 'var(--spacing-sm)',
-                    padding: 'var(--spacing-md) var(--spacing-lg)',
-                    backgroundColor: activeStateTab === 'pass' ? '#ecfdf5' : 'var(--secondary)',
-                    color: activeStateTab === 'pass' ? '#059669' : 'var(--muted-foreground)',
-                    border: activeStateTab === 'pass' ? '1.5px solid #10b981' : '1.5px solid var(--border)',
-                    cursor: 'pointer',
-                    fontSize: 'var(--text-sm)',
-                    fontFamily: 'var(--font-family)',
-                    fontWeight: activeStateTab === 'pass' ? 'var(--font-weight-bold)' : 'var(--font-weight-medium)'
-                  }}
-                >
-                  <CheckCircle
-                    className="size-4"
-                    style={{
-                      color: activeStateTab === 'pass' ? '#10b981' : 'var(--muted-foreground)',
-                    }}
-                  />
-                  <div className="flex flex-col items-start">
-                    <span>Pass</span>
-                    {activeStateTab === 'pass' && (
-                      <span style={{ fontSize: 'var(--text-xs)', opacity: 0.8, fontWeight: 'var(--font-weight-normal)' }}>
-                        Correct outcome
-                      </span>
-                    )}
-                  </div>
-                </button>
+                      {/* Delete button */}
+                      {editingEnabled && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onRemoveCheckpoint(cp.id); }}
+                          className="shrink-0 rounded transition-colors"
+                          style={{ padding: '4px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', opacity: 0.5 }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.opacity = '1'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted-foreground)'; e.currentTarget.style.opacity = '0.5'; }}
+                          title="Remove checkpoint"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
 
-                <button
-                  onClick={() => setActiveStateTab('fail')}
-                  className="flex-1 flex items-center justify-center rounded-lg transition-all"
-                  style={{
-                    gap: 'var(--spacing-sm)',
-                    padding: 'var(--spacing-md) var(--spacing-lg)',
-                    backgroundColor: activeStateTab === 'fail' ? '#fef2f2' : 'var(--secondary)',
-                    color: activeStateTab === 'fail' ? '#dc2626' : 'var(--muted-foreground)',
-                    border: activeStateTab === 'fail' ? '1.5px solid #ef4444' : '1.5px solid var(--border)',
-                    cursor: 'pointer',
-                    fontSize: 'var(--text-sm)',
-                    fontFamily: 'var(--font-family)',
-                    fontWeight: activeStateTab === 'fail' ? 'var(--font-weight-bold)' : 'var(--font-weight-medium)'
-                  }}
-                >
-                  <XCircle
-                    className="size-4"
-                    style={{
-                      color: activeStateTab === 'fail' ? '#ef4444' : 'var(--muted-foreground)',
-                    }}
-                  />
-                  <div className="flex flex-col items-start">
-                    <span>Fail</span>
-                    {activeStateTab === 'fail' && (
-                      <span style={{ fontSize: 'var(--text-xs)', opacity: 0.8, fontWeight: 'var(--font-weight-normal)' }}>
-                        Detect a defect
-                      </span>
-                    )}
-                  </div>
-                </button>
-              </div>
-
-              {/* State Content */}
-              <div
-                className="rounded-lg"
-                style={{
-                  backgroundColor: 'var(--secondary)',
-                  padding: 'var(--spacing-lg)',
-                  border: '1px solid var(--border)'
-                }}
-              >
-                {/* Description */}
-                <div style={{ marginBottom: validation.mode === 'image' ? 'var(--spacing-lg)' : 0 }}>
-                  <div className="flex items-center" style={{ gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)' }}>
-                    <label
-                      style={{
-                        fontSize: 'var(--text-sm)',
-                        fontFamily: 'var(--font-family)',
-                        fontWeight: 'var(--font-weight-bold)',
-                        color: 'var(--foreground)'
-                      }}
-                    >
-                      What to check
-                    </label>
-                  </div>
-                  {editingEnabled ? (
-                    <textarea
-                      value={localDescription}
-                      onChange={(e) => {
-                        if (e.target.value.length <= MAX_DESCRIPTION_LENGTH) {
-                          setLocalDescription(e.target.value);
-                        }
-                      }}
-                      onFocus={() => setIsEditingDescription(true)}
-                      onBlur={handleDescriptionBlur}
-                      placeholder={getPlaceholderText()}
-                      className="w-full rounded-lg resize-none"
-                      style={{
-                        padding: 'var(--spacing-md)',
-                        fontSize: 'var(--text-sm)',
-                        fontFamily: 'var(--font-family)',
-                        fontWeight: 'var(--font-weight-normal)',
-                        backgroundColor: 'var(--card)',
-                        color: 'var(--foreground)',
-                        border: '1px solid var(--border)',
-                        outline: 'none',
-                        minHeight: '80px',
-                        lineHeight: '1.6',
-                        transition: 'border-color 0.2s'
-                      }}
-                      onFocusCapture={(e) => {
-                        (e.target as HTMLTextAreaElement).style.borderColor = 'var(--primary)';
-                        (e.target as HTMLTextAreaElement).style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)';
-                      }}
-                      onBlurCapture={(e) => {
-                        (e.target as HTMLTextAreaElement).style.borderColor = 'var(--border)';
-                        (e.target as HTMLTextAreaElement).style.boxShadow = 'none';
-                      }}
-                    />
-                  ) : (
-                    <p
-                      style={{
-                        fontSize: 'var(--text-sm)',
-                        fontFamily: 'var(--font-family)',
-                        fontWeight: 'var(--font-weight-normal)',
-                        color: currentState?.description ? 'var(--foreground)' : 'var(--muted-foreground)',
-                        margin: 0,
-                        padding: 'var(--spacing-md)',
-                        backgroundColor: 'var(--card)',
-                        borderRadius: 'var(--radius)',
-                        border: '1px solid var(--border)',
-                        minHeight: '80px',
-                        lineHeight: '1.6'
-                      }}
-                    >
-                      {currentState?.description || 'No description'}
-                    </p>
-                  )}
-                  <div className="flex justify-end" style={{ marginTop: '4px' }}>
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        fontFamily: 'var(--font-family)',
-                        fontWeight: 'var(--font-weight-normal)',
-                        color: localDescription.length > 450
-                          ? (localDescription.length >= 500 ? '#ef4444' : '#f59e0b')
-                          : 'var(--muted-foreground)'
-                      }}
-                    >
-                      {localDescription.length} / {MAX_DESCRIPTION_LENGTH}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Media - Only for image mode */}
-                {validation.mode === 'image' && (
-                  <div>
-                    <div className="flex items-center" style={{ gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)' }}>
-                      <label
-                        style={{
-                          fontSize: 'var(--text-sm)',
-                          fontFamily: 'var(--font-family)',
-                          fontWeight: 'var(--font-weight-bold)',
-                          color: 'var(--foreground)'
-                        }}
-                      >
-                        Reference Media
-                      </label>
-                      <Tooltip text="Upload reference images or videos for comparison">
-                        <Info className="size-3" style={{ color: 'var(--muted-foreground)' }} />
-                      </Tooltip>
+                      {/* Chevron */}
+                      <div className="shrink-0" style={{ color: 'var(--muted-foreground)' }}>
+                        {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                      </div>
                     </div>
 
-                    {currentMediaFiles.length > 0 ? (
-                      <div>
-                        <div
-                          className="relative rounded-lg overflow-hidden"
-                          style={{
-                            backgroundColor: 'var(--card)',
-                            height: '180px',
-                            marginBottom: 'var(--spacing-sm)',
-                            border: '1px solid var(--border)'
-                          }}
+                    {/* Expanded editor */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
                         >
-                          {currentMedia?.type === 'image' ? (
-                            <img
-                              src={currentMedia.url}
-                              alt={currentMedia.filename}
-                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                          <div style={{ padding: '0 var(--spacing-md) var(--spacing-md) var(--spacing-md)', borderTop: '1px solid var(--border)' }}>
+                            <CheckpointEditor
+                              checkpoint={cp}
+                              editingEnabled={editingEnabled}
+                              onUpdate={(updates) => onUpdateCheckpoint(cp.id, updates)}
+                              onSelectParts={onSelectParts}
+                              onSetArrowDirection={onSetArrowDirection}
+                              onClose={onClose}
                             />
-                          ) : currentMedia?.type === 'video' ? (
-                            <video
-                              src={currentMedia.url}
-                              controls
-                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                            />
-                          ) : null}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })}
 
-                          {currentMediaFiles.length > 1 && (
-                            <>
-                              <button
-                                onClick={() => setCurrentMediaIndex((prev) =>
-                                  prev > 0 ? prev - 1 : currentMediaFiles.length - 1
-                                )}
-                                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full transition-colors"
-                                style={{
-                                  padding: 'var(--spacing-sm)',
-                                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  color: 'white'
-                                }}
-                              >
-                                <ChevronLeft className="size-4" />
-                              </button>
-                              <button
-                                onClick={() => setCurrentMediaIndex((prev) =>
-                                  prev < currentMediaFiles.length - 1 ? prev + 1 : 0
-                                )}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full transition-colors"
-                                style={{
-                                  padding: 'var(--spacing-sm)',
-                                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  color: 'white'
-                                }}
-                              >
-                                <ChevronRight className="size-4" />
-                              </button>
-                              <div
-                                className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full"
-                                style={{
-                                  padding: '2px var(--spacing-sm)',
-                                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                                  fontSize: 'var(--text-xs)',
-                                  fontFamily: 'var(--font-family)',
-                                  color: 'white'
-                                }}
-                              >
-                                {currentMediaIndex + 1} / {currentMediaFiles.length}
-                              </div>
-                            </>
-                          )}
-
-                          {editingEnabled && (
-                            <button
-                              onClick={() => handleDeleteMedia(currentMedia.id)}
-                              className="absolute top-2 right-2 rounded-lg transition-colors"
-                              style={{
-                                padding: 'var(--spacing-xs)',
-                                backgroundColor: 'var(--destructive)',
-                                border: 'none',
-                                cursor: 'pointer',
-                                color: 'white'
-                              }}
-                            >
-                              <Trash2 className="size-3" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        className="rounded-lg flex flex-col items-center justify-center"
-                        style={{
-                          backgroundColor: 'var(--card)',
-                          padding: 'var(--spacing-xl)',
-                          border: '2px dashed var(--border)',
-                          marginBottom: 'var(--spacing-sm)',
-                          minHeight: '100px',
-                          gap: 'var(--spacing-xs)'
-                        }}
-                      >
-                        <ImageIcon className="size-5" style={{ color: 'var(--muted-foreground)' }} />
-                        <p
-                          style={{
-                            fontSize: 'var(--text-sm)',
-                            fontFamily: 'var(--font-family)',
-                            color: 'var(--muted-foreground)',
-                            margin: 0,
-                            textAlign: 'center'
-                          }}
-                        >
-                          No media added yet
-                        </p>
-                      </div>
-                    )}
-
-                    {editingEnabled && (
-                      <div className="flex" style={{ gap: 'var(--spacing-sm)' }}>
-                        {isActualMobileDevice && (
-                          <>
-                            <input
-                              ref={captureInputRef}
-                              type="file"
-                              accept="image/*,video/*"
-                              capture="environment"
-                              onChange={(e) => handleMediaUpload(e.target.files, 'image')}
-                              style={{ display: 'none' }}
-                            />
-                            <button
-                              onClick={() => captureInputRef.current?.click()}
-                              className="flex-1 flex items-center justify-center rounded-lg transition-colors"
-                              style={{
-                                gap: 'var(--spacing-xs)',
-                                padding: 'var(--spacing-md)',
-                                backgroundColor: 'var(--primary)',
-                                color: 'var(--primary-foreground)',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: 'var(--text-sm)',
-                                fontFamily: 'var(--font-family)',
-                                fontWeight: 'var(--font-weight-medium)'
-                              }}
-                            >
-                              <Camera className="size-4" />
-                              Take Photo
-                            </button>
-                          </>
-                        )}
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*,video/*"
-                          multiple
-                          onChange={(e) => handleMediaUpload(e.target.files, 'image')}
-                          style={{ display: 'none' }}
-                        />
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          className="flex-1 flex items-center justify-center rounded-lg transition-colors"
-                          style={{
-                            gap: 'var(--spacing-xs)',
-                            padding: 'var(--spacing-md)',
-                            backgroundColor: 'var(--primary)',
-                            color: 'var(--primary-foreground)',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: 'var(--text-sm)',
-                            fontFamily: 'var(--font-family)',
-                            fontWeight: 'var(--font-weight-medium)'
-                          }}
-                        >
-                          <Upload className="size-4" />
-                          Upload Media
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              {/* Add Checkpoint button */}
+              {editingEnabled && checkpoints.length < MAX_CHECKPOINTS && (
+                <button
+                  onClick={onAddCheckpoint}
+                  className="flex items-center justify-center rounded-lg transition-all w-full"
+                  style={{
+                    gap: 'var(--spacing-sm)', padding: 'var(--spacing-md)',
+                    backgroundColor: 'transparent', color: 'var(--primary)',
+                    border: '2px dashed var(--border)', cursor: 'pointer',
+                    fontSize: 'var(--text-sm)', fontFamily: 'var(--font-family)',
+                    fontWeight: 'var(--font-weight-medium)', marginTop: 'var(--spacing-sm)'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.backgroundColor = 'rgba(59,130,246,0.05)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                >
+                  <Plus className="size-4" />
+                  Add Checkpoint
+                </button>
+              )}
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}
         <div
           className="shrink-0 flex items-center justify-between"
-          style={{
-            padding: 'var(--spacing-md) var(--spacing-xl)',
-            borderTop: '1px solid var(--border)',
-            backgroundColor: 'var(--secondary)'
-          }}
+          style={{ padding: 'var(--spacing-md) var(--spacing-xl)', borderTop: '1px solid var(--border)', backgroundColor: 'var(--secondary)' }}
         >
           {editingEnabled ? (
             <button
               onClick={onRemoveValidation}
               className="flex items-center rounded-lg transition-colors"
               style={{
-                gap: 'var(--spacing-xs)',
-                padding: 'var(--spacing-sm) var(--spacing-md)',
-                backgroundColor: 'transparent',
-                color: 'var(--muted-foreground)',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 'var(--text-sm)',
-                fontFamily: 'var(--font-family)',
-                fontWeight: 'var(--font-weight-medium)'
+                gap: 'var(--spacing-xs)', padding: 'var(--spacing-sm) var(--spacing-md)',
+                backgroundColor: 'transparent', color: 'var(--muted-foreground)',
+                border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm)',
+                fontFamily: 'var(--font-family)', fontWeight: 'var(--font-weight-medium)'
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--destructive)';
-                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--muted-foreground)';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--destructive)'; e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted-foreground)'; e.currentTarget.style.backgroundColor = 'transparent'; }}
             >
               <Trash2 className="size-4" />
-              Remove
+              Remove All
             </button>
           ) : (
             <div />
           )}
 
           <div className="flex items-center" style={{ gap: 'var(--spacing-md)' }}>
-            <span
-              style={{
-                fontSize: 'var(--text-xs)',
-                fontFamily: 'var(--font-family)',
-                fontWeight: 'var(--font-weight-medium)',
-                color: completionState.total === completionState.max ? '#22c55e' : 'var(--muted-foreground)'
-              }}
-            >
-              {completionState.total} of {completionState.max} completed
+            <span style={{
+              fontSize: 'var(--text-xs)', fontFamily: 'var(--font-family)',
+              fontWeight: 'var(--font-weight-medium)',
+              color: criticalCount > 0 ? '#ef4444' : 'var(--muted-foreground)'
+            }}>
+              {checkpoints.length} checkpoint{checkpoints.length !== 1 ? 's' : ''}{criticalCount > 0 ? ` (${criticalCount} critical)` : ''}
             </span>
             <button
               onClick={onClose}
               className="flex items-center rounded-lg transition-all"
               style={{
-                gap: 'var(--spacing-xs)',
-                padding: 'var(--spacing-sm) var(--spacing-lg)',
-                backgroundColor: 'var(--primary)',
-                color: 'var(--primary-foreground)',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 'var(--text-sm)',
-                fontFamily: 'var(--font-family)',
-                fontWeight: 'var(--font-weight-bold)'
+                gap: 'var(--spacing-xs)', padding: 'var(--spacing-sm) var(--spacing-lg)',
+                backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)',
+                border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm)',
+                fontFamily: 'var(--font-family)', fontWeight: 'var(--font-weight-bold)'
               }}
               onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
               onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}

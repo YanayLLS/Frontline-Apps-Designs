@@ -1031,59 +1031,59 @@ function TableOfContentsContent({
       initial={{ x: '-100%' }}
       animate={{ x: 0 }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed z-[5] flex flex-col
-        sm:left-[340px] sm:top-0 sm:bottom-0 sm:w-[320px]
-        max-sm:inset-0 max-sm:z-50 max-sm:w-full max-sm:h-full"
+      className="fixed z-50 flex flex-col
+        sm:left-4 sm:top-4 sm:bottom-4 sm:w-full sm:max-w-[320px]
+        max-sm:inset-0 max-sm:w-full max-sm:h-full"
       style={{
-        background: '#FFFFFF',
-        borderRight: '1px solid #E8ECF1',
-        boxShadow: '4px 0 20px rgba(0,0,0,0.08)'
+        background: 'var(--card)',
+        backdropFilter: 'blur(12px)',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border)',
+        boxShadow: 'var(--shadow-elevation-lg)'
       }}
     >
       {/* Header */}
-      <div
-        className="flex items-center justify-between"
-        style={{
-          padding: '12px 14px',
-          borderBottom: '1px solid #E8ECF1'
+      <div 
+        className="flex items-center justify-between border-b"
+        style={{ 
+          padding: 'var(--spacing-md, 12px)',
+          borderColor: 'var(--border)'
         }}
       >
-        <h4 style={{
-          color: '#36415D',
-          fontSize: '13px',
+        <h4 style={{ 
+          color: 'var(--foreground)',
+          fontFamily: 'var(--font-family)',
+          fontSize: '14px',
           fontWeight: 600,
-          lineHeight: '1.2',
-          letterSpacing: '0.01em'
+          lineHeight: '1.2'
         }}>
           {procedureTitle || 'Untitled Procedure'}
         </h4>
-        <button
-          onClick={() => onClose?.()}
-          className="flex items-center justify-center transition-all"
-          style={{
-            background: 'transparent',
-            color: '#868D9E',
-            border: 'none',
-            cursor: 'pointer',
-            width: '28px',
-            height: '28px',
-            borderRadius: '6px'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#F0F1F4';
-            e.currentTarget.style.color = '#36415D';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = '#868D9E';
-          }}
-          aria-label="Close table of contents"
-          title="Close"
-        >
-          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onClose?.()}
+            className="p-2 rounded-button transition-all"
+            style={{
+              background: 'transparent',
+              color: 'var(--muted-foreground)',
+              borderRadius: 'var(--radius-md)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--secondary)';
+              e.currentTarget.style.color = 'var(--foreground)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--muted-foreground)';
+            }}
+            aria-label="Close table of contents"
+            title="Close"
+          >
+            <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Steps List - with gradient fade at bottom */}
