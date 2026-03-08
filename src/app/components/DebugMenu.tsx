@@ -195,22 +195,37 @@ export function DebugMenu() {
   }, []);
 
   // Auto-start demo from URL ?demo=featureId
+  const autoStartedRef = useRef<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const demoId = params.get('demo');
-    if (demoId) {
+    if (demoId && demoId !== autoStartedRef.current) {
       // Find the feature across all groups
       for (const group of featureGroups) {
         const feat = group.features.find(f => f.id === demoId);
         if (feat) {
-          // Small delay to let iframe load
-          setTimeout(() => startDemo(feat), 1000);
+          const alreadyOnPage = currentPathname === feat.route || currentPathname.startsWith(feat.route + '/');
+          if (alreadyOnPage) {
+            autoStartedRef.current = demoId;
+            // Delay to let iframe load
+            setTimeout(() => {
+              const iframe = document.querySelector('iframe') as HTMLIFrameElement | null;
+              if (iframe?.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'debugStartDemo', featureId: feat.id }, '*');
+              }
+            }, 1000);
+          } else {
+            // Navigate to the correct page, keeping ?demo= in the URL
+            pendingDemoRef.current = feat.id;
+            autoStartedRef.current = demoId;
+            navigate(`${feat.route}?demo=${feat.id}`);
+          }
           break;
         }
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.search, currentPathname]);
 
   const currentPath = location.pathname + location.search;
   const currentPathname = location.pathname;
@@ -243,7 +258,7 @@ export function DebugMenu() {
     } else {
       // Navigate first, then the postMessage listener will fire the demo when the iframe reports ready
       pendingDemoRef.current = feat.id;
-      navigate(feat.route);
+      navigate(`${feat.route}?demo=${feat.id}`);
     }
     setIsOpen(false);
   }, [currentPathname, navigate]);
