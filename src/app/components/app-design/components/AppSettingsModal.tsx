@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Settings, Box, Palette, Volume2, Captions, Users, Globe, ChevronDown, MessageSquare, Plus, Minus, Check } from 'lucide-react';
 
 type SettingsTab = 'general' | '3d-environment' | 'appearance' | 'audio-video' | 'captions' | 'account';
@@ -38,8 +38,20 @@ export function AppSettingsModal({ onClose }: AppSettingsModalProps) {
   const [panSensitivity, setPanSensitivity] = useState(60);
   const [uiScale, setUiScale] = useState(100);
   const [darkMode, setDarkMode] = useState(false);
-  const [microphone, setMicrophone] = useState('Microphone (Realtek(R) A...');
-  const [camera, setCamera] = useState('Meta Quest 3');
+  const [microphone, setMicrophone] = useState('Default');
+  const [camera, setCamera] = useState('Default');
+  const [realMics, setRealMics] = useState<string[]>(['Default']);
+  const [realCameras, setRealCameras] = useState<string[]>(['Default']);
+
+  useEffect(() => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    navigator.mediaDevices.enumerateDevices().then(devices => {
+      const mics = devices.filter(d => d.kind === 'audioinput').map(d => d.label || `Microphone ${d.deviceId.slice(0, 4)}`);
+      const cams = devices.filter(d => d.kind === 'videoinput').map(d => d.label || `Camera ${d.deviceId.slice(0, 4)}`);
+      if (mics.length) { setRealMics(mics); setMicrophone(mics[0]); }
+      if (cams.length) { setRealCameras(cams); setCamera(cams[0]); }
+    }).catch(() => {});
+  }, []);
   const [videoBg, setVideoBg] = useState<'none' | 'ambient' | string>('none');
   const [captionLang, setCaptionLang] = useState('English Us');
   const [wsSearch, setWsSearch] = useState('');
@@ -224,11 +236,11 @@ export function AppSettingsModal({ onClose }: AppSettingsModalProps) {
                 <div>
                   <div className="flex items-center gap-4 mb-4">
                     <span style={{ fontSize: '13px', color: '#36415D', width: '90px', flexShrink: 0 }}>Microphone</span>
-                    <SelectField value={microphone} onChange={setMicrophone} options={['Microphone (Realtek(R) A...', 'Default', 'USB Microphone']} />
+                    <SelectField value={microphone} onChange={setMicrophone} options={realMics} />
                   </div>
                   <div className="flex items-center gap-4 mb-6">
                     <span style={{ fontSize: '13px', color: '#36415D', width: '90px', flexShrink: 0 }}>Camera</span>
-                    <SelectField value={camera} onChange={setCamera} options={['Meta Quest 3', 'Default Camera', 'USB Camera']} />
+                    <SelectField value={camera} onChange={setCamera} options={realCameras} />
                   </div>
 
                   <SectionTitle>Video background</SectionTitle>

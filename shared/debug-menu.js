@@ -42,10 +42,12 @@
             validate:function(){ var p=document.getElementById('hmSettingsPanel'); return p && p.style.display!=='none'; }},
           { target:'#hmShowLines', text:'Enable "Show lines" to display vertical connection lines beneath each hotspot marker in the 3D view.', pos:'left', wait:'validate',
             validate:function(){ var cb=document.getElementById('hmShowLines'); return cb && cb.checked; }},
-          { target:'.hs-marker', text:'Connection lines are now visible on the 3D markers, making hotspot positions easier to identify on the model.', pos:'top', wait:'observe' },
+          { target:'.hs-marker.show-line:not(.hs-hidden)', text:'Connection lines are now visible on the 3D markers, making hotspot positions easier to identify on the model.', pos:'top', wait:'observe', trackTip:true,
+            setup:function(){ var sp=document.getElementById('hmSettingsPanel'); if(sp) sp.style.display='none'; var sb=document.getElementById('hmSettingsBtn'); if(sb) sb.classList.remove('active'); var m=document.getElementById('hsManager'); if(m&&!m.classList.contains('hidden')){ var cf=typeof closeHotspotManager==='function'; if(cf) closeHotspotManager(); else m.classList.add('hidden'); } }},
           { target:'#btSave', text:'Save your work before previewing. Click Save now.', pos:'top', wait:'click' },
           { target:'#btPreview', text:'Click Preview to see your hotspots as end users will experience them.', pos:'top', wait:'click' },
-          { target:'.hs-marker', text:'You\'re in Viewer mode. Click any hotspot marker to see its content.', pos:'top', wait:'validate', viewerMode:true,
+          { target:'.hs-marker:not(.hs-hidden)', text:'You\'re in Viewer mode. Click any hotspot marker to see its content.', pos:'top', wait:'validate', viewerMode:true, trackTip:true,
+            setup:function(){ var m=document.getElementById('hsManager'); if(m&&!m.classList.contains('hidden')){ var cf=typeof closeHotspotManager==='function'; if(cf) closeHotspotManager(); else m.classList.add('hidden'); } },
             validate:function(){ var p=document.getElementById('hsViewerPopup'); return p && !p.classList.contains('hidden'); }},
           { target:'#hsViewerPopup', text:'This is the Hotspot Viewer popup — exactly what users see. Title, description, media, and actions. Full hotspot workflow complete!', pos:'left', wait:'observe', viewerMode:true },
         ]},
@@ -721,7 +723,7 @@
           if (!demo) return;
           var el = null;
           for (var j = 0; j < hlSels.length; j++) { el = document.querySelector(hlSels[j].trim()); if (el) break; }
-          if (el) highlightEl(el);
+          if (el) { highlightEl(el); if (step.trackTip) positionTip(el, step.pos || 'top'); }
           hlRaf = requestAnimationFrame(trackHighlight);
         };
         hlRaf = requestAnimationFrame(trackHighlight);
@@ -816,22 +818,35 @@
       pos = Object.keys(space).reduce(function(best, side) { return space[side] - needed[side] > space[best] - needed[best] ? side : best; });
     }
 
+    var tipLeft, tipTop, arrowOffset;
     if (pos === 'top') {
-      tip.style.left = Math.max(pad, Math.min(r.left+r.width/2-tw/2, vw-tw-pad))+'px';
-      tip.style.top = Math.max(pad, r.top-gap-th)+'px';
-      arrow.style.cssText = 'bottom:-6px;left:50%;margin-left:-6px';
+      tipLeft = Math.max(pad, Math.min(r.left+r.width/2-tw/2, vw-tw-pad));
+      tipTop = Math.max(pad, r.top-gap-th);
+      tip.style.left = tipLeft+'px';
+      tip.style.top = tipTop+'px';
+      arrowOffset = Math.max(12, Math.min(r.left+r.width/2-tipLeft, tw-12));
+      arrow.style.cssText = 'bottom:-6px;left:'+arrowOffset+'px;margin-left:-6px';
     } else if (pos === 'bottom') {
-      tip.style.left = Math.max(pad, Math.min(r.left+r.width/2-tw/2, vw-tw-pad))+'px';
-      tip.style.top = Math.min(vh-th-pad, r.bottom+gap)+'px';
-      arrow.style.cssText = 'top:-6px;left:50%;margin-left:-6px';
+      tipLeft = Math.max(pad, Math.min(r.left+r.width/2-tw/2, vw-tw-pad));
+      tipTop = Math.min(vh-th-pad, r.bottom+gap);
+      tip.style.left = tipLeft+'px';
+      tip.style.top = tipTop+'px';
+      arrowOffset = Math.max(12, Math.min(r.left+r.width/2-tipLeft, tw-12));
+      arrow.style.cssText = 'top:-6px;left:'+arrowOffset+'px;margin-left:-6px';
     } else if (pos === 'left') {
-      tip.style.left = Math.max(pad, r.left-tw-gap)+'px';
-      tip.style.top = Math.max(pad, Math.min(r.top+r.height/2-th/2, vh-th-pad))+'px';
-      arrow.style.cssText = 'right:-6px;top:24px';
+      tipLeft = Math.max(pad, r.left-tw-gap);
+      tipTop = Math.max(pad, Math.min(r.top+r.height/2-th/2, vh-th-pad));
+      tip.style.left = tipLeft+'px';
+      tip.style.top = tipTop+'px';
+      arrowOffset = Math.max(12, Math.min(r.top+r.height/2-tipTop-6, th-12));
+      arrow.style.cssText = 'right:-6px;top:'+arrowOffset+'px';
     } else if (pos === 'right') {
-      tip.style.left = Math.min(vw-tw-pad, r.right+gap)+'px';
-      tip.style.top = Math.max(pad, Math.min(r.top+r.height/2-th/2, vh-th-pad))+'px';
-      arrow.style.cssText = 'left:-6px;top:24px';
+      tipLeft = Math.min(vw-tw-pad, r.right+gap);
+      tipTop = Math.max(pad, Math.min(r.top+r.height/2-th/2, vh-th-pad));
+      tip.style.left = tipLeft+'px';
+      tip.style.top = tipTop+'px';
+      arrowOffset = Math.max(12, Math.min(r.top+r.height/2-tipTop-6, th-12));
+      arrow.style.cssText = 'left:-6px;top:'+arrowOffset+'px';
     }
     tip.appendChild(arrow);
   }

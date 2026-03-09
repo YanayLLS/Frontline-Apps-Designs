@@ -163,10 +163,10 @@ export function AppLayout() {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden" style={{ fontFamily: 'var(--font-family)' }}>
       {/* ===== TOP HEADER BAR ===== */}
-      <header className="shrink-0 flex items-center px-4 lg:pl-0 lg:pr-10 gap-3" style={{ backgroundColor: '#36415D', height: '55px' }}>
+      <header className="shrink-0 flex items-center px-4 lg:pl-0 lg:pr-0 gap-3" style={{ backgroundColor: '#FFFFFF', height: '55px', borderBottom: '1px solid #C2C9DB' }}>
         {/* Mobile menu toggle */}
         <button
-          className="lg:hidden text-white p-1.5 hover:bg-white/10 rounded-lg"
+          className="lg:hidden p-1.5 hover:bg-black/5 rounded-lg" style={{ color: '#36415D' }}
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
           {isMobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
@@ -178,27 +178,27 @@ export function AppLayout() {
           style={{ width: '70px' }}
           onClick={() => navigate('/app/knowledgebase')}
         >
-          <div className="size-8 rounded-lg bg-white/20 flex items-center justify-center">
+          <div className="size-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#36415D' }}>
             <span className="text-white" style={{ fontWeight: 'var(--font-weight-bold)', fontSize: '16px' }}>F</span>
           </div>
         </div>
-        <span className="text-white hidden lg:block uppercase tracking-wider cursor-pointer" style={{ fontWeight: 'var(--font-weight-bold)', fontSize: '24px', letterSpacing: '0.5px' }} onClick={() => navigate('/app/knowledgebase')}>
-          ROTAX
+        <span className="hidden lg:block cursor-pointer" style={{ fontWeight: 'var(--font-weight-bold)', fontSize: '20px', color: '#36415D', fontFamily: 'var(--font-family)' }} onClick={() => navigate('/app/knowledgebase')}>
+          frontline.io
         </span>
         {/* Mobile logo */}
         <div className="flex lg:hidden items-center gap-2 shrink-0 cursor-pointer" onClick={() => navigate('/app/knowledgebase')}>
-          <div className="size-8 rounded-lg bg-white/20 flex items-center justify-center">
+          <div className="size-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#36415D' }}>
             <span className="text-white" style={{ fontWeight: 'var(--font-weight-bold)', fontSize: '16px' }}>F</span>
           </div>
-          <span className="text-white hidden sm:block uppercase tracking-wider" style={{ fontWeight: 'var(--font-weight-bold)', fontSize: '24px', letterSpacing: '0.5px' }}>
-            ROTAX
+          <span className="hidden sm:block" style={{ fontWeight: 'var(--font-weight-bold)', fontSize: '20px', color: '#36415D', fontFamily: 'var(--font-family)' }}>
+            Frontline
           </span>
         </div>
 
         {/* Search bar - centered */}
         <div className="flex-1 flex justify-center px-4">
           <div className="relative" style={{ maxWidth: '360px', width: '100%' }}>
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5" style={{ color: 'rgba(255,255,255,0.5)' }} />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5" style={{ color: '#7F7F7F' }} />
             <input
               type="text"
               placeholder="Search..."
@@ -206,8 +206,8 @@ export function AppLayout() {
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setShowSearchModal(true)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setShowSearchModal(true); } }}
-              className="w-full pl-8 pr-3 text-xs border-none outline-none text-white placeholder:text-white/50"
-              style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: '8px', height: '30px' }}
+              className="w-full pl-8 pr-3 text-xs border-none outline-none placeholder:text-[#7F7F7F]"
+              style={{ backgroundColor: '#F5F5F5', borderRadius: '8px', height: '30px', color: '#36415D' }}
             />
           </div>
         </div>
@@ -216,15 +216,15 @@ export function AppLayout() {
         <div className="flex items-center gap-3 shrink-0">
           {/* Update button */}
           <button
-            className="hidden sm:flex items-center px-4 text-white text-sm hover:bg-white/10 transition-colors"
-            style={{ border: '1px solid white', borderRadius: '25px', height: '32px', fontWeight: 'var(--font-weight-semibold)' }}
+            className="hidden sm:flex items-center px-4 text-sm hover:bg-black/5 transition-colors"
+            style={{ border: '1px solid #C2C9DB', borderRadius: '25px', height: '32px', fontWeight: 'var(--font-weight-semibold)', color: '#36415D' }}
           >
             Update
           </button>
 
           {/* Notifications */}
           <button
-            className="relative p-1.5 text-white hover:bg-white/10 rounded-lg"
+            className="relative p-1.5 hover:bg-black/5 rounded-lg" style={{ color: '#36415D' }}
             onClick={(e) => {
               e.stopPropagation();
               setShowNotifPanel(!showNotifPanel);
@@ -241,7 +241,7 @@ export function AppLayout() {
 
           {/* Settings / More menu */}
           <button
-            className="p-1.5 text-white hover:bg-white/10 rounded-lg hidden sm:flex"
+            className="p-1.5 hover:bg-black/5 rounded-lg hidden sm:flex" style={{ color: '#36415D' }}
             onClick={(e) => { e.stopPropagation(); setShowSettings(true); }}
           >
             <Settings className="size-5" />
@@ -277,6 +277,38 @@ export function AppLayout() {
               </div>
             )}
           </div>
+
+          {/* Windows window controls (desktop only) */}
+          <div className="hidden lg:flex items-center ml-2" style={{ gap: '2px' }}>
+            <div style={{ width: '1px', height: '20px', backgroundColor: '#C2C9DB', marginRight: '6px' }} />
+            {/* Minimize */}
+            <button
+              className="flex items-center justify-center hover:bg-black/5 transition-colors"
+              style={{ width: '36px', height: '36px' }}
+            >
+              <svg width="10" height="1" viewBox="0 0 10 1" fill="none">
+                <rect width="10" height="1" fill="#36415D" />
+              </svg>
+            </button>
+            {/* Maximize */}
+            <button
+              className="flex items-center justify-center hover:bg-black/5 transition-colors"
+              style={{ width: '36px', height: '36px' }}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <rect x="0.5" y="0.5" width="9" height="9" stroke="#36415D" strokeWidth="1" fill="none" />
+              </svg>
+            </button>
+            {/* Close */}
+            <button
+              className="flex items-center justify-center hover:bg-[#E81123] hover:text-white transition-colors group"
+              style={{ width: '36px', height: '36px' }}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M1 1L9 9M9 1L1 9" stroke="#36415D" strokeWidth="1.2" className="group-hover:stroke-white" />
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -294,7 +326,7 @@ export function AppLayout() {
               ? 'fixed top-[55px] left-0 bottom-0 w-56 lg:w-[70px] lg:relative lg:top-0 lg:items-center'
               : 'hidden lg:flex lg:items-center w-[70px]'
             }`}
-          style={{ borderRight: '1px solid #C2C9DB', paddingTop: isMobileMenuOpen ? '16px' : '0px', paddingBottom: isMobileMenuOpen ? '16px' : '40px' }}
+          style={{ borderRight: '1px solid #C2C9DB', paddingTop: isMobileMenuOpen ? '16px' : '0px', paddingBottom: isMobileMenuOpen ? '16px' : '16px' }}
         >
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -367,9 +399,9 @@ export function AppLayout() {
               style={{
                 width: '30px',
                 height: '30px',
-                backgroundColor: '#7F7F7F',
-                opacity: 0.8,
-                color: 'white',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #C2C9DB',
+                color: '#36415D',
                 fontSize: '14px',
                 fontWeight: 'var(--font-weight-bold)',
               }}

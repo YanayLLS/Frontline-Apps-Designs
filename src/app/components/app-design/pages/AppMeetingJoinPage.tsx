@@ -1,5 +1,10 @@
-import { Loader2, X } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { Loader2, X, Mic, Video, ChevronDown } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+
+interface MediaDeviceOption {
+  deviceId: string;
+  label: string;
+}
 
 interface AppMeetingJoinModalProps {
   isOpen: boolean;
@@ -10,6 +15,46 @@ export function AppMeetingJoinModal({ isOpen, onClose }: AppMeetingJoinModalProp
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [status, setStatus] = useState<'default' | 'loading' | 'error'>('default');
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceOption[]>([]);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceOption[]>([]);
+  const [selectedAudio, setSelectedAudio] = useState('');
+  const [selectedVideo, setSelectedVideo] = useState('');
+
+  // Enumerate devices when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    async function enumerate() {
+      try {
+        // Request permission to get labeled devices
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true }).catch(() => null);
+        const devices = await navigator.mediaDevices.enumerateDevices();
+
+        const audio: MediaDeviceOption[] = devices
+          .filter(d => d.kind === 'audioinput')
+          .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Microphone ${i + 1}` }));
+        const video: MediaDeviceOption[] = devices
+          .filter(d => d.kind === 'videoinput')
+          .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Camera ${i + 1}` }));
+
+        setAudioDevices(audio);
+        setVideoDevices(video);
+        if (audio.length && !selectedAudio) setSelectedAudio(audio[0].deviceId);
+        if (video.length && !selectedVideo) setSelectedVideo(video[0].deviceId);
+
+        // Release the stream
+        stream?.getTracks().forEach(t => t.stop());
+      } catch {
+        // Permission denied or no devices — show fallback defaults
+        setAudioDevices([{ deviceId: 'default', label: 'Default Microphone' }]);
+        setVideoDevices([{ deviceId: 'default', label: 'Default Camera' }]);
+        if (!selectedAudio) setSelectedAudio('default');
+        if (!selectedVideo) setSelectedVideo('default');
+      }
+    }
+    enumerate();
+  }, [isOpen]);
 
   const handleDigitChange = (index: number, value: string) => {
     if (!/^\d?$/.test(value)) return;
@@ -115,6 +160,49 @@ export function AppMeetingJoinModal({ isOpen, onClose }: AppMeetingJoinModalProp
                   Invalid meeting password
                 </p>
               )}
+
+              {/* Device Selection */}
+              <div className="space-y-3 mb-5">
+                {/* Microphone */}
+                <div className="relative">
+                  <label className="flex items-center gap-2 text-xs text-muted mb-1.5" style={{ fontWeight: 'var(--font-weight-medium)' }}>
+                    <Mic className="size-3.5" />
+                    Microphone
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedAudio}
+                      onChange={(e) => setSelectedAudio(e.target.value)}
+                      className="w-full appearance-none bg-card border border-border rounded-[var(--radius)] px-3 py-2 pr-8 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer"
+                    >
+                      {audioDevices.map((d) => (
+                        <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Camera */}
+                <div className="relative">
+                  <label className="flex items-center gap-2 text-xs text-muted mb-1.5" style={{ fontWeight: 'var(--font-weight-medium)' }}>
+                    <Video className="size-3.5" />
+                    Camera
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedVideo}
+                      onChange={(e) => setSelectedVideo(e.target.value)}
+                      className="w-full appearance-none bg-card border border-border rounded-[var(--radius)] px-3 py-2 pr-8 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer"
+                    >
+                      {videoDevices.map((d) => (
+                        <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted pointer-events-none" />
+                  </div>
+                </div>
+              </div>
 
               {/* Join button */}
               <button

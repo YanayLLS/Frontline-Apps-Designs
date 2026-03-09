@@ -36,7 +36,7 @@ interface FeatureGroup {
 const appPages: PageLink[] = [
   { label: 'Projects', path: '/app/knowledgebase' },
   {
-    label: 'Project Knowledge Base',
+    label: 'Knowledge Base',
     path: '/app/project/915-i-series/kb',
     children: [
       { label: 'Folder: Procedures', path: '/app/project/915-i-series/folder/f1' },
@@ -44,17 +44,13 @@ const appPages: PageLink[] = [
       { label: 'Folder: Training', path: '/app/project/915-i-series/folder/f3' },
     ],
   },
-  {
-    label: 'Project Knowledge Base 2',
-    path: '/app/project/manufacturing-alpha/kb',
-  },
-  { label: 'Remote Support', path: '/app/remote-support' },
+{ label: 'Remote Support', path: '/app/remote-support' },
   { label: 'AI Chat', path: '/app/ai-chat' },
   { label: 'Procedure Editor', path: '/app/procedure-editor/p1' },
+  { label: '3D Procedure (View)', path: '/app/procedure-editor/generator-maintenance?mode=view' },
   { label: 'Digital Twin Viewer', path: '/app/3d-viewer' },
   { label: 'Digital Twin Editor', path: '/app/3d-viewer?mode=editor' },
   { label: 'Immersive Room', path: '/app/immersive' },
-  { label: 'Notifications', path: '/app/notifications' },
 ];
 
 const webPages: PageLink[] = [
@@ -429,12 +425,17 @@ export function DebugMenu() {
         style={{
           bottom: '16px',
           right: '16px',
-          width: '36px',
-          height: '36px',
+          width: '38px',
+          height: '38px',
           borderRadius: '50%',
-          backgroundColor: isOpen ? '#FF1F1F' : '#36415D',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-          border: '2px solid rgba(255,255,255,0.2)',
+          background: isOpen
+            ? '#FF1F1F'
+            : 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+          boxShadow: isOpen
+            ? '0 2px 8px rgba(255,31,31,0.4)'
+            : '0 2px 12px rgba(118,75,162,0.5), 0 0 20px rgba(102,126,234,0.3)',
+          border: 'none',
+          animation: isOpen ? 'none' : 'debug-glow 2s ease-in-out infinite alternate',
         }}
         title="Debug Menu (Shift+F)"
       >
@@ -958,6 +959,12 @@ export function DebugMenu() {
           </div>
         </div>
       )}
+      <style>{`
+        @keyframes debug-glow {
+          0% { box-shadow: 0 2px 12px rgba(118,75,162,0.5), 0 0 20px rgba(102,126,234,0.3); }
+          100% { box-shadow: 0 2px 16px rgba(240,147,251,0.6), 0 0 28px rgba(118,75,162,0.4); }
+        }
+      `}</style>
     </>,
     document.body
   );

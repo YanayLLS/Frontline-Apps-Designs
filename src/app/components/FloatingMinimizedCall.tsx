@@ -12,7 +12,7 @@ export function FloatingMinimizedCall() {
   const videoRef = useRef<HTMLDivElement>(null);
   
   // Don't show on remote support page or if not minimized
-  const isOnRemoteSupportPage = location.pathname === '/remote-support';
+  const isOnRemoteSupportPage = location.pathname === '/remote-support' || location.pathname === '/web/remote-support';
   
   // Calculate call duration
   useEffect(() => {

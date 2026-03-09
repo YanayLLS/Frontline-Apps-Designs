@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useIsMobile } from '../ui/use-mobile';
 import svgPaths from '../../../imports/svg-zo2c6wenwl';
 import scheduleSvgPaths from '../../../imports/svg-nmgvwn4834';
@@ -303,67 +303,12 @@ interface CreateMeetingMenuProps {
 
 function CreateMeetingMenu({ isOpen, onClose, onScheduleForLater, onStartNow, buttonRef, meetingTitle, onMeetingTitleChange }: CreateMeetingMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
-
-  useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const updatePosition = () => {
-        if (!buttonRef.current) return;
-        
-        const buttonRect = buttonRef.current.getBoundingClientRect();
-        const menuWidth = Math.min(420, window.innerWidth - 32); // Responsive width
-        const menuHeight = 400; // Approximate height of the menu
-        const padding = 16; // Padding from viewport edges
-        
-        // On mobile, center the menu
-        const isMobile = window.innerWidth < 768;
-        
-        if (isMobile) {
-          setPosition({
-            top: Math.max(padding, (window.innerHeight - menuHeight) / 2),
-            left: (window.innerWidth - menuWidth) / 2,
-          });
-        } else {
-          // Calculate initial position (aligned to right edge of button)
-          let left = buttonRect.right - menuWidth;
-          let top = buttonRect.bottom + 8;
-          
-          // Check if menu goes off right edge
-          if (left < padding) {
-            left = padding;
-          }
-          
-          // Check if menu goes off left edge (align to left of button instead)
-          if (left + menuWidth > window.innerWidth - padding) {
-            left = Math.max(padding, window.innerWidth - menuWidth - padding);
-          }
-          
-          // Check if menu goes off bottom edge
-          if (top + menuHeight > window.innerHeight - padding) {
-            // Position above the button instead
-            top = buttonRect.top - menuHeight - 8;
-            
-            // If still off screen, position at top
-            if (top < padding) {
-              top = padding;
-            }
-          }
-          
-          setPosition({ top, left });
-        }
-      };
-
-      // Small delay to ensure button is rendered and positioned
-      const timer = setTimeout(updatePosition, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, buttonRef]);
 
   useEffect(() => {
     if (!isOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node) && 
+      if (menuRef.current && !menuRef.current.contains(event.target as Node) &&
           buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
         onClose();
       }
@@ -376,12 +321,11 @@ function CreateMeetingMenu({ isOpen, onClose, onScheduleForLater, onStartNow, bu
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       ref={menuRef}
-      className="fixed z-50 bg-card rounded-[var(--radius)] border border-border overflow-hidden flex flex-col"
-      style={{ 
-        top: `${position.top}px`, 
-        left: `${position.left}px`,
+      className="absolute right-0 z-50 bg-card rounded-[var(--radius)] border border-border overflow-hidden flex flex-col"
+      style={{
+        top: 'calc(100% + 8px)',
         boxShadow: 'var(--elevation-lg)',
         width: '420px',
         maxWidth: 'calc(100vw - 32px)',
@@ -833,7 +777,14 @@ export function RemoteSupportPage({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [spotlightedParticipantId, setSpotlightedParticipantId] = useState<string | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const localVideoRefCb = useCallback((video: HTMLVideoElement | null) => {
+    if (video && localStream) video.srcObject = localStream;
+  }, [localStream]);
+  const screenVideoRefCb = useCallback((video: HTMLVideoElement | null) => {
+    if (video && screenStream) video.srcObject = screenStream;
+  }, [screenStream]);
   const recognitionRef = useRef<any>(null);
+  const captionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dragPosition, setDragPosition] = useState({ x: window.innerWidth - 280, y: window.innerHeight - 200 });
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<HTMLDivElement>(null);
@@ -869,6 +820,8 @@ export function RemoteSupportPage({
     text?: string;
   }>>([]);
   const [currentPath, setCurrentPath] = useState<Array<{ x: number; y: number }>>([]);
+  const currentPathRef = useRef<Array<{ x: number; y: number }>>([]);
+  const drawRafRef = useRef(0);
   const [frozenFrame, setFrozenFrame] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingContainerRef = useRef<HTMLDivElement>(null);
@@ -932,6 +885,8 @@ export function RemoteSupportPage({
   useEffect(() => {
     if (!inCall) return;
 
+    let clearTimer: ReturnType<typeof setTimeout> | null = null;
+
     const interval = setInterval(() => {
       const connectedParticipants = callParticipants.filter(p => p.status === 'connected' && p.audioEnabled);
       if (connectedParticipants.length === 0) return;
@@ -939,21 +894,26 @@ export function RemoteSupportPage({
       // Randomly select 0-2 participants to "speak"
       const numSpeaking = Math.floor(Math.random() * Math.min(3, connectedParticipants.length + 1));
       const speaking = new Set<string>();
-      
+
       for (let i = 0; i < numSpeaking; i++) {
         const randomIndex = Math.floor(Math.random() * connectedParticipants.length);
         speaking.add(connectedParticipants[randomIndex].id);
       }
-      
+
       setSpeakingParticipants(speaking);
 
       // Clear speaking after 1-3 seconds
-      setTimeout(() => {
+      if (clearTimer) clearTimeout(clearTimer);
+      clearTimer = setTimeout(() => {
         setSpeakingParticipants(new Set());
+        clearTimer = null;
       }, 1000 + Math.random() * 2000);
-    }, 2000 + Math.random() * 3000);
+    }, 3000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (clearTimer) clearTimeout(clearTimer);
+    };
   }, [inCall, callParticipants]);
 
   // Call duration timer
@@ -1019,29 +979,33 @@ export function RemoteSupportPage({
     }
   }, [showMoreMenu]);
 
-  // Chat panel resize handler
+  // Chat panel resize handler — throttled via rAF
   useEffect(() => {
+    if (!isResizingChat) return;
+    let rafId = 0;
+
     const handleMouseMove = (e: MouseEvent) => {
-      if (isResizingChat) {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
         const newWidth = window.innerWidth - e.clientX;
         if (newWidth >= 300 && newWidth <= 600) {
           setChatPanelWidth(newWidth);
         }
-      }
+      });
     };
 
     const handleMouseUp = () => {
+      cancelAnimationFrame(rafId);
       setIsResizingChat(false);
     };
 
-    if (isResizingChat) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      cancelAnimationFrame(rafId);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
   }, [isResizingChat]);
 
   // Close video device menu when clicking outside
@@ -1102,7 +1066,7 @@ export function RemoteSupportPage({
       setCallStartTime(activeCall.startTime);
       setIsMuted(!activeCall.isAudioEnabled);
       setIsVideoOff(!activeCall.isVideoEnabled);
-      
+
       // Restore meeting info
       setCurrentMeeting({
         id: activeCall.callId,
@@ -1113,14 +1077,14 @@ export function RemoteSupportPage({
         hostId: '1'
       });
     }
-  }, []);
+  }, [activeCall]);
 
   // Update active call participant count when participants change
   useEffect(() => {
     if (activeCall && inCall) {
       updateCallState({ participantCount: callParticipants.length });
     }
-  }, [callParticipants.length, inCall]);
+  }, [callParticipants.length, inCall, activeCall, updateCallState]);
 
   const enumerateDevices = async () => {
     try {
@@ -1259,7 +1223,7 @@ export function RemoteSupportPage({
     toast.success('Speaker changed');
   };
 
-  // Audio level monitoring
+  // Audio level monitoring — poll at 10fps instead of every rAF frame
   useEffect(() => {
     if (!localStream || isMuted) {
       setAudioLevel(0);
@@ -1274,16 +1238,14 @@ export function RemoteSupportPage({
     microphone.connect(analyser);
     analyser.fftSize = 256;
 
-    const detectAudio = () => {
+    const interval = setInterval(() => {
       analyser.getByteFrequencyData(dataArray);
       const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
       setAudioLevel(Math.min(100, (average / 128) * 100));
-      requestAnimationFrame(detectAudio);
-    };
-
-    detectAudio();
+    }, 100);
 
     return () => {
+      clearInterval(interval);
       microphone.disconnect();
       audioContext.close();
     };
@@ -1543,24 +1505,7 @@ export function RemoteSupportPage({
         recognition.lang = captionLanguage;
         recognition.maxAlternatives = 1;
 
-        recognition.onstart = () => {
-          console.log('Speech recognition started');
-        };
-
-        recognition.onaudiostart = () => {
-          console.log('Audio capturing started');
-        };
-
-        recognition.onsoundstart = () => {
-          console.log('Sound detected');
-        };
-
-        recognition.onspeechstart = () => {
-          console.log('Speech detected');
-        };
-
         recognition.onresult = (event: any) => {
-          console.log('Speech recognition result received', event);
           let interimTranscript = '';
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
@@ -1571,7 +1516,8 @@ export function RemoteSupportPage({
                 return newHistory.slice(-5); // Keep only last 5 captions
               });
               setCurrentCaption(transcript);
-              setTimeout(() => setCurrentCaption(''), 3000);
+              if (captionTimeoutRef.current) clearTimeout(captionTimeoutRef.current);
+              captionTimeoutRef.current = setTimeout(() => setCurrentCaption(''), 3000);
             } else {
               interimTranscript += transcript;
               setCurrentCaption(interimTranscript);
@@ -1580,7 +1526,6 @@ export function RemoteSupportPage({
         };
 
         recognition.onerror = (event: any) => {
-          console.log('Speech recognition error:', event.error);
           if (event.error === 'not-allowed') {
             toast.error('Microphone permission denied. Please allow microphone access for captions.');
             setCaptionsEnabled(false);
@@ -1595,10 +1540,8 @@ export function RemoteSupportPage({
             setCurrentCaption('');
           } else if (event.error === 'no-speech') {
             // This is normal - just means user hasn't spoken yet, keep listening
-            console.log('No speech detected, continuing to listen...');
           } else if (event.error === 'aborted') {
             // Ignore aborted errors - this happens when manually stopped
-            console.log('Speech recognition aborted');
           } else if (event.error === 'audio-capture') {
             toast.error('No microphone detected. Please connect a microphone and try again.');
             setCaptionsEnabled(false);
@@ -1765,24 +1708,31 @@ export function RemoteSupportPage({
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !canvasRef.current || drawingTool !== 'pen') return;
-    
+
     const rect = canvasRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top) / rect.height;
-    
-    setCurrentPath(prev => [...prev, { x, y }]);
+
+    currentPathRef.current.push({ x, y });
+    cancelAnimationFrame(drawRafRef.current);
+    drawRafRef.current = requestAnimationFrame(() => {
+      setCurrentPath([...currentPathRef.current]);
+    });
   };
 
   const handleMouseUp = () => {
     if (!isDrawing || drawingTool !== 'pen') return;
-    
+    cancelAnimationFrame(drawRafRef.current);
+
     setIsDrawing(false);
-    if (currentPath.length > 0) {
+    const path = currentPathRef.current;
+    if (path.length > 0) {
       setDrawingPaths(prev => [...prev, {
         tool: drawingTool,
         color: drawingColor,
-        points: currentPath
+        points: path
       }]);
+      currentPathRef.current = [];
       setCurrentPath([]);
     }
   };
@@ -1994,13 +1944,13 @@ export function RemoteSupportPage({
     toast.success('Starting call...');
   };
 
-  const availablePeople = people.filter(p => 
+  const availablePeople = useMemo(() => people.filter(p =>
     !callParticipants.some(cp => cp.id === p.id) &&
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ), [callParticipants, searchQuery]);
 
-  const connectedParticipants = callParticipants.filter(p => p.status === 'connected');
-  const callingParticipants = callParticipants.filter(p => p.status === 'calling');
+  const connectedParticipants = useMemo(() => callParticipants.filter(p => p.status === 'connected'), [callParticipants]);
+  const callingParticipants = useMemo(() => callParticipants.filter(p => p.status === 'calling'), [callParticipants]);
 
   if (showPreJoin && currentMeeting) {
     return (
@@ -2841,8 +2791,8 @@ export function RemoteSupportPage({
                                   />
                                   
                                   {/* Menu */}
-                                  <div 
-                                    className="absolute right-0 top-full mt-1 w-44 bg-popover border border-border rounded-[var(--radius)] shadow-lg z-50 py-1"
+                                  <div
+                                    className="absolute right-0 top-full mt-1 w-44 bg-card border border-border rounded-[var(--radius)] shadow-lg z-50 py-1"
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     {/* Show different options based on whether I'm the host and if this is me */}
@@ -2853,7 +2803,7 @@ export function RemoteSupportPage({
                                             setOpenMenuParticipantId(null);
                                             toast.success('Profile settings would open here');
                                           }}
-                                          className="w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-secondary/50 transition-colors"
+                                          className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
                                         >
                                           View Profile
                                         </button>
@@ -2862,7 +2812,7 @@ export function RemoteSupportPage({
                                             setOpenMenuParticipantId(null);
                                             toast.success('Settings would open here');
                                           }}
-                                          className="w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-secondary/50 transition-colors"
+                                          className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
                                         >
                                           Audio/Video Settings
                                         </button>
@@ -2875,7 +2825,7 @@ export function RemoteSupportPage({
                                               handleMuteParticipant(participant.id);
                                               setOpenMenuParticipantId(null);
                                             }}
-                                            className="w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-secondary/50 transition-colors"
+                                            className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
                                           >
                                             Mute
                                           </button>
@@ -2885,7 +2835,7 @@ export function RemoteSupportPage({
                                               handleUnmuteParticipant(participant.id);
                                               setOpenMenuParticipantId(null);
                                             }}
-                                            className="w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-secondary/50 transition-colors"
+                                            className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
                                           >
                                             Allow Unmute
                                           </button>
@@ -2896,7 +2846,7 @@ export function RemoteSupportPage({
                                             setOpenMenuParticipantId(null);
                                             toast.success(`Spotlighted ${participant.name}`);
                                           }}
-                                          className="w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-secondary/50 transition-colors"
+                                          className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
                                         >
                                           Spotlight
                                         </button>
@@ -2906,7 +2856,7 @@ export function RemoteSupportPage({
                                             setOpenMenuParticipantId(null);
                                             toast.success(`${participant.name} is now the host`);
                                           }}
-                                          className="w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-secondary/50 transition-colors"
+                                          className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
                                         >
                                           Make Host
                                         </button>
@@ -2929,7 +2879,7 @@ export function RemoteSupportPage({
                                             setOpenMenuParticipantId(null);
                                             toast.success(`Would open profile for ${participant.name}`);
                                           }}
-                                          className="w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-secondary/50 transition-colors"
+                                          className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
                                         >
                                           View Profile
                                         </button>
@@ -2938,7 +2888,7 @@ export function RemoteSupportPage({
                                             setOpenMenuParticipantId(null);
                                             toast.success(`Would send message to ${participant.name}`);
                                           }}
-                                          className="w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-secondary/50 transition-colors"
+                                          className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
                                         >
                                           Send Message
                                         </button>
@@ -3069,11 +3019,7 @@ export function RemoteSupportPage({
                               {spotlightedParticipant.id === 'me' ? (
                                 isScreenSharing && screenStream ? (
                                   <video
-                                    ref={(video) => {
-                                      if (video && screenStream) {
-                                        video.srcObject = screenStream;
-                                      }
-                                    }}
+                                    ref={screenVideoRefCb}
                                     autoPlay
                                     muted
                                     playsInline
@@ -3406,10 +3352,10 @@ export function RemoteSupportPage({
                               if ((e.target as HTMLElement).classList.contains('resize-handle')) {
                                 return;
                               }
-                              
+
                               e.preventDefault();
                               setIsDragging(true);
-                              
+
                               // Calculate offset from mouse position to top-left of element
                               const rect = dragRef.current?.getBoundingClientRect();
                               if (rect) {
@@ -3419,26 +3365,28 @@ export function RemoteSupportPage({
                                 };
                               }
 
+                              let rafId = 0;
                               const handleMouseMove = (e: MouseEvent) => {
                                 e.preventDefault();
-                                
-                                // Get video area bounds
-                                const videoArea = videoAreaRef.current?.getBoundingClientRect();
-                                const floatingRect = dragRef.current?.getBoundingClientRect();
-                                
-                                if (videoArea && floatingRect) {
-                                  let newX = e.clientX - dragOffsetRef.current.x;
-                                  let newY = e.clientY - dragOffsetRef.current.y;
-                                  
-                                  // Constrain to video area bounds
-                                  newX = Math.max(videoArea.left, Math.min(newX, videoArea.right - floatingRect.width));
-                                  newY = Math.max(videoArea.top, Math.min(newY, videoArea.bottom - floatingRect.height));
-                                  
-                                  setDragPosition({ x: newX, y: newY });
-                                }
+                                cancelAnimationFrame(rafId);
+                                rafId = requestAnimationFrame(() => {
+                                  const videoArea = videoAreaRef.current?.getBoundingClientRect();
+                                  const floatingRect = dragRef.current?.getBoundingClientRect();
+
+                                  if (videoArea && floatingRect) {
+                                    let newX = e.clientX - dragOffsetRef.current.x;
+                                    let newY = e.clientY - dragOffsetRef.current.y;
+
+                                    newX = Math.max(videoArea.left, Math.min(newX, videoArea.right - floatingRect.width));
+                                    newY = Math.max(videoArea.top, Math.min(newY, videoArea.bottom - floatingRect.height));
+
+                                    setDragPosition({ x: newX, y: newY });
+                                  }
+                                });
                               };
 
                               const handleMouseUp = () => {
+                                cancelAnimationFrame(rafId);
                                 setIsDragging(false);
                                 document.removeEventListener('mousemove', handleMouseMove);
                                 document.removeEventListener('mouseup', handleMouseUp);
@@ -3457,11 +3405,7 @@ export function RemoteSupportPage({
                               {otherParticipants[0].id === 'me' ? (
                                 localStream ? (
                                   <video
-                                    ref={(video) => {
-                                      if (video && localStream) {
-                                        video.srcObject = localStream;
-                                      }
-                                    }}
+                                    ref={localVideoRefCb}
                                     autoPlay
                                     muted
                                     playsInline
@@ -3531,51 +3475,49 @@ export function RemoteSupportPage({
                                 onMouseDown={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                
+
                                 const startX = e.clientX;
                                 const startY = e.clientY;
                                 const startWidth = floatingVideoSize.width;
                                 const startHeight = floatingVideoSize.height;
                                 const startPosX = dragPosition.x;
                                 const startPosY = dragPosition.y;
-                                
+                                let rafId = 0;
+
                                 const handleResize = (e: MouseEvent) => {
                                   e.preventDefault();
-                                  
-                                  const deltaX = e.clientX - startX;
-                                  const deltaY = e.clientY - startY;
-                                  
-                                  // Calculate new dimensions maintaining 16:9 aspect ratio
-                                  // For top-left resize, moving left/up increases size, right/down decreases size
-                                  const newWidth = Math.max(160, Math.min(480, startWidth - deltaX));
-                                  const newHeight = newWidth * (9 / 16);
-                                  
-                                  // Calculate new position (top-left corner moves as we resize)
-                                  const widthDiff = startWidth - newWidth;
-                                  const heightDiff = startHeight - newHeight;
-                                  const newX = startPosX + widthDiff;
-                                  const newY = startPosY + heightDiff;
-                                  
-                                  // Check if new size and position fit in video area
-                                  const videoArea = videoAreaRef.current?.getBoundingClientRect();
-                                  
-                                  if (videoArea) {
-                                    // Ensure the resized video doesn't exceed bounds
-                                    if (newX >= videoArea.left && 
-                                        newY >= videoArea.top &&
-                                        newX + newWidth <= videoArea.right && 
-                                        newY + newHeight <= videoArea.bottom) {
-                                      setFloatingVideoSize({ width: newWidth, height: newHeight });
-                                      setDragPosition({ x: newX, y: newY });
+                                  cancelAnimationFrame(rafId);
+                                  rafId = requestAnimationFrame(() => {
+                                    const deltaX = e.clientX - startX;
+
+                                    const newWidth = Math.max(160, Math.min(480, startWidth - deltaX));
+                                    const newHeight = newWidth * (9 / 16);
+
+                                    const widthDiff = startWidth - newWidth;
+                                    const heightDiff = startHeight - newHeight;
+                                    const newX = startPosX + widthDiff;
+                                    const newY = startPosY + heightDiff;
+
+                                    const videoArea = videoAreaRef.current?.getBoundingClientRect();
+
+                                    if (videoArea) {
+                                      if (newX >= videoArea.left &&
+                                          newY >= videoArea.top &&
+                                          newX + newWidth <= videoArea.right &&
+                                          newY + newHeight <= videoArea.bottom) {
+                                        setFloatingVideoSize({ width: newWidth, height: newHeight });
+                                        setDragPosition({ x: newX, y: newY });
+                                      }
                                     }
-                                  }
+                                  });
                                 };
-                                
+
                                 const handleResizeEnd = () => {
+                                  cancelAnimationFrame(rafId);
                                   document.removeEventListener('mousemove', handleResize);
                                   document.removeEventListener('mouseup', handleResizeEnd);
                                 };
-                                
+
                                 document.addEventListener('mousemove', handleResize);
                                 document.addEventListener('mouseup', handleResizeEnd);
                               }}
@@ -3635,11 +3577,7 @@ export function RemoteSupportPage({
                                 {participant.id === 'me' ? (
                                   localStream ? (
                                     <video
-                                      ref={(video) => {
-                                        if (video && localStream) {
-                                          video.srcObject = localStream;
-                                        }
-                                      }}
+                                      ref={localVideoRefCb}
                                       autoPlay
                                       muted
                                       playsInline
@@ -3742,17 +3680,15 @@ export function RemoteSupportPage({
                   <div 
                     className="grid gap-2 md:gap-4 w-full"
                     style={{
-                      gridTemplateColumns: window.innerWidth >= 768 ? (
-                        connectedParticipants.length === 1 ? '1fr' : 
+                      gridTemplateColumns: !isMobile ? (
+                        connectedParticipants.length === 1 ? '1fr' :
                         connectedParticipants.length === 2 ? 'repeat(2, 1fr)' :
                         connectedParticipants.length <= 4 ? 'repeat(2, 1fr)' :
                         connectedParticipants.length <= 6 ? 'repeat(3, 1fr)' :
                         'repeat(4, 1fr)'
                       ) : (
-                        connectedParticipants.length === 1 ? '1fr' : 
-                        connectedParticipants.length === 2 ? 'repeat(1, 1fr)' :
-                        connectedParticipants.length <= 4 ? 'repeat(1, 1fr)' :
-                        connectedParticipants.length <= 6 ? 'repeat(2, 1fr)' :
+                        connectedParticipants.length === 1 ? '1fr' :
+                        connectedParticipants.length <= 4 ? '1fr' :
                         'repeat(2, 1fr)'
                       )
                     }}
@@ -3768,11 +3704,7 @@ export function RemoteSupportPage({
                         {participant.id === 'me' ? (
                           isScreenSharing && screenStream ? (
                             <video
-                              ref={(video) => {
-                                if (video && screenStream) {
-                                  video.srcObject = screenStream;
-                                }
-                              }}
+                              ref={screenVideoRefCb}
                               autoPlay
                               muted
                               playsInline
@@ -3789,11 +3721,7 @@ export function RemoteSupportPage({
                             </div>
                           ) : (
                             <video
-                              ref={(video) => {
-                                if (video && localStream) {
-                                  video.srcObject = localStream;
-                                }
-                              }}
+                              ref={localVideoRefCb}
                               autoPlay
                               muted
                               playsInline
@@ -3905,7 +3833,7 @@ export function RemoteSupportPage({
           {showChatPanel && (
             <div 
               className="fixed md:relative inset-0 md:inset-auto w-full md:w-auto bg-card md:border-l border-border flex flex-col shrink-0 z-50 md:z-auto"
-              style={{ width: window.innerWidth >= 768 ? `${chatPanelWidth}px` : '100%' }}
+              style={{ width: !isMobile ? `${chatPanelWidth}px` : '100%' }}
             >
               {/* Resize Handle - Desktop only */}
               <div
@@ -4767,14 +4695,28 @@ export function RemoteSupportPage({
               </button>
 
               {/* Create Button */}
-              <button
-                ref={createButtonRef}
-                onClick={() => setShowCreateMenu(!showCreateMenu)}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-[var(--radius)] hover:opacity-90 transition-opacity"
-                style={{ fontWeight: 'var(--font-weight-bold)' }}
-              >
-                Create meeting
-              </button>
+              <div className="relative">
+                <button
+                  ref={createButtonRef}
+                  onClick={() => setShowCreateMenu(!showCreateMenu)}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-[var(--radius)] hover:opacity-90 transition-opacity"
+                  style={{ fontWeight: 'var(--font-weight-bold)' }}
+                >
+                  Create meeting
+                </button>
+                <CreateMeetingMenu
+                  isOpen={showCreateMenu}
+                  onClose={() => setShowCreateMenu(false)}
+                  onScheduleForLater={() => {
+                    setShowCreateMenu(false);
+                    setShowScheduleModal(true);
+                  }}
+                  onStartNow={handleStartMeetingNow}
+                  buttonRef={createButtonRef}
+                  meetingTitle={meetingTitle}
+                  onMeetingTitleChange={setMeetingTitle}
+                />
+              </div>
             </div>
           </div>
 
@@ -4834,19 +4776,6 @@ export function RemoteSupportPage({
             </div>
           </div>
         </div>
-
-        <CreateMeetingMenu
-          isOpen={showCreateMenu}
-          onClose={() => setShowCreateMenu(false)}
-          onScheduleForLater={() => {
-            setShowCreateMenu(false);
-            setShowScheduleModal(true);
-          }}
-          onStartNow={handleStartMeetingNow}
-          buttonRef={createButtonRef}
-          meetingTitle={meetingTitle}
-          onMeetingTitleChange={setMeetingTitle}
-        />
 
         <ScheduleMeetingModal
           isOpen={showScheduleModal}
@@ -5204,7 +5133,7 @@ export function RemoteSupportPage({
                 </div>
               </div>
 
-              <div className="mb-6">
+              <div className="mb-4">
                 <label
                   className="block mb-2 text-foreground"
                   style={{
@@ -5226,6 +5155,60 @@ export function RemoteSupportPage({
                     fontFamily: 'var(--font-family)',
                   }}
                 />
+              </div>
+
+              {/* Device Selection */}
+              <div className="mb-6 space-y-3">
+                <div>
+                  <label
+                    className="flex items-center gap-2 mb-1.5 text-muted"
+                    style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-medium)' }}
+                  >
+                    <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    Microphone
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedAudioDevice}
+                      onChange={(e) => handleChangeAudioDevice(e.target.value)}
+                      className="w-full appearance-none bg-background border border-border rounded-[var(--radius)] px-3 py-2 pr-8 text-foreground outline-none focus:border-primary transition-colors cursor-pointer"
+                      style={{ fontSize: 'var(--text-sm)' }}
+                    >
+                      {audioDevices.map((d, i) => (
+                        <option key={d.deviceId} value={d.deviceId}>{d.label || `Microphone ${i + 1}`}</option>
+                      ))}
+                    </select>
+                    <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <label
+                    className="flex items-center gap-2 mb-1.5 text-muted"
+                    style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-medium)' }}
+                  >
+                    <Video className="size-3.5" />
+                    Camera
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedVideoDevice}
+                      onChange={(e) => handleChangeVideoDevice(e.target.value)}
+                      className="w-full appearance-none bg-background border border-border rounded-[var(--radius)] px-3 py-2 pr-8 text-foreground outline-none focus:border-primary transition-colors cursor-pointer"
+                      style={{ fontSize: 'var(--text-sm)' }}
+                    >
+                      {videoDevices.map((d, i) => (
+                        <option key={d.deviceId} value={d.deviceId}>{d.label || `Camera ${i + 1}`}</option>
+                      ))}
+                    </select>
+                    <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-3">
