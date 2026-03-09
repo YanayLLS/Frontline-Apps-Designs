@@ -30,24 +30,33 @@
           { target:'#hsEditTitle', text:'Type a name for your hotspot — this label appears on the 3D marker.', pos:'right', wait:'observe' },
           { target:'#hsAddMedia', text:'Click "Add media" to attach images or videos that users see when interacting with this hotspot.', pos:'right', wait:'observe' },
           { target:'#hsAddAction', text:'Click "Add action" to link behaviors — navigate to another hotspot, highlight parts, or start a procedure.', pos:'right', wait:'observe' },
-          { target:'#hmList', text:'Your hotspot is now in the Manager. Drag to reorder, right-click for options, or search to find hotspots.', pos:'left', wait:'observe' },
+          { target:'#hsManager', text:'Your hotspot is now in the Manager. Drag to reorder, right-click for options, or search to find hotspots.', pos:'left', wait:'observe' },
           { target:'#hmList .hm-item.selected', text:'Hover over your hotspot in the list to reveal the action buttons. Click the <b>+</b> button on the right to add a sub-hotspot underneath it.', pos:'left', wait:'validate',
             setup:function(){ demo._hsCount2 = document.querySelectorAll('.hs-marker').length; var row=document.querySelector('#hmList .hm-item.selected'); if(row){ row.scrollIntoView({block:'nearest'}); var acts=row.querySelector('.hm-item-actions'); if(acts){ acts.style.opacity='1'; demo.cleanup.push(function(){ acts.style.opacity=''; }); } } },
             validate:function(){ return document.querySelectorAll('.hs-marker').length > (demo._hsCount2 || 0); }},
           { target:'#hsEditTitle', text:'The sub-hotspot was created at the same position as its parent. Give it a name — it appears nested under its parent in the Manager.', pos:'right', wait:'observe',
-            setup:function(){ var p=document.getElementById('hsEditPanel'); if(p) p.classList.remove('hidden'); }},
-          { target:'#hmList', text:'The Manager now shows a hierarchy — sub-hotspots are indented under their parent. You can drag items to reparent them.', pos:'left', wait:'observe' },
+            setup:function(){
+              var p=document.getElementById('hsEditPanel'); if(p) p.classList.remove('hidden');
+              // Offset the sub-hotspot so markers don't stack in the 3D view
+              if(typeof state!=='undefined' && state.hotspots && state.hotspots.length>=2){
+                var sub=state.hotspots[state.hotspots.length-1];
+                var parent=state.hotspots.find(function(h){return h.id===sub.parentId;});
+                if(sub.parentId && parent && sub.position3D && parent.position3D){
+                  sub.position3D.x += 30; sub.position3D.z += 20;
+                  if(typeof createHotspotMarkers==='function') createHotspotMarkers();
+                }
+              }
+            }},
+          { target:'#hsManager', text:'The Manager now shows a hierarchy — sub-hotspots are indented under their parent. You can drag items to reparent them.', pos:'left', wait:'observe' },
           { target:'#hmSettingsBtn', text:'Click the Settings button to access hotspot display options.', pos:'left', wait:'validate',
             setup:function(){ var m=document.getElementById('hsManager'); if(m&&m.classList.contains('hidden')){ var btn=document.getElementById('openHsManagerSideBtn'); if(btn) btn.click(); }},
             validate:function(){ var p=document.getElementById('hmSettingsPanel'); return p && p.style.display!=='none'; }},
           { target:'#hmShowLines', text:'Enable "Show lines" to display vertical connection lines beneath each hotspot marker in the 3D view.', pos:'left', wait:'validate',
             validate:function(){ var cb=document.getElementById('hmShowLines'); return cb && cb.checked; }},
-          { target:'.hs-marker.show-line:not(.hs-hidden)', text:'Connection lines are now visible on the 3D markers, making hotspot positions easier to identify on the model.', pos:'top', wait:'observe', trackTip:true,
-            setup:function(){ var sp=document.getElementById('hmSettingsPanel'); if(sp) sp.style.display='none'; var sb=document.getElementById('hmSettingsBtn'); if(sb) sb.classList.remove('active'); var m=document.getElementById('hsManager'); if(m&&!m.classList.contains('hidden')){ var cf=typeof closeHotspotManager==='function'; if(cf) closeHotspotManager(); else m.classList.add('hidden'); } }},
+          { target:'.hs-marker.show-line:not(.hs-hidden)', text:'Connection lines are now visible on the 3D markers, making hotspot positions easier to identify on the model.', pos:'top', wait:'observe', trackTip:true,            setup:function(){ var sp=document.getElementById('hmSettingsPanel'); if(sp) sp.style.display='none'; var sb=document.getElementById('hmSettingsBtn'); if(sb) sb.classList.remove('active'); var m=document.getElementById('hsManager'); if(m&&!m.classList.contains('hidden')){ var cf=typeof closeHotspotManager==='function'; if(cf) closeHotspotManager(); else m.classList.add('hidden'); } }},
           { target:'#btSave', text:'Save your work before previewing. Click Save now.', pos:'top', wait:'click' },
           { target:'#btPreview', text:'Click Preview to see your hotspots as end users will experience them.', pos:'top', wait:'click' },
-          { target:'.hs-marker:not(.hs-hidden)', text:'You\'re in Viewer mode. Click any hotspot marker to see its content.', pos:'top', wait:'validate', viewerMode:true, trackTip:true,
-            setup:function(){ var m=document.getElementById('hsManager'); if(m&&!m.classList.contains('hidden')){ var cf=typeof closeHotspotManager==='function'; if(cf) closeHotspotManager(); else m.classList.add('hidden'); } },
+          { target:'.hs-marker:not(.hs-hidden)', text:'You\'re in Viewer mode. Click any hotspot marker to see its content.', pos:'top', wait:'validate', viewerMode:true, trackTip:true,            setup:function(){ var m=document.getElementById('hsManager'); if(m&&!m.classList.contains('hidden')){ var cf=typeof closeHotspotManager==='function'; if(cf) closeHotspotManager(); else m.classList.add('hidden'); } },
             validate:function(){ var p=document.getElementById('hsViewerPopup'); return p && !p.classList.contains('hidden'); }},
           { target:'#hsViewerPopup', text:'This is the Hotspot Viewer popup — exactly what users see. Title, description, media, and actions. Full hotspot workflow complete!', pos:'left', wait:'observe', viewerMode:true },
         ]},
@@ -723,7 +732,7 @@
           if (!demo) return;
           var el = null;
           for (var j = 0; j < hlSels.length; j++) { el = document.querySelector(hlSels[j].trim()); if (el) break; }
-          if (el) { highlightEl(el); if (step.trackTip) positionTip(el, step.pos || 'top'); }
+          if (el) { highlightEl(el); positionTip(el, step.pos || 'top'); }
           hlRaf = requestAnimationFrame(trackHighlight);
         };
         hlRaf = requestAnimationFrame(trackHighlight);
