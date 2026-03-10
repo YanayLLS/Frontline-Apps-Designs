@@ -335,7 +335,10 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={handleClose}
     >
-      <div 
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="procedure-modal-title"
         className="bg-background rounded-[var(--radius)] shadow-lg w-full max-w-[1400px] h-[90vh] flex flex-col overflow-hidden"
         style={{ boxShadow: 'var(--elevation-lg)' }}
         onClick={(e) => e.stopPropagation()}
@@ -373,9 +376,11 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
             {/* Actions */}
             <div className="flex items-center gap-3">
               <div className="relative" ref={shareMenuRef}>
-                <button 
+                <button
                   onClick={() => setShowShareMenu(!showShareMenu)}
                   className="flex items-center gap-2 h-9 px-4 rounded-[var(--radius)] border border-primary text-primary hover:bg-primary/10 transition-colors"
+                  aria-haspopup="true"
+                  aria-expanded={showShareMenu}
                 >
                   <Share2 size={14} />
                   <span className="text-sm">Share</span>
@@ -407,7 +412,7 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                 )}
               </div>
 
-              <button 
+              <button
                 onClick={() => {
                   if (isFavorited) {
                     removeFavorite(procedure.id);
@@ -426,6 +431,7 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                 }}
                 className="p-1.5 hover:bg-secondary rounded-[var(--radius)] transition-colors"
                 title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
               >
                 <Star 
                   size={20} 
@@ -434,9 +440,10 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                 />
               </button>
 
-              <button 
+              <button
                 onClick={handleClose}
                 className="p-1.5 hover:bg-secondary rounded-[var(--radius)] transition-colors"
+                aria-label="Close modal"
               >
                 <X size={20} className="text-muted" />
               </button>
@@ -481,6 +488,7 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                   }`}
                 >
                   <span
+                    id="procedure-modal-title"
                     className="text-base text-foreground truncate max-w-md"
                     style={{ fontWeight: 'var(--font-weight-bold)' }}
                   >
@@ -599,6 +607,8 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                         onClick={() => canEdit && setShowDigitalTwinDropdown(!showDigitalTwinDropdown)}
                         className={`flex items-center justify-between gap-3 h-10 px-4 bg-card border border-border rounded-[var(--radius)] text-sm text-foreground transition-colors min-w-[240px] ${canEdit ? 'hover:bg-secondary cursor-pointer' : 'cursor-default'}`}
                         disabled={!canEdit}
+                        aria-haspopup="listbox"
+                        aria-expanded={showDigitalTwinDropdown}
                       >
                         <span className="truncate">
                           {selectedDigitalTwins.length === 0
@@ -654,6 +664,7 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                           <button
                             onClick={() => setShow3DViewer(true)}
                             className="relative z-10 w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/50 transition-colors"
+                            aria-label="Play 3D preview"
                           >
                             <Play size={24} className="text-white ml-1" fill="white" />
                           </button>
@@ -761,6 +772,7 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                     <button
                       onClick={() => setConnectedProceduresExpanded(!connectedProceduresExpanded)}
                       className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors"
+                      aria-expanded={connectedProceduresExpanded}
                     >
                       <div className="flex items-center gap-2">
                         <Link2 size={16} className="text-primary" />
@@ -781,7 +793,10 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                             {connectedProcedures.map(proc => (
                               <div
                                 key={proc.id}
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => onOpenProcedure?.(proc)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenProcedure?.(proc); } }}
                                 className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-secondary/50 transition-colors cursor-pointer"
                               >
                                 <FileText size={14} className="text-muted shrink-0" />
@@ -859,12 +874,14 @@ function Simple3DViewer({ digitalTwinName, onClose, procedureId }: Simple3DViewe
         <button
           onClick={() => setIsFullscreen(!isFullscreen)}
           className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/50 transition-colors"
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
         >
           {isFullscreen ? <Minimize2 size={14} className="text-white" /> : <Maximize2 size={14} className="text-white" />}
         </button>
         <button
           onClick={() => { setIsFullscreen(false); onClose(); }}
           className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/50 transition-colors"
+          aria-label="Close 3D viewer"
         >
           <X size={16} className="text-white" />
         </button>

@@ -56,11 +56,12 @@ export function ProcedureSettings({
       <button
         onClick={onToggleExpand}
         className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-secondary/50 transition-colors"
+        aria-expanded={isExpanded}
       >
         {isExpanded ? (
-          <ChevronDown size={12} className="text-muted" />
+          <ChevronDown size={12} className="text-muted" aria-hidden="true" />
         ) : (
-          <ChevronRight size={12} className="text-muted" />
+          <ChevronRight size={12} className="text-muted" aria-hidden="true" />
         )}
         <span className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
           Settings

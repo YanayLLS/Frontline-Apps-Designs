@@ -1108,17 +1108,118 @@ function SessionDetailsModal({
   );
 }
 
+function AnalyticsSkeleton() {
+  return (
+    <div className="flex flex-col h-full bg-background overflow-auto">
+      {/* Header skeleton */}
+      <div className="shrink-0 px-6 py-5 flex items-center justify-between">
+        <div className="h-6 bg-muted/30 rounded w-28 animate-pulse" />
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-36 bg-muted/30 rounded-[var(--radius)] animate-pulse" />
+          <div className="h-10 w-32 bg-muted/30 rounded-[var(--radius)] animate-pulse" />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto px-6 pb-6 space-y-5">
+        {/* Chart skeleton */}
+        <div className="bg-card border border-border rounded-[var(--radius)] p-5 animate-pulse">
+          <div className="flex items-center justify-between mb-5">
+            <div className="h-4 bg-muted/30 rounded w-40" />
+            <div className="h-8 bg-muted/30 rounded-[var(--radius)] w-44" />
+          </div>
+          <div className="h-[260px] bg-muted/20 rounded-[var(--radius)]" />
+          <div className="flex items-center gap-5 mt-3 pl-2">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-muted/30 rounded-full" />
+              <div className="h-3 bg-muted/30 rounded w-12" />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-muted/30 rounded-full" />
+              <div className="h-3 bg-muted/30 rounded w-20" />
+            </div>
+          </div>
+        </div>
+
+        {/* Summary cards skeleton */}
+        <div className="grid grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-card border border-border rounded-[var(--radius)] p-4 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-muted/30 rounded-[var(--radius)]" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 bg-muted/30 rounded w-16" />
+                  <div className="h-5 bg-muted/30 rounded w-12" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom grid skeleton */}
+        <div className="grid grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-card border border-border rounded-[var(--radius)] p-5 animate-pulse">
+              <div className="h-4 bg-muted/30 rounded w-32 mb-4" />
+              <div className="h-[180px] bg-muted/20 rounded-[var(--radius)]" />
+            </div>
+          ))}
+        </div>
+
+        {/* Table skeleton */}
+        <div className="bg-card border border-border rounded-[var(--radius)] overflow-hidden animate-pulse">
+          <div className="flex items-center justify-between px-5 py-4">
+            <div className="h-4 bg-muted/30 rounded w-36" />
+            <div className="flex items-center gap-2">
+              <div className="h-9 w-48 bg-muted/30 rounded-[var(--radius)]" />
+              <div className="h-9 w-28 bg-muted/30 rounded-[var(--radius)]" />
+            </div>
+          </div>
+          <div className="px-5 space-y-3 pb-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-10 bg-muted/20 rounded-[var(--radius)]" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AnalyticsEmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center h-full py-16">
+      <div className="p-5 bg-secondary/50 rounded-full mb-4">
+        <BarChart3 size={40} className="text-muted" />
+      </div>
+      <h3 className="text-lg text-foreground mb-2" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+        No analytics data yet
+      </h3>
+      <p className="text-sm text-muted text-center max-w-md">
+        Analytics will appear here once users start viewing and completing procedures in this project
+      </p>
+    </div>
+  );
+}
+
 interface AnalyticsPageProps {
   projectId?: string;
 }
 
 export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
+  const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<TimeRange>('last-30');
   const [sessionSearchQuery, setSessionSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | SessionStatus>('all');
   const [deviceFilter, setDeviceFilter] = useState<'all' | DeviceType>('all');
   const [sessionTypeFilter, setSessionTypeFilter] = useState<'all' | SessionType>('all');
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+
+  // Loading state
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 700);
+    return () => clearTimeout(timer);
+  }, [projectId]);
 
   // Generate sessions for this project
   const allMockSessions = useMemo(() => generateMockSessions(projectId), [projectId]);
@@ -1350,6 +1451,14 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
 
   // Reset page when filters change
   useEffect(() => { setCurrentPage(1); }, [sessionSearchQuery, statusFilter, deviceFilter, sessionTypeFilter, timeRange]);
+
+  if (isLoading) {
+    return <AnalyticsSkeleton />;
+  }
+
+  if (totalSessions === 0 && timeRange === 'all') {
+    return <AnalyticsEmptyState />;
+  }
 
   return (
     <div className="flex flex-col h-full bg-background overflow-auto">

@@ -1807,8 +1807,12 @@ html.embedded .right-panel { top:12px !important; }
 .tl-ch-remove:hover { opacity:1 !important; color:#FF1F1F; background:rgba(255,31,31,0.08); }
 .tl-ch-remove svg { width:10px; height:10px; }
 /* Inline graph row */
-.tl-graph-row { position:relative; border-bottom:1px solid rgba(54,65,93,0.06); overflow:hidden; background:rgba(47,128,237,0.02); }
-.tl-graph-sidebar { display:flex; flex-direction:column; gap:2px; padding:4px 8px 4px 40px; }
+.tl-graph-row { position:relative; display:flex; border-bottom:1px solid rgba(54,65,93,0.06); overflow:hidden; background:rgba(47,128,237,0.02); }
+.tl-graph-sidebar { display:flex; flex-direction:column; gap:4px; padding:4px 8px; align-items:center; justify-content:center; width:100%; box-sizing:border-box; }
+.tl-graph-canvas-wrap { position:absolute; left:0; top:0; right:0; bottom:4px; overflow:hidden; cursor:crosshair; }
+.tl-graph-canvas-wrap canvas { display:block; }
+.tl-graph-val-label { position:absolute; right:4px; font-size:8px; color:#868D9E; pointer-events:none; font-family:monospace; }
+.tl-graph-hover-info { position:absolute; pointer-events:none; background:rgba(255,255,255,0.95); border:1px solid #C2C9DB; border-radius:4px; padding:2px 6px; font-size:9px; color:#36415D; white-space:nowrap; z-index:10; display:none; box-shadow:0 1px 4px rgba(0,0,0,0.1); }
 .tl-graph-axis-btns { display:flex; gap:2px; }
 .tl-graph-axis-btn { width:20px; height:18px; border:1px solid #E9E9E9; background:none; border-radius:3px; cursor:pointer; font-size:9px; font-weight:700; display:flex; align-items:center; justify-content:center; transition:all .15s; }
 .tl-graph-axis-btn:hover { background:#F5F5F5; }
@@ -3621,7 +3625,7 @@ const CombinedFinalShader = {
       vec3 color=(lumaB<lumaMin||lumaB>lumaMax)?rgbA:rgbB;
       color+=brightness;
       color=(color-0.5)*max(contrast+1.0,0.0)+0.5;
-      gl_FragColor=vec4(color,1.0);
+      gl_FragColor=vec4(color,texture2D(tDiffuse,vUv).a);
     }`
 };
 const finalPass = new ShaderPass(CombinedFinalShader);
@@ -5290,6 +5294,11 @@ function resolveHitUUID(hit) {
   return hit.object.uuid;
 }
 const raycaster=new THREE.Raycaster(), mouse=new THREE.Vector2(), hoverMouse=new THREE.Vector2();
+// BVH-accelerated raycast helper: O(log n) instead of O(n) for 1M meshes
+function bvhIntersect(rc, meshes) {
+  if (bvhRaycast._built && !sceneBatcher.enabled) return bvhRaycast.intersect(rc);
+  return rc.intersectObjects(meshes, false);
+}
 let ctrlDown = false, altDown = false;
 
 // Track modifier keys globally
@@ -5379,7 +5388,7 @@ renderer.domElement.addEventListener('pointerup', e => {
   mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
   raycaster.setFromCamera(mouse, camera);
   const meshes = getSelectableMeshes();
-  const hits = raycaster.intersectObjects(meshes, false);
+  const hits = bvhIntersect(raycaster, meshes);
 
   // Ctrl+click selects parts additively (editor & viewer mode)
   // Alt+click selects a single part (non-additive)
@@ -5412,7 +5421,7 @@ renderer.domElement.addEventListener('dblclick', e => {
   const my = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(new THREE.Vector2(mx, my), camera);
   const meshes = getSelectableMeshes();
-  const hits = raycaster.intersectObjects(meshes, false);
+  const hits = bvhIntersect(raycaster, meshes);
   if (hits.length) {
     const point = hits[0].point;
     const dir = new THREE.Vector3().subVectors(camera.position, point).normalize();
@@ -5441,7 +5450,7 @@ function _hoverTick() {
   }
 
   const meshes = getSelectableMeshes();
-  const hits = raycaster.intersectObjects(meshes, false);
+  const hits = bvhIntersect(raycaster, meshes);
 
   if (hits.length) {
     const hitUUID = resolveHitUUID(hits[0]);
@@ -6659,6 +6668,9 @@ const perfStats = {
   _lastFpsTime: performance.now(),
   _fps: 0,
   _frameTime: 0,
+  _renderTime: 0,
+  _rtSum: 0,
+  _rtCount: 0,
   _fpsHistory: new Array(60).fill(60),
   _histIdx: 0,
   // Update throttle (DOM update every ~200ms, not every frame)
@@ -6669,14 +6681,16 @@ const perfStats = {
     this.el.classList.toggle('hidden', !this.visible);
   },
 
-  /** Call every frame from animate() with delta time in seconds */
-  tick(now, dt) {
+  /** Call every frame with render time = ms spent on actual GPU/CPU work (excludes vsync wait) */
+  tick(now, dt, renderTime) {
     if (!this.visible) return;
     this._frames++;
+    if (renderTime !== undefined) { this._rtSum += renderTime; this._rtCount++; }
     const elapsed = now - this._lastFpsTime;
     if (elapsed >= 500) {
       this._fps = Math.round(this._frames * 1000 / elapsed);
       this._frameTime = (elapsed / this._frames).toFixed(1);
+      if (this._rtCount > 0) { this._renderTime = (this._rtSum / this._rtCount).toFixed(1); this._rtSum = 0; this._rtCount = 0; }
       this._fpsHistory[this._histIdx % 60] = this._fps;
       this._histIdx++;
       this._frames = 0;
@@ -6693,7 +6707,10 @@ const perfStats = {
     const mi = renderer.info.memory;
     const fps = this._fps;
     const ft = this._frameTime;
+    const rt = this._renderTime;
+    const potentialFps = rt > 0 ? Math.round(1000 / parseFloat(rt)) : 0;
     const fpsClass = fps >= 55 ? 'good' : fps >= 30 ? 'warn' : 'bad';
+    const pfpsClass = potentialFps >= 120 ? 'good' : potentialFps >= 60 ? 'warn' : 'bad';
 
     // Count what culling THINKS is visible vs what batcher ACTUALLY renders
     const oc = occlusionCulling;
@@ -6720,16 +6737,35 @@ const perfStats = {
 
     const ocStatus = !oc.supported ? 'No WebGL2' : !oc.enabled ? 'Disabled' : !oc._built ? 'No model' : 'Active';
 
+    // New system stats
+    const lodActive = lodSystem._entries.size;
+    const hlodActive = hlodSystem._proxies.filter(p => p.active).length;
+    const hlodTotal = hlodSystem._proxies.length;
+    const bvhStatus = bvhRaycast._built ? 'Active' : 'Off';
+    const taaStatus = temporalAA.enabled && !temporalAA._isMoving ? 'Active' : 'Paused';
+    const pxRatio = adaptiveRes._current.toFixed(2);
+    const ssaoStatus = ssaoPass.enabled ? 'Active' : 'Skipped';
+
     this.el.innerHTML = `
       <div class="ps-title"><span class="ps-dot"></span>Performance Stats</div>
-      <div class="ps-row"><span class="ps-label">FPS</span><span class="ps-val ${fpsClass}">${fps}</span></div>
-      <div class="ps-row"><span class="ps-label">Frame time</span><span class="ps-val">${ft} ms</span></div>
+      <div class="ps-row"><span class="ps-label">FPS (vsync)</span><span class="ps-val ${fpsClass}">${fps}</span></div>
+      <div class="ps-row"><span class="ps-label">Potential FPS</span><span class="ps-val ${pfpsClass}">${potentialFps}</span></div>
+      <div class="ps-row"><span class="ps-label">Render time</span><span class="ps-val">${rt} ms</span></div>
       <div class="ps-row"><span class="ps-label">Draw calls</span><span class="ps-val">${ri.calls}</span></div>
       <div class="ps-row"><span class="ps-label">Triangles</span><span class="ps-val">${this._fmtNum(ri.triangles)}</span></div>
       <div class="ps-row"><span class="ps-label">Culling visible</span><span class="ps-val">${cullingVis} / ${totalMeshes}</span></div>
       <div class="ps-row"><span class="ps-label">Batcher visible</span><span class="ps-val">${batchVis} / ${batchTotal}</span></div>
       <div class="ps-row"><span class="ps-label">Occlusion</span><span class="ps-val ${ocStatus === 'Active' ? 'good' : 'bad'}">${ocStatus}</span></div>
       <div class="ps-row"><span class="ps-label">Queries/frame</span><span class="ps-val">${oc._queriesUsed || 0}</span></div>
+      <div class="ps-row" style="border-top:1px solid rgba(255,255,255,0.1);padding-top:4px;margin-top:2px"><span class="ps-label">LOD meshes</span><span class="ps-val">${lodActive}</span></div>
+      <div class="ps-row"><span class="ps-label">HLOD proxies</span><span class="ps-val">${hlodActive} / ${hlodTotal}</span></div>
+      <div class="ps-row"><span class="ps-label">BVH raycast</span><span class="ps-val ${bvhStatus === 'Active' ? 'good' : ''}">${bvhStatus}</span></div>
+      <div class="ps-row"><span class="ps-label">TAA</span><span class="ps-val ${taaStatus === 'Active' ? 'good' : ''}">${taaStatus}</span></div>
+      <div class="ps-row"><span class="ps-label">Pixel ratio</span><span class="ps-val">${pxRatio}x</span></div>
+      <div class="ps-row"><span class="ps-label">SSAO</span><span class="ps-val ${ssaoStatus === 'Active' ? 'good' : ''}">${ssaoStatus}</span></div>
+      <div class="ps-row"><span class="ps-label">Outlines</span><span class="ps-val">${outlinePass.enabled ? 'Active' : 'Skipped'}</span></div>
+      <div class="ps-row"><span class="ps-label">Shadow fit</span><span class="ps-val ${shadowFit.enabled ? 'good' : ''}">${shadowFit.enabled ? 'Active' : 'Off'}</span></div>
+      <div class="ps-row"><span class="ps-label">Workers</span><span class="ps-val">${workerPool._workers.length}</span></div>
     `;
   },
 
@@ -7840,7 +7876,7 @@ function startHotspotDrag(e, hsId) {
     const my = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(new THREE.Vector2(mx, my), camera);
     const meshes = getSelectableMeshes();
-    const hits = raycaster.intersectObjects(meshes, false);
+    const hits = bvhIntersect(raycaster, meshes);
     if (hits.length) {
       const hs = state.hotspots.find(h => h.id === hsId);
       if (hs) hs.position3D.copy(hits[0].point);
@@ -8026,7 +8062,7 @@ function createHotspotInstantly() {
   // Raycast from screen center to find a surface point
   raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
   const meshes = getSelectableMeshes();
-  const hits = raycaster.intersectObjects(meshes, false);
+  const hits = bvhIntersect(raycaster, meshes);
   let pos, constrainedPartId = null;
   if (hits.length) {
     pos = hits[0].point.clone();
@@ -8057,7 +8093,7 @@ function handleHotspotPlacement(e) {
   const my = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(new THREE.Vector2(mx, my), camera);
   const meshes = getSelectableMeshes();
-  const hits = raycaster.intersectObjects(meshes, false);
+  const hits = bvhIntersect(raycaster, meshes);
   if (hits.length) {
     const newId = 'hs' + (state.hotspotIdCounter++);
     const hitUUID = resolveHitUUID(hits[0]);
@@ -10065,6 +10101,7 @@ function animate() {
     camera.position.lerpVectors(cameraLerp.startPos,cameraLerp.endPos,e);
     orbitControls.target.lerpVectors(cameraLerp.startTarget,cameraLerp.endTarget,e);
     if(cameraLerp.t>=1) cameraLerp.active=false;
+    adaptiveRes.notifyMove(false);
   }
   orbitControls.update();
   infiniteGrid.update(camera);
@@ -10090,9 +10127,11 @@ function animate() {
   hlodSystem.update(_cpx, _cpy, _cpz, _sf);
   occlusionCulling.update();
   if (fbxModel) shadowFit.update(d1, dNear, camera, fbxModel);
+  const _renderT0 = performance.now();
   composer.render();
+  const _renderTime = performance.now() - _renderT0;
   temporalAA.unjitter(camera, _aw, _ah);
-  perfStats.tick(now, dt);
+  perfStats.tick(now, dt, _renderTime);
 }
 animate();
 
@@ -10101,9 +10140,10 @@ window.addEventListener('resize',()=>{
   const w=viewport.clientWidth, h=viewport.clientHeight;
   camera.aspect=w/h; camera.updateProjectionMatrix();
   renderer.setSize(w,h); composer.setSize(w,h);
-  fxaaPass.uniforms['resolution'].value.set(1/w,1/h);
+  finalPass.uniforms['resolution'].value.set(1/w,1/h);
   ssaoPass.setSize(w,h);
   outlinePass.setSize(w,h); hoverOutlinePass.setSize(w,h);
+  adaptiveRes._baseRatio = Math.min(window.devicePixelRatio, 2);
 });
 
 // ==================== PROCEDURES MODAL ====================
@@ -11067,6 +11107,10 @@ function aeShowAddChannelMenu(e, trackIdx) {
   menu.style.left = rect.left + 'px';
   menu.style.top = (rect.bottom + 2) + 'px';
   document.body.appendChild(menu);
+  // Keep menu within viewport
+  const mr = menu.getBoundingClientRect();
+  if (mr.bottom > window.innerHeight) menu.style.top = Math.max(4, rect.top - mr.height - 2) + 'px';
+  if (mr.right > window.innerWidth) menu.style.left = Math.max(4, window.innerWidth - mr.width - 4) + 'px';
   setTimeout(() => {
     const closer = (ev) => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('mousedown', closer); } };
     document.addEventListener('mousedown', closer);
@@ -11090,72 +11134,350 @@ function aeRemoveChannel(trackIdx, groupId) {
   aeRender();
 }
 
-function aeRenderInlineGraph(container, track, group, height, graphFilter) {
-  const canvas = document.createElement('canvas');
-  const w = container.clientWidth || 600;
-  canvas.width = w * (window.devicePixelRatio || 1);
-  canvas.height = height * (window.devicePixelRatio || 1);
-  canvas.style.cssText = 'width:100%;height:' + height + 'px;display:block;';
-  container.appendChild(canvas);
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  ctx.scale(dpr, dpr);
-  ctx.fillStyle = '#fafbfc';
-  ctx.fillRect(0, 0, w, height);
-  // Grid
-  ctx.strokeStyle = 'rgba(54,65,93,0.06)';
-  ctx.lineWidth = 1;
-  for (let y = 20; y < height; y += Math.max(20, height / 5)) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-  }
-  const secPx = animEditor.TICKS_PER_SEC * animEditor.zoom;
-  ctx.strokeStyle = 'rgba(54,65,93,0.08)';
-  for (let x = 0; x < w; x += secPx) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-  }
-  // Curves
+// Compute global value range across all visible subs for a graph
+function aeGraphValueRange(track, group, graphFilter) {
   const filter = graphFilter || 'all';
-  const subsToRender = filter === 'all' ? group.subs : group.subs.filter(s => {
+  const subs = filter === 'all' ? group.subs : group.subs.filter(s => {
     if (filter === 'x') return s.endsWith('X') || s === 'opacity' || s === 'visibility';
     if (filter === 'y') return s.endsWith('Y');
     if (filter === 'z') return s.endsWith('Z');
     return true;
   });
-  for (const sub of subsToRender) {
+  let minV = Infinity, maxV = -Infinity;
+  for (const sub of subs) {
+    const kfs = track.channels[sub];
+    if (!kfs || kfs.length === 0) continue;
+    for (const kf of kfs) { minV = Math.min(minV, kf.value); maxV = Math.max(maxV, kf.value); }
+  }
+  if (minV === Infinity) { minV = 0; maxV = 1; }
+  if (minV === maxV) { minV -= 1; maxV += 1; }
+  const range = maxV - minV;
+  const padding = range * 0.15;
+  return { min: minV - padding, max: maxV + padding, range: range + padding * 2, subs };
+}
+
+// Render the curve editor canvas in the timeline canvas area
+function aeRenderCanvasGraph(canvasEl, track, group, totalWidth, height, graphFilter, scrollLeft) {
+  const dpr = window.devicePixelRatio || 1;
+  canvasEl.width = totalWidth * dpr;
+  canvasEl.height = height * dpr;
+  canvasEl.style.width = totalWidth + 'px';
+  canvasEl.style.height = height + 'px';
+  const ctx = canvasEl.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const PAD_TOP = 10, PAD_BOT = 10;
+  const plotH = height - PAD_TOP - PAD_BOT;
+  const vr = aeGraphValueRange(track, group, graphFilter);
+
+  const valToY = (v) => PAD_TOP + plotH - ((v - vr.min) / vr.range) * plotH;
+  const yToVal = (y) => vr.min + (1 - (y - PAD_TOP) / plotH) * vr.range;
+
+  // Background
+  ctx.fillStyle = '#fafbfc';
+  ctx.fillRect(0, 0, totalWidth, height);
+
+  // Horizontal grid lines + value labels
+  ctx.strokeStyle = 'rgba(54,65,93,0.08)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 2]);
+  const gridLines = 5;
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= gridLines; i++) {
+    const y = PAD_TOP + (i / gridLines) * plotH;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(totalWidth, y); ctx.stroke();
+    // Value label on right edge (visible portion)
+    const val = yToVal(y);
+    ctx.fillStyle = 'rgba(134,141,158,0.7)';
+    ctx.fillText(val.toFixed(1), scrollLeft + document.getElementById('tlCanvas').clientWidth - 6, y + 3);
+  }
+  ctx.setLineDash([]);
+
+  // Vertical grid (second markers)
+  const secPx = animEditor.TICKS_PER_SEC * animEditor.zoom;
+  ctx.strokeStyle = 'rgba(54,65,93,0.06)';
+  for (let x = 0; x < totalWidth; x += secPx) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+  }
+
+  // Draw curves
+  for (const sub of vr.subs) {
     const kfs = track.channels[sub];
     if (!kfs || kfs.length === 0) continue;
     const sorted = [...kfs].sort((a,b) => a.time - b.time);
     const color = animEditor.SUB_COLORS[sub] || '#868D9E';
-    let minV = Infinity, maxV = -Infinity;
-    for (const kf of sorted) { minV = Math.min(minV, kf.value); maxV = Math.max(maxV, kf.value); }
-    if (minV === maxV) { minV -= 1; maxV += 1; }
-    const range = maxV - minV;
-    const pad = height * 0.1;
-    const plotH = height - pad * 2;
-    const valToY = (v) => pad + plotH - ((v - minV) / range) * plotH;
+
+    // Draw the interpolated curve
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.beginPath();
-    for (let px = 0; px < w; px += 2) {
+    // Only render pixels in the visible window (with margin)
+    const visStart = Math.max(0, scrollLeft - 50);
+    const visEnd = Math.min(totalWidth, scrollLeft + document.getElementById('tlCanvas').clientWidth + 50);
+    for (let px = visStart; px < visEnd; px += 1.5) {
       const time = px / animEditor.zoom;
       const val = aeGetInterpolatedValue(track, sub, time);
       const y = valToY(val);
-      if (px === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+      if (px === visStart) ctx.moveTo(px, y); else ctx.lineTo(px, y);
     }
     ctx.stroke();
-    ctx.fillStyle = color;
+
+    // Draw keyframe dots
     for (const kf of sorted) {
       const x = kf.time * animEditor.zoom;
-      if (x > w) break;
-      ctx.beginPath(); ctx.arc(x, valToY(kf.value), 3, 0, Math.PI * 2); ctx.fill();
+      if (x < visStart - 20 || x > visEnd + 20) continue;
+      const y = valToY(kf.value);
+      const isSelected = animEditor.selectedKfs && animEditor.selectedKfs.some(s =>
+        s.trackIdx !== undefined && animEditor.tracks[s.trackIdx] === track && s.channel === sub &&
+        track.channels[sub][s.kfIdx] === kf
+      );
+      // Outer ring
+      ctx.beginPath(); ctx.arc(x, y, isSelected ? 6 : 5, 0, Math.PI * 2);
+      if (isSelected) {
+        ctx.fillStyle = color; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+      } else {
+        ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+      }
+      // Curve type indicator: small arc for non-linear
+      if (kf.curve && kf.curve !== 'linear') {
+        ctx.fillStyle = color; ctx.globalAlpha = 0.3;
+        ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
     }
   }
+
   // Playhead
   const phx = animEditor.currentTime * animEditor.zoom;
-  if (phx >= 0 && phx <= w) {
-    ctx.strokeStyle = '#ff3b3b'; ctx.lineWidth = 1;
+  if (phx >= 0 && phx <= totalWidth) {
+    ctx.strokeStyle = '#ff3b3b'; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.8;
     ctx.beginPath(); ctx.moveTo(phx, 0); ctx.lineTo(phx, height); ctx.stroke();
+    ctx.globalAlpha = 1;
   }
+
+  // Return coordinate helpers for interaction
+  return { valToY, yToVal, vr };
+}
+
+// Wire up interactivity for a canvas graph element
+function aeGraphInteraction(canvasEl, track, trackIdx, group, graphFilter, getHeight) {
+  let hoveredKf = null;
+
+  canvasEl.addEventListener('mousemove', (e) => {
+    const rect = canvasEl.getBoundingClientRect();
+    const mx = e.clientX - rect.left + canvasEl.parentElement.parentElement.querySelector('.tl-kf-row') ? 0 : 0;
+    // account for scroll in canvas container
+    const scrollCont = document.getElementById('tlCanvas');
+    const scrollLeft = scrollCont ? scrollCont.scrollLeft : 0;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const height = getHeight();
+    const PAD_TOP = 10, PAD_BOT = 10;
+    const plotH = height - PAD_TOP - PAD_BOT;
+    const vr = aeGraphValueRange(track, group, graphFilter());
+
+    // Find nearest keyframe dot
+    let closest = null, closestDist = 12; // 12px snap radius
+    for (const sub of vr.subs) {
+      const kfs = track.channels[sub];
+      if (!kfs) continue;
+      for (let ki = 0; ki < kfs.length; ki++) {
+        const kf = kfs[ki];
+        const kx = kf.time * animEditor.zoom - scrollLeft;
+        const ky = PAD_TOP + plotH - ((kf.value - vr.min) / vr.range) * plotH;
+        const dist = Math.sqrt((x - kx) ** 2 + (y - ky) ** 2);
+        if (dist < closestDist) { closestDist = dist; closest = { sub, ki, kf, kx, ky }; }
+      }
+    }
+    hoveredKf = closest;
+    canvasEl.style.cursor = closest ? 'pointer' : 'crosshair';
+
+    // Update hover tooltip
+    const tip = canvasEl.parentElement.querySelector('.tl-graph-hover-info');
+    if (tip) {
+      if (closest) {
+        const name = animEditor.CHANNEL_NAMES[closest.sub] || closest.sub;
+        tip.textContent = name + ': ' + closest.kf.value.toFixed(2) + ' @ ' + (closest.kf.time / animEditor.TICKS_PER_SEC).toFixed(2) + 's';
+        tip.style.display = 'block';
+        tip.style.left = Math.min(x + 12, canvasEl.clientWidth - tip.offsetWidth - 4) + 'px';
+        tip.style.top = Math.max(4, y - 20) + 'px';
+      } else {
+        tip.style.display = 'none';
+      }
+    }
+  });
+
+  canvasEl.addEventListener('mouseleave', () => {
+    hoveredKf = null;
+    canvasEl.style.cursor = 'crosshair';
+    const tip = canvasEl.parentElement.querySelector('.tl-graph-hover-info');
+    if (tip) tip.style.display = 'none';
+  });
+
+  // Click / drag keyframe on curve
+  canvasEl.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    const scrollCont = document.getElementById('tlCanvas');
+    const scrollLeft = scrollCont ? scrollCont.scrollLeft : 0;
+    const rect = canvasEl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const height = getHeight();
+    const PAD_TOP = 10, PAD_BOT = 10;
+    const plotH = height - PAD_TOP - PAD_BOT;
+    const vr = aeGraphValueRange(track, group, graphFilter());
+
+    // Find nearest keyframe
+    let closest = null, closestDist = 12;
+    for (const sub of vr.subs) {
+      const kfs = track.channels[sub];
+      if (!kfs) continue;
+      for (let ki = 0; ki < kfs.length; ki++) {
+        const kf = kfs[ki];
+        const kx = kf.time * animEditor.zoom - scrollLeft;
+        const ky = PAD_TOP + plotH - ((kf.value - vr.min) / vr.range) * plotH;
+        const dist = Math.sqrt((x - kx) ** 2 + (y - ky) ** 2);
+        if (dist < closestDist) { closestDist = dist; closest = { sub, ki, kf, kx, ky }; }
+      }
+    }
+
+    if (closest) {
+      e.stopPropagation();
+      e.preventDefault();
+      aePushUndo();
+      // Select it
+      const sel = { trackIdx, channel: closest.sub, kfIdx: closest.ki };
+      if (e.ctrlKey || e.metaKey) {
+        if (!animEditor.selectedKfs) animEditor.selectedKfs = [];
+        animEditor.selectedKfs.push(sel);
+      } else if (e.shiftKey && animEditor.selectedKf) {
+        // range select
+        if (animEditor.selectedKf.trackIdx === trackIdx && animEditor.selectedKf.channel === closest.sub) {
+          const minK = Math.min(animEditor.selectedKf.kfIdx, closest.ki);
+          const maxK = Math.max(animEditor.selectedKf.kfIdx, closest.ki);
+          animEditor.selectedKfs = [];
+          for (let rk = minK; rk <= maxK; rk++) animEditor.selectedKfs.push({ trackIdx, channel: closest.sub, kfIdx: rk });
+        } else {
+          animEditor.selectedKfs = [sel];
+        }
+      } else {
+        animEditor.selectedKfs = [sel];
+      }
+      animEditor.selectedKf = sel;
+
+      // Start drag (both time and value)
+      const origTime = closest.kf.time;
+      const origValue = closest.kf.value;
+      const startMX = e.clientX, startMY = e.clientY;
+
+      const onMove = (me) => {
+        const dx = me.clientX - startMX;
+        const dy = me.clientY - startMY;
+        // Time change from horizontal movement
+        let newTime = Math.round(origTime + dx / animEditor.zoom);
+        if (me.shiftKey) newTime = Math.round(newTime / animEditor.TICKS_PER_SEC) * animEditor.TICKS_PER_SEC;
+        newTime = Math.max(0, Math.min(animEditor.duration, newTime));
+        // Value change from vertical movement (inverted: up = increase)
+        const valPerPx = vr.range / plotH;
+        let newValue = origValue - dy * valPerPx;
+        // Snap to nice values if alt held
+        if (me.altKey) newValue = Math.round(newValue * 10) / 10;
+
+        closest.kf.time = newTime;
+        closest.kf.value = newValue;
+        // Re-sort
+        track.channels[closest.sub].sort((a,b) => a.time - b.time);
+        // Update kfIdx after sort
+        const newKi = track.channels[closest.sub].indexOf(closest.kf);
+        if (newKi >= 0) {
+          sel.kfIdx = newKi;
+          closest.ki = newKi;
+        }
+        aeRenderCanvas();
+        aeApplyAtTime(animEditor.currentTime);
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        aeRender();
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      aeRender();
+    }
+  });
+
+  // Double-click to add keyframe on curve
+  canvasEl.addEventListener('dblclick', (e) => {
+    const scrollCont = document.getElementById('tlCanvas');
+    const scrollLeft = scrollCont ? scrollCont.scrollLeft : 0;
+    const rect = canvasEl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const height = getHeight();
+    const PAD_TOP = 10, PAD_BOT = 10;
+    const plotH = height - PAD_TOP - PAD_BOT;
+    const vr = aeGraphValueRange(track, group, graphFilter());
+
+    const time = Math.round(Math.max(0, Math.min(animEditor.duration, (x + scrollLeft) / animEditor.zoom)));
+    const value = vr.min + (1 - (y - PAD_TOP) / plotH) * vr.range;
+
+    // Find which sub-channel curve is closest to click point
+    let closestSub = vr.subs[0];
+    let closestDist = Infinity;
+    for (const sub of vr.subs) {
+      const interpVal = aeGetInterpolatedValue(track, sub, time);
+      const curveY = PAD_TOP + plotH - ((interpVal - vr.min) / vr.range) * plotH;
+      const dist = Math.abs(y - curveY);
+      if (dist < closestDist) { closestDist = dist; closestSub = sub; }
+    }
+
+    aePushUndo();
+    track.channels[closestSub].push({ time, value });
+    track.channels[closestSub].sort((a,b) => a.time - b.time);
+    aeRender();
+  });
+
+  // Right-click for context menu
+  canvasEl.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const scrollCont = document.getElementById('tlCanvas');
+    const scrollLeft = scrollCont ? scrollCont.scrollLeft : 0;
+    const rect = canvasEl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const height = getHeight();
+    const PAD_TOP = 10, PAD_BOT = 10;
+    const plotH = height - PAD_TOP - PAD_BOT;
+    const vr = aeGraphValueRange(track, group, graphFilter());
+
+    // Find nearest keyframe
+    let closest = null, closestDist = 15;
+    for (const sub of vr.subs) {
+      const kfs = track.channels[sub];
+      if (!kfs) continue;
+      for (let ki = 0; ki < kfs.length; ki++) {
+        const kf = kfs[ki];
+        const kx = kf.time * animEditor.zoom - scrollLeft;
+        const ky = PAD_TOP + plotH - ((kf.value - vr.min) / vr.range) * plotH;
+        const dist = Math.sqrt((x - kx) ** 2 + (y - ky) ** 2);
+        if (dist < closestDist) { closestDist = dist; closest = { sub, ki, kf }; }
+      }
+    }
+    if (closest) {
+      animEditor.selectedKf = { trackIdx, channel: closest.sub, kfIdx: closest.ki };
+      animEditor.selectedKfs = [animEditor.selectedKf];
+      aeShowCtxMenu(e, trackIdx, closest.sub, closest.ki);
+    } else {
+      aeShowCtxMenu(e, trackIdx, group.subs[0], null);
+    }
+  });
 }
 
 function aeRenderSidebar() {
@@ -11167,12 +11489,10 @@ function aeRenderSidebar() {
       const ti = r.trackIdx, track = r.track;
       const row = document.createElement('div');
       row.className = 'tl-track-row track-header';
-      const totalKfs = animEditor.CHANNELS.reduce((n,c) => n + track.channels[c].length, 0);
       row.innerHTML =
         '<div class="tl-drag-handle" draggable="true" title="Drag to reorder"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></div>' +
         '<div class="tl-expand' + (track.expanded ? ' expanded' : '') + '"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M10 6L16 12L10 18Z"/></svg></div>' +
         '<div class="tl-track-name">' + track.name + '</div>' +
-        (totalKfs > 0 ? '<span style="font-size:9px;color:#2F80ED;margin-left:2px;">' + totalKfs + 'kf</span>' : '') +
         '<button class="tl-add-ch-btn" title="Add channel"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></button>' +
         '<div class="tl-track-opts" title="Track options"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></div>' +
         '<div class="tl-track-del" title="Remove track"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></div>';
@@ -11265,18 +11585,36 @@ function aeRenderSidebar() {
         });
         sidebar.appendChild(btns);
       } else {
-        sidebar.innerHTML = '<span style="font-size:10px;color:#868D9E;">Graph</span>';
+        sidebar.innerHTML = '<span style="font-size:10px;color:#868D9E;">Value</span>';
+      }
+      // Legend showing which colors are which channels
+      const legend = document.createElement('div');
+      legend.style.cssText = 'display:flex;flex-direction:column;gap:1px;margin-top:2px;';
+      const visibleSubs = aeGraphValueRange(track, grp, currentFilter).subs;
+      for (const sub of visibleSubs) {
+        const lbl = document.createElement('div');
+        lbl.style.cssText = 'display:flex;align-items:center;gap:3px;font-size:8px;color:#868D9E;';
+        lbl.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:' + (animEditor.SUB_COLORS[sub] || '#868D9E') + ';flex-shrink:0;"></span>' + (sub.replace(/^(pos|rot|scale)/, '').toUpperCase() || sub);
+        sidebar.appendChild(lbl);
       }
       row.appendChild(sidebar);
-      const graphContainer = document.createElement('div');
-      graphContainer.style.cssText = 'flex:1;position:relative;overflow:hidden;';
-      row.appendChild(graphContainer);
+      // Resize handle at bottom
       const resizer = document.createElement('div');
       resizer.className = 'tl-graph-resize';
       resizer.addEventListener('mousedown', ((trackRef, groupId, rowEl) => (e) => {
         e.preventDefault(); e.stopPropagation();
         const startY = e.clientY, startH = rowEl.offsetHeight;
-        const onMove = (me) => { rowEl.style.height = Math.max(40, Math.min(300, startH + me.clientY - startY)) + 'px'; };
+        const onMove = (me) => {
+          const newH = Math.max(60, Math.min(300, startH + me.clientY - startY));
+          rowEl.style.height = newH + 'px';
+          // Also update the matching canvas-side graph row
+          const canvasRows = document.querySelectorAll('.tl-graph-canvas-row');
+          canvasRows.forEach(cr => {
+            if (cr.dataset.trackIdx === String(r.trackIdx) && cr.dataset.groupId === groupId) {
+              cr.style.height = newH + 'px';
+            }
+          });
+        };
         const onUp = () => {
           document.removeEventListener('mousemove', onMove);
           document.removeEventListener('mouseup', onUp);
@@ -11289,7 +11627,6 @@ function aeRenderSidebar() {
       })(track, gid, row));
       row.appendChild(resizer);
       list.appendChild(row);
-      requestAnimationFrame(() => { aeRenderInlineGraph(graphContainer, track, grp, gh, currentFilter); });
     }
   }
 }
@@ -11491,12 +11828,33 @@ function aeRenderCanvas() {
       inner.appendChild(kfRow); _yOff += animEditor.TRACK_H;
 
     } else if (r.type === 'graph') {
-      const gh = r.height;
+      const gh = r.height, ti = r.trackIdx, track = r.track, grp = r.group, gid = r.groupId;
       const gr = document.createElement('div');
-      gr.className = 'tl-kf-row';
+      gr.className = 'tl-kf-row tl-graph-canvas-row';
+      gr.dataset.trackIdx = String(ti);
+      gr.dataset.groupId = gid;
       gr.style.height = gh + 'px'; gr.style.width = inner.style.width;
-      gr.style.background = 'rgba(47,128,237,0.02)';
+      gr.style.position = 'relative';
+      // Canvas for curve rendering
+      const wrap = document.createElement('div');
+      wrap.className = 'tl-graph-canvas-wrap';
+      const cvs = document.createElement('canvas');
+      wrap.appendChild(cvs);
+      // Hover tooltip
+      const tip = document.createElement('div');
+      tip.className = 'tl-graph-hover-info';
+      wrap.appendChild(tip);
+      gr.appendChild(wrap);
       inner.appendChild(gr); _yOff += gh;
+      // Render curves after DOM insertion
+      const currentFilter = () => (track._graphFilters && track._graphFilters[gid]) || 'all';
+      const scrollCont = document.getElementById('tlCanvas');
+      requestAnimationFrame(() => {
+        const totalW = parseInt(inner.style.width) || (animEditor.duration * animEditor.zoom + 200);
+        const scrollLeft = scrollCont ? scrollCont.scrollLeft : 0;
+        aeRenderCanvasGraph(cvs, track, grp, totalW, gh, currentFilter(), scrollLeft);
+        aeGraphInteraction(cvs, track, ti, grp, currentFilter, () => gh);
+      });
     }
   }
 
@@ -12362,7 +12720,7 @@ requestAnimationFrame(() => {
   const w = viewport.clientWidth, h = viewport.clientHeight;
   camera.aspect = w / h; camera.updateProjectionMatrix();
   renderer.setSize(w, h); composer.setSize(w, h);
-  fxaaPass.uniforms['resolution'].value.set(1/w, 1/h);
+  finalPass.uniforms['resolution'].value.set(1/w, 1/h);
   ssaoPass.setSize(w, h);
   outlinePass.setSize(w, h); hoverOutlinePass.setSize(w, h);
 });
@@ -12506,7 +12864,7 @@ async function openImportSettings(file) {
   let object;
   try {
     if (ext === 'glb' || ext === 'gltf') {
-      const loader = new GLTFLoader();
+      const loader = _enhancedGLTFLoader; // Uses Draco + KTX2 decoders
       const gltf = await new Promise((resolve, reject) => loader.parse(data, '', resolve, reject));
       object = gltf.scene;
     } else {
@@ -12794,7 +13152,7 @@ document.getElementById('ismImportAll').addEventListener('click', async () => {
           else reader.readAsArrayBuffer(file);
         });
         if (ext === 'glb' || ext === 'gltf') {
-          const loader = new GLTFLoader();
+          const loader = _enhancedGLTFLoader; // Uses Draco + KTX2 decoders
           const gltf = await new Promise((resolve, reject) => loader.parse(data, '', resolve, reject));
           object = gltf.scene;
         } else {
@@ -13097,6 +13455,11 @@ async function addImportedModelToScene(object, name, settings, onProgress) {
   // Batch imported model for performance
   let _batchStats = null;
   try { _batchStats = sceneBatcher.batchify(object); } catch(e) { console.warn('Scene batcher failed, falling back to individual meshes:', e); }
+
+  // Register new performance systems for imported model
+  object.traverse(c => { if (c.isMesh) lodSystem.register(c); });
+  try { hlodSystem.build(); } catch(e) {}
+  { const bm = []; object.traverse(c => { if (c.isMesh) bm.push(c); }); try { bvhRaycast.build(bm); } catch(e) {} }
 
   const _importTime = performance.now() - _importStart;
 

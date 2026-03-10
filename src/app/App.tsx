@@ -527,12 +527,14 @@ function MainApp({ isMobile }: { isMobile: boolean }) {
   }, [isResizing, isResizingChat, isResizingSecondarySidebar, isSidebarMinimized, sidebarWidth]);
 
   return (
-    <div 
+    <div
         className="flex flex-col h-screen w-screen bg-background overflow-hidden"
         style={{
           userSelect: (isResizing || isResizingChat || isResizingSecondarySidebar) ? 'none' : 'auto'
         }}
       >
+      <a href="#main-content" className="skip-to-content">Skip to main content</a>
+
       {/* Mobile Sidebar Overlay */}
       {isMobile && isSidebarOpen && (
         <div 
@@ -622,7 +624,7 @@ function MainApp({ isMobile }: { isMobile: boolean }) {
         )}
 
         {/* Main Content Area */}
-        <div className="flex flex-col flex-1 min-w-0">
+        <div id="main-content" className="flex flex-col flex-1 min-w-0">
           {/* Tabs for Projects */}
           {selectedProject && (
             <TabBar

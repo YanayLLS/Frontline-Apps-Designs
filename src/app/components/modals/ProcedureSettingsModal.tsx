@@ -23,9 +23,12 @@ export function ProcedureSettingsModal({ isOpen, onClose, procedureName }: Proce
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div 
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="procedure-settings-title"
         className="border rounded-lg shadow-lg max-w-[560px] w-full mx-4 max-h-[90vh] overflow-auto"
-        style={{ 
+        style={{
           backgroundColor: 'var(--card)',
           borderColor: 'var(--border)',
           boxShadow: 'var(--elevation-lg)',
@@ -36,7 +39,7 @@ export function ProcedureSettingsModal({ isOpen, onClose, procedureName }: Proce
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b sticky top-0 z-10" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card)' }}>
           <div>
-            <h2 className="text-base uppercase mb-1.5" style={{ fontWeight: 'var(--font-weight-bold)', color: 'var(--foreground)' }}>
+            <h2 id="procedure-settings-title" className="text-base uppercase mb-1.5" style={{ fontWeight: 'var(--font-weight-bold)', color: 'var(--foreground)' }}>
               Flow Settings
             </h2>
             <p className="text-xs" style={{ color: 'var(--muted)' }}>
@@ -49,6 +52,7 @@ export function ProcedureSettingsModal({ isOpen, onClose, procedureName }: Proce
             style={{ color: 'var(--muted)' }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--secondary)'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>
@@ -133,6 +137,8 @@ export function ProcedureSettingsModal({ isOpen, onClose, procedureName }: Proce
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
                 onMouseLeave={(e) => !showDifficultyMenu && (e.currentTarget.style.borderColor = 'var(--border)')}
+                aria-haspopup="listbox"
+                aria-expanded={showDifficultyMenu}
               >
                 {difficulty}
                 <ChevronDown className="w-4 h-4" style={{ color: 'var(--muted)' }} />
@@ -181,6 +187,8 @@ export function ProcedureSettingsModal({ isOpen, onClose, procedureName }: Proce
               }}
               onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
               onMouseLeave={(e) => !showCategoryMenu && (e.currentTarget.style.borderColor = 'var(--border)')}
+              aria-haspopup="listbox"
+              aria-expanded={showCategoryMenu}
             >
               {category}
               <ChevronDown className="w-4 h-4" style={{ color: 'var(--muted)' }} />

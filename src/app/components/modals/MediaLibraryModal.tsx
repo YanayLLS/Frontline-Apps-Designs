@@ -134,21 +134,22 @@ function ProcedureListModal({ isOpen, onClose, itemName, procedures }: Procedure
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      
-      <div className="relative w-full max-w-md bg-card border border-border rounded-[var(--radius)] shadow-2xl m-4">
+
+      <div role="dialog" aria-modal="true" aria-labelledby="procedure-list-title" className="relative w-full max-w-md bg-card border border-border rounded-[var(--radius)] shadow-2xl m-4">
         <div className="border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 style={{ fontWeight: 'var(--font-weight-bold)' }}>Used In Flows</h3>
+              <h3 id="procedure-list-title" style={{ fontWeight: 'var(--font-weight-bold)' }}>Used In Flows</h3>
               <p className="text-sm text-muted mt-1">{itemName}</p>
             </div>
             <button
               onClick={onClose}
               className="p-2 hover:bg-secondary rounded-[var(--radius)] transition-colors"
+              aria-label="Close"
             >
               <X size={20} className="text-muted" />
             </button>
@@ -207,13 +208,14 @@ function CreateFolderModal({ isOpen, onClose, parentFolderId, onCreateFolder }: 
         onClick={onClose}
       />
       
-      <div className="relative w-full max-w-md bg-card border border-border rounded-[var(--radius)] shadow-2xl m-4">
+      <div role="dialog" aria-modal="true" aria-labelledby="create-folder-title" className="relative w-full max-w-md bg-card border border-border rounded-[var(--radius)] shadow-2xl m-4">
         <div className="border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
-            <h3 style={{ fontWeight: 'var(--font-weight-bold)' }}>Create New Folder</h3>
+            <h3 id="create-folder-title" style={{ fontWeight: 'var(--font-weight-bold)' }}>Create New Folder</h3>
             <button
               onClick={onClose}
               className="p-2 hover:bg-secondary rounded-[var(--radius)] transition-colors"
+              aria-label="Close"
             >
               <X size={20} className="text-muted" />
             </button>
@@ -276,13 +278,14 @@ function RenameModal({ isOpen, onClose, currentName, onRename, itemType }: Renam
         onClick={onClose}
       />
       
-      <div className="relative w-full max-w-md bg-card border border-border rounded-[var(--radius)] shadow-2xl m-4">
+      <div role="dialog" aria-modal="true" aria-labelledby="rename-modal-title" className="relative w-full max-w-md bg-card border border-border rounded-[var(--radius)] shadow-2xl m-4">
         <div className="border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
-            <h3 style={{ fontWeight: 'var(--font-weight-bold)' }}>Rename {itemType === 'file' ? 'File' : 'Folder'}</h3>
+            <h3 id="rename-modal-title" style={{ fontWeight: 'var(--font-weight-bold)' }}>Rename {itemType === 'file' ? 'File' : 'Folder'}</h3>
             <button
               onClick={onClose}
               className="p-2 hover:bg-secondary rounded-[var(--radius)] transition-colors"
+              aria-label="Close"
             >
               <X size={20} className="text-muted" />
             </button>
@@ -335,19 +338,20 @@ function DeleteConfirmModal({ isOpen, onClose, itemName, usedInProcedures, onCon
         onClick={onClose}
       />
       
-      <div className="relative w-full max-w-md bg-card border border-border rounded-[var(--radius)] shadow-2xl m-4">
+      <div role="alertdialog" aria-modal="true" aria-labelledby="delete-item-title" className="relative w-full max-w-md bg-card border border-border rounded-[var(--radius)] shadow-2xl m-4">
         <div className="border-b border-border px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
-              <AlertTriangle size={20} className="text-destructive" />
+              <AlertTriangle size={20} className="text-destructive" aria-hidden="true" />
             </div>
             <div className="flex-1">
-              <h3 style={{ fontWeight: 'var(--font-weight-bold)' }}>Delete Item</h3>
+              <h3 id="delete-item-title" style={{ fontWeight: 'var(--font-weight-bold)' }}>Warning: Delete Item</h3>
               <p className="text-sm text-muted">This action cannot be undone</p>
             </div>
             <button
               onClick={onClose}
               className="p-2 hover:bg-secondary rounded-[var(--radius)] transition-colors"
+              aria-label="Close"
             >
               <X size={20} className="text-muted" />
             </button>
@@ -458,19 +462,20 @@ function ReplaceModal({ isOpen, onClose, currentItem, usedInProcedures, allItems
         onClick={onClose}
       />
       
-      <div className="relative w-full max-w-2xl bg-card border border-border rounded-[var(--radius)] shadow-2xl m-4">
+      <div role="dialog" aria-modal="true" aria-labelledby="replace-item-title" className="relative w-full max-w-2xl bg-card border border-border rounded-[var(--radius)] shadow-2xl m-4">
         <div className="border-b border-border px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
               <RefreshCw size={20} className="text-primary" />
             </div>
             <div className="flex-1">
-              <h3 style={{ fontWeight: 'var(--font-weight-bold)' }}>Replace Item</h3>
+              <h3 id="replace-item-title" style={{ fontWeight: 'var(--font-weight-bold)' }}>Replace Item</h3>
               <p className="text-sm text-muted">Choose a new item to replace {currentItem.name}</p>
             </div>
             <button
               onClick={onClose}
               className="p-2 hover:bg-secondary rounded-[var(--radius)] transition-colors"
+              aria-label="Close"
             >
               <X size={20} className="text-muted" />
             </button>
@@ -607,6 +612,7 @@ function ReplaceModal({ isOpen, onClose, currentItem, usedInProcedures, allItems
                     <button
                       onClick={() => setSelectedFiles([])}
                       className="p-1 hover:bg-card rounded transition-colors"
+                      aria-label="Remove selected file"
                     >
                       <X size={16} className="text-muted" />
                     </button>
@@ -695,13 +701,14 @@ function UploadModal({ isOpen, onClose, currentFolderId, onUpload }: UploadModal
         onClick={onClose}
       />
       
-      <div className="relative w-full max-w-2xl bg-card border border-border rounded-[var(--radius)] shadow-2xl m-4">
+      <div role="dialog" aria-modal="true" aria-labelledby="upload-media-title" className="relative w-full max-w-2xl bg-card border border-border rounded-[var(--radius)] shadow-2xl m-4">
         <div className="border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
-            <h3 style={{ fontWeight: 'var(--font-weight-bold)' }}>Upload Media</h3>
+            <h3 id="upload-media-title" style={{ fontWeight: 'var(--font-weight-bold)' }}>Upload Media</h3>
             <button
               onClick={onClose}
               className="p-2 hover:bg-secondary rounded-[var(--radius)] transition-colors"
+              aria-label="Close"
             >
               <X size={20} className="text-muted" />
             </button>
@@ -763,6 +770,7 @@ function UploadModal({ isOpen, onClose, currentFolderId, onUpload }: UploadModal
                     <button
                       onClick={() => removeFile(index)}
                       className="p-1 hover:bg-card rounded transition-colors shrink-0"
+                      aria-label={`Remove ${file.name}`}
                     >
                       <X size={16} className="text-muted" />
                     </button>
@@ -870,6 +878,7 @@ function DraggableMediaItem({
             onOpenOptions(item, e);
           }}
           className="absolute top-2 right-2 z-10 p-1 bg-card/80 backdrop-blur-sm border border-border rounded hover:bg-secondary transition-colors opacity-0 group-hover:opacity-100"
+          aria-label={`Options for ${item.name}`}
         >
           <MoreVertical size={14} className="text-muted" />
         </button>
@@ -950,6 +959,7 @@ function DraggableMediaItem({
             onOpenOptions(item, e);
           }}
           className="p-1 hover:bg-secondary rounded transition-colors"
+          aria-label={`Options for ${item.name}`}
         >
           <MoreVertical size={14} className="text-muted" />
         </button>
@@ -1549,7 +1559,7 @@ function MediaLibraryContent({ isOpen, onClose, selectionMode = false, onSelectI
           onClick={onClose}
         />
 
-        <div className="relative w-full max-w-[95vw] h-[90vh] bg-card border border-border rounded-[var(--radius)] shadow-2xl flex flex-col m-4">
+        <div role="dialog" aria-modal="true" aria-labelledby="media-library-title" className="relative w-full max-w-[95vw] h-[90vh] bg-card border border-border rounded-[var(--radius)] shadow-2xl flex flex-col m-4">
           {/* Selection Mode Banner */}
           {selectionMode && (
             <div className="shrink-0 bg-primary/10 border-b border-primary/20 px-6 py-3 flex items-center justify-between">
@@ -1581,9 +1591,10 @@ function MediaLibraryContent({ isOpen, onClose, selectionMode = false, onSelectI
             <div className="border-b border-border px-4 py-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 style={{ fontWeight: 'var(--font-weight-bold)' }}>Folders</h3>
-                <button 
+                <button
                   onClick={() => setIsCreateFolderModalOpen(true)}
                   className="p-1 hover:bg-secondary rounded transition-colors"
+                  aria-label="Create new folder"
                 >
                   <Plus size={16} className="text-muted" />
                 </button>
@@ -1601,7 +1612,7 @@ function MediaLibraryContent({ isOpen, onClose, selectionMode = false, onSelectI
             <div className="shrink-0 border-b border-border px-6 py-4">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-xl mb-1" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                  <h2 id="media-library-title" className="text-xl mb-1" style={{ fontWeight: 'var(--font-weight-bold)' }}>
                     Media Library
                   </h2>
                   <p className="text-sm text-muted">
@@ -1611,6 +1622,7 @@ function MediaLibraryContent({ isOpen, onClose, selectionMode = false, onSelectI
                 <button
                   onClick={onClose}
                   className="p-2 hover:bg-secondary rounded-[var(--radius)] transition-colors"
+                  aria-label="Close media library"
                 >
                   <X size={20} className="text-muted" />
                 </button>
@@ -1638,6 +1650,8 @@ function MediaLibraryContent({ isOpen, onClose, selectionMode = false, onSelectI
                   <button
                     onClick={() => setShowFilterMenu(!showFilterMenu)}
                     className="flex items-center gap-2 px-4 h-10 bg-secondary border border-border rounded-[var(--radius)] text-foreground hover:bg-secondary/80 transition-colors"
+                    aria-haspopup="listbox"
+                    aria-expanded={showFilterMenu}
                   >
                     <Filter size={16} />
                     <span className="text-sm">{currentFilterLabel}</span>
@@ -1686,6 +1700,8 @@ function MediaLibraryContent({ isOpen, onClose, selectionMode = false, onSelectI
                         : 'text-muted hover:text-foreground'
                     }`}
                     style={{ borderRadius: 'var(--radius) 0 0 var(--radius)' }}
+                    aria-label="Grid view"
+                    aria-pressed={viewMode === 'grid'}
                   >
                     <Grid3x3 size={16} />
                   </button>
@@ -1697,6 +1713,8 @@ function MediaLibraryContent({ isOpen, onClose, selectionMode = false, onSelectI
                         : 'text-muted hover:text-foreground'
                     }`}
                     style={{ borderRadius: '0 var(--radius) var(--radius) 0' }}
+                    aria-label="List view"
+                    aria-pressed={viewMode === 'list'}
                   >
                     <List size={16} />
                   </button>

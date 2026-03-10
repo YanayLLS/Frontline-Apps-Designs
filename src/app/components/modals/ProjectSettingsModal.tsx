@@ -331,6 +331,9 @@ export function ProjectSettingsModal({
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="project-settings-title"
         className="bg-card rounded-[var(--radius-lg)] w-full max-w-[600px] max-h-[90vh] overflow-auto"
         style={{ boxShadow: 'var(--shadow-elevation-sm)' }}
         onClick={(e) => e.stopPropagation()}
@@ -340,6 +343,7 @@ export function ProjectSettingsModal({
           <div className="flex items-start justify-between mb-2">
             <div className="flex-1">
               <h2
+                id="project-settings-title"
                 className="text-foreground uppercase mb-2"
                 style={{ fontFamily: 'var(--font-family)', fontWeight: 'var(--font-weight-bold)' }}
               >
@@ -355,6 +359,7 @@ export function ProjectSettingsModal({
             <button
               onClick={onClose}
               className="p-1 hover:bg-secondary rounded transition-colors"
+              aria-label="Close modal"
             >
               <X className="w-4 h-4" />
             </button>
@@ -428,6 +433,8 @@ export function ProjectSettingsModal({
                 onClick={() => setShowPrivacyDropdown(!showPrivacyDropdown)}
                 className="w-full px-3 py-2 border border-border rounded-[var(--radius-lg)] bg-card flex items-center justify-between hover:bg-secondary transition-colors"
                 style={{ fontFamily: 'var(--font-family)' }}
+                aria-haspopup="listbox"
+                aria-expanded={showPrivacyDropdown}
               >
                 <span className="text-sm" style={{ fontFamily: 'var(--font-family)' }}>{selectedPrivacy?.label}</span>
                 <ChevronDown className="w-4 h-4" />
@@ -493,8 +500,13 @@ export function ProjectSettingsModal({
             </div>
             <div ref={digitalTwinDropdownRef} className="w-[250px]">
               <div
+                role="button"
+                tabIndex={0}
                 className="px-3 py-2 border border-border rounded-[var(--radius-lg)] bg-card flex items-center justify-between cursor-pointer hover:bg-secondary transition-colors"
                 onClick={() => setShowDigitalTwinDropdown(!showDigitalTwinDropdown)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowDigitalTwinDropdown(!showDigitalTwinDropdown); } }}
+                aria-haspopup="listbox"
+                aria-expanded={showDigitalTwinDropdown}
               >
                 <span className="text-sm" style={{ fontFamily: 'var(--font-family)' }}>{defaultDigitalTwin}</span>
                 <ChevronDown className="w-4 h-4" />

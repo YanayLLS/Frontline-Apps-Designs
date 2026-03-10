@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
 } from '../ui/dropdown-menu';
 import { ScheduleMeetingModal, type Person, type Meeting } from '../ScheduleMeetingModal';
-import { Paperclip, FileText, Folder, Phone, Video, Calendar, Clock } from 'lucide-react';
+import { Paperclip, FileText, Folder, Phone, Video, Calendar, Clock, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useProject } from '../../contexts/ProjectContext';
 import { useActiveCall } from '../../contexts/ActiveCallContext';
 import { getUrlParam, setUrlParam } from '../../utils/urlParams';
@@ -704,6 +704,7 @@ export function RemoteSupportPage({
   const [showPreJoin, setShowPreJoin] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(initialShowScheduleModal);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [connectionError, setConnectionError] = useState(false);
 
   const openScheduleModal = (open: boolean) => { setShowScheduleModal(open); setUrlParam('schedule', open ? '1' : null); };
   const [meetingTitle, setMeetingTitle] = useState('Meeting with Host Name');
@@ -4530,6 +4531,33 @@ export function RemoteSupportPage({
     );
   }
 
+  // Connection error state
+  if (connectionError) {
+    return (
+      <div className="h-full flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center text-center max-w-sm">
+          <div className="p-5 bg-destructive/10 rounded-full mb-4">
+            <AlertTriangle size={36} className="text-destructive" />
+          </div>
+          <h3 className="text-base text-foreground mb-2" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+            Connection failed
+          </h3>
+          <p className="text-sm text-muted mb-6">
+            Unable to connect to the remote support service. Please check your internet connection and try again.
+          </p>
+          <button
+            onClick={() => setConnectionError(false)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-[var(--radius)] hover:opacity-90 transition-opacity"
+            style={{ fontWeight: 'var(--font-weight-bold)' }}
+          >
+            <RefreshCw size={16} />
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Meetings List View
   return (
     <div className={`h-full ${isMobile ? 'flex flex-col' : 'flex'} bg-background`}>
@@ -5517,7 +5545,13 @@ export function RemoteSupportPage({
             </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full bg-card">
-                <p className="text-sm text-foreground mb-1">
+                <div className="p-5 bg-secondary/50 rounded-full mb-4">
+                  <Calendar size={36} className="text-muted" />
+                </div>
+                <h3 className="text-base text-foreground mb-1" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                  No scheduled meetings
+                </h3>
+                <p className="text-sm text-muted text-center max-w-[300px] mb-1">
                   Your scheduled meetings will show here.{' '}
                   <button
                     onClick={() => openScheduleModal(true)}

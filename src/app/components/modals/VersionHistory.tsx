@@ -56,11 +56,12 @@ export function VersionHistory({
       <button
         onClick={onToggleExpand}
         className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-secondary/50 transition-colors"
+        aria-expanded={isExpanded}
       >
         {isExpanded ? (
-          <ChevronDown size={12} className="text-muted" />
+          <ChevronDown size={12} className="text-muted" aria-hidden="true" />
         ) : (
-          <ChevronRight size={12} className="text-muted" />
+          <ChevronRight size={12} className="text-muted" aria-hidden="true" />
         )}
         <span className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
           Version History
@@ -106,8 +107,11 @@ export function VersionHistory({
                   <button
                     onClick={() => setActiveMenu(activeMenu === index ? null : index)}
                     className="opacity-0 group-hover:opacity-100 hover:bg-secondary p-0.5 rounded transition-all"
+                    aria-label={`Version ${version.version} options`}
+                    aria-haspopup="true"
+                    aria-expanded={activeMenu === index}
                   >
-                    <MoreHorizontal size={14} className="text-muted -rotate-90" />
+                    <MoreHorizontal size={14} className="text-muted -rotate-90" aria-hidden="true" />
                   </button>
 
                   {/* Context Menu */}

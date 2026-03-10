@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useProject, ActivityLog, ActivityAction, ActivityCategory } from '../../contexts/ProjectContext';
-import { 
-  Search, 
-  Filter, 
-  X, 
-  FileText, 
-  Box, 
-  Settings, 
-  Users, 
+import {
+  Search,
+  Filter,
+  X,
+  FileText,
+  Box,
+  Settings,
+  Users,
   Database,
   Plus,
   Edit,
@@ -19,8 +19,39 @@ import {
   FolderInput,
   Share2,
   Check,
-  Clock
+  Clock,
+  AlertTriangle,
+  RefreshCw,
+  SlidersHorizontal
 } from 'lucide-react';
+
+function ActivityLogErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col h-full bg-background">
+      <div className="flex items-center justify-center flex-1">
+        <div className="flex flex-col items-center text-center max-w-sm">
+          <div className="p-5 bg-destructive/10 rounded-full mb-4">
+            <AlertTriangle size={36} className="text-destructive" />
+          </div>
+          <h3 className="text-base text-foreground mb-2" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+            Failed to load activity log
+          </h3>
+          <p className="text-sm text-muted mb-6">
+            Something went wrong while loading the activity data. Please try again.
+          </p>
+          <button
+            onClick={onRetry}
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-[var(--radius)] hover:opacity-90 transition-opacity"
+            style={{ fontWeight: 'var(--font-weight-bold)' }}
+          >
+            <RefreshCw size={16} />
+            Retry
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function ActivityLogPage() {
   const { activityLogs } = useProject();
@@ -29,6 +60,7 @@ export function ActivityLogPage() {
   const [selectedActions, setSelectedActions] = useState<ActivityAction[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<ActivityCategory[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   // Get unique users for filter
   const uniqueUsers = useMemo(() => {
@@ -179,6 +211,10 @@ export function ActivityLogPage() {
   const allActions: ActivityAction[] = ['created', 'updated', 'deleted', 'published', 'unpublished', 'connected', 'disconnected', 'renamed', 'moved', 'shared'];
   const allCategories: ActivityCategory[] = ['knowledge-base', 'digital-twin', 'procedure', 'session', 'settings', 'user'];
 
+  if (hasError) {
+    return <ActivityLogErrorState onRetry={() => setHasError(false)} />;
+  }
+
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
@@ -211,13 +247,17 @@ export function ActivityLogPage() {
                   : 'bg-secondary border-border text-foreground hover:bg-secondary/80'
               }`}
             >
-              <Filter size={14} />
+              <SlidersHorizontal size={14} />
               Filters
-              {hasActiveFilters && (
+              {hasActiveFilters ? (
                 <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px]" style={{ fontWeight: 'var(--font-weight-bold)' }}>
                   {selectedUsers.length + selectedActions.length + selectedCategories.length}
                 </span>
-              )}
+              ) : !showFilters ? (
+                <span className="text-[10px] text-muted ml-0.5">
+                  {showFilters ? '' : `${uniqueUsers.length} users`}
+                </span>
+              ) : null}
             </button>
           </div>
         </div>

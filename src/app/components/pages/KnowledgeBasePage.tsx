@@ -32,7 +32,8 @@ import {
   Star,
   Play,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Database
 } from 'lucide-react';
 import { ProcedureModal } from '../modals/ProcedureModal';
 import { ConnectionPicker } from '../modals/ConnectionPicker';
@@ -80,6 +81,67 @@ const OPERATOR_COLUMNS: ColumnConfig[] = [
   { id: 'connectedDigitalTwin', label: 'Connection', visible: true, width: 200, sortable: true, removable: false },
 ];
 
+function KnowledgeBaseGridSkeleton() {
+  return (
+    <div className="flex flex-col h-full bg-background">
+      {/* Header skeleton */}
+      <div className="shrink-0 border-b border-border bg-card">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="h-10 bg-muted/30 rounded-[var(--radius)] w-72 animate-pulse" />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-10 w-20 bg-muted/30 rounded-[var(--radius)] animate-pulse" />
+            <div className="h-10 w-20 bg-muted/30 rounded-[var(--radius)] animate-pulse" />
+            <div className="h-10 w-28 bg-muted/30 rounded-[var(--radius)] animate-pulse" />
+          </div>
+        </div>
+      </div>
+      {/* Grid skeleton */}
+      <div className="flex-1 overflow-auto p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <div key={i} className="bg-card border border-border rounded-[var(--radius)] overflow-hidden animate-pulse">
+              <div className="h-32 bg-muted/30" />
+              <div className="p-3 space-y-2">
+                <div className="h-4 bg-muted/30 rounded w-3/4" />
+                <div className="h-3 bg-muted/30 rounded w-1/2" />
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="h-3 bg-muted/30 rounded w-16" />
+                  <div className="h-3 bg-muted/30 rounded w-20" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KnowledgeBaseEmptyState({ onCreateClick }: { onCreateClick: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full py-16">
+      <div className="p-6 bg-secondary/50 rounded-full mb-4">
+        <Database size={40} className="text-muted" />
+      </div>
+      <h3 className="text-lg text-foreground mb-2" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+        No items in knowledge base
+      </h3>
+      <p className="text-sm text-muted mb-6 text-center max-w-md">
+        Get started by creating your first digital twin, flow, or media file
+      </p>
+      <button
+        onClick={onCreateClick}
+        className="flex items-center gap-2 h-10 px-6 rounded-[var(--radius)] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+      >
+        <Plus size={16} />
+        <span className="text-sm" style={{ fontWeight: 'var(--font-weight-bold)' }}>Create Your First Item</span>
+      </button>
+    </div>
+  );
+}
+
 export function KnowledgeBasePage() {
   return (
     <DndProvider backend={HTML5Backend}>
@@ -101,6 +163,13 @@ function KnowledgeBaseContent() {
   const { showToast } = useToast();
   const { currentRole } = useRole();
   const { addFavorite, removeFavorite, isFavorite } = useFavorites();
+
+  // Loading state
+  const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Check if user has edit permissions
   const canEdit = hasAccess(currentRole, 'projects-edit');
@@ -1700,6 +1769,10 @@ function KnowledgeBaseContent() {
     col => !columns.find(c => c.id === col.id)
   );
 
+  if (isLoading) {
+    return <KnowledgeBaseGridSkeleton />;
+  }
+
   return (
     <div className={`flex flex-col h-full bg-background relative ${isShiftPressed ? 'select-none' : ''}`}>
       {/* Header - Hidden when canvas is open */}
@@ -2060,28 +2133,21 @@ function KnowledgeBaseContent() {
 
         {/* Empty State */}
         {filteredItems().length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full py-12">
-            <div className="p-6 bg-secondary/50 rounded-full mb-4">
-              <Search size={40} className="text-muted" />
+          (searchQuery || selectedFilter !== 'all') ? (
+            <div className="flex flex-col items-center justify-center h-full py-12">
+              <div className="p-6 bg-secondary/50 rounded-full mb-4">
+                <Search size={40} className="text-muted" />
+              </div>
+              <h3 className="text-lg text-foreground mb-2" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                No items found
+              </h3>
+              <p className="text-sm text-muted mb-6 text-center max-w-md">
+                Try adjusting your search or filter to find what you're looking for
+              </p>
             </div>
-            <h3 className="text-lg text-foreground mb-2" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-              No items found
-            </h3>
-            <p className="text-sm text-muted mb-6 text-center max-w-md">
-              {searchQuery || selectedFilter !== 'all' 
-                ? 'Try adjusting your search or filter to find what you\'re looking for' 
-                : 'Get started by creating your first digital twin, procedure, or media file'}
-            </p>
-            {!searchQuery && selectedFilter === 'all' && (
-              <button 
-                onClick={() => setShowCreateMenu(true)}
-                className="flex items-center gap-2 h-10 px-6 rounded-[var(--radius)] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                <Plus size={16} />
-                <span className="text-sm" style={{ fontWeight: 'var(--font-weight-bold)' }}>Create Your First Item</span>
-              </button>
-            )}
-          </div>
+          ) : (
+            <KnowledgeBaseEmptyState onCreateClick={() => setShowCreateMenu(true)} />
+          )
         )}
       </div>
 

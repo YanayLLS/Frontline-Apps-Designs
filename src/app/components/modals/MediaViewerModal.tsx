@@ -33,9 +33,12 @@ export function MediaViewerModal({ isOpen, onClose, item }: MediaViewerModalProp
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
       onClick={onClose}
     >
-      <div 
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="media-viewer-title"
         className="relative max-w-5xl max-h-[90vh] w-full mx-4 bg-card rounded-[var(--radius)] overflow-hidden"
-        style={{ 
+        style={{
           boxShadow: 'var(--elevation-lg)',
           fontFamily: 'var(--font-family)'
         }}
@@ -45,9 +48,10 @@ export function MediaViewerModal({ isOpen, onClose, item }: MediaViewerModalProp
         <div 
           className="flex items-center justify-between px-4 py-4 border-b border-border"
         >
-          <h2 
+          <h2
+            id="media-viewer-title"
             className="text-foreground"
-            style={{ 
+            style={{
               fontSize: 'var(--text-h3)',
               fontWeight: 'var(--font-weight-bold)',
               fontFamily: 'var(--font-family)'
@@ -58,6 +62,7 @@ export function MediaViewerModal({ isOpen, onClose, item }: MediaViewerModalProp
           <button
             onClick={onClose}
             className="p-2 rounded-[var(--radius)] hover:bg-secondary transition-colors text-muted hover:text-foreground"
+            aria-label="Close media viewer"
           >
             <X size={20} />
           </button>

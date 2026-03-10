@@ -237,13 +237,14 @@ export function TopBar({ isChatOpen, onToggleChat, onMenuClick, isMobile, isWork
 
   return (
     <>
-      <div className={`h-[54px] bg-background shrink-0 flex items-center justify-between border-b border-border ${isMobile ? 'px-4' : 'px-6'}`}>
+      <div role="banner" className={`h-[54px] bg-background shrink-0 flex items-center justify-between border-b border-border ${isMobile ? 'px-4' : 'px-6'}`}>
         {/* Left side - Workspace button and Mobile menu button */}
         <div className="flex-1 flex items-center gap-3">
           {isMobile && onMenuClick && (
             <button
               onClick={onMenuClick}
               className="p-2 -ml-2 hover:bg-secondary rounded-[var(--radius)] transition-colors"
+              aria-label="Open menu"
             >
               <IconMenu />
             </button>
@@ -257,6 +258,9 @@ export function TopBar({ isChatOpen, onToggleChat, onMenuClick, isMobile, isWork
                 onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
                 className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius)] hover:bg-secondary transition-all duration-200"
                 style={{ fontFamily: 'var(--font-family)' }}
+                aria-label="Workspace management"
+                aria-expanded={showWorkspaceMenu}
+                aria-haspopup="true"
               >
                 {currentWorkspace.id === 'frontline' ? (
                   <div className="w-6 h-6 rounded-[var(--radius)] bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -405,6 +409,7 @@ export function TopBar({ isChatOpen, onToggleChat, onMenuClick, isMobile, isWork
                 type="text"
                 placeholder="Search"
                 className="flex-1 bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted"
+                aria-label="Search"
               />
             </div>
           )}
@@ -417,6 +422,8 @@ export function TopBar({ isChatOpen, onToggleChat, onMenuClick, isMobile, isWork
                 ? 'bg-primary/10 border border-primary shadow-[0px_4px_17.7px_0px_rgba(151,71,255,0.3)]'
                 : 'border border-primary/30 hover:border-primary hover:shadow-[0px_4px_17.7px_0px_rgba(151,71,255,0.2)]'
             }`}
+            aria-label="Toggle AI chat"
+            aria-expanded={isChatOpen}
           >
             <IconAi />
           </button>
@@ -432,17 +439,20 @@ export function TopBar({ isChatOpen, onToggleChat, onMenuClick, isMobile, isWork
           )}
 
           <div className="relative">
-            <div
+            <button
               ref={userButtonRef}
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               className="cursor-pointer"
+              aria-label="User settings"
+              aria-expanded={isUserMenuOpen}
+              aria-haspopup="true"
             >
-              <UserAvatar 
-                size="small" 
+              <UserAvatar
+                size="small"
                 showOnlineStatus={true}
                 initials="YD"
               />
-            </div>
+            </button>
 
             {/* User Menu */}
             {isUserMenuOpen && (

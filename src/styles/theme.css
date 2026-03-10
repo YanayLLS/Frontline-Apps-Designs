@@ -46,13 +46,13 @@
   /* The muted color used for less prominent elements, such as disabled buttons or disabled text. */
   --muted: rgba(127, 127, 127, 1.00);
   /* The default color for text or elements that appear on top of muted colored elements. */
-  --muted-foreground: rgba(255, 255, 255, 1.00);
+  --muted-foreground: rgba(99, 99, 99, 1.00);
   /* The accent color used for highlights, links, and other interactive elements. */
   --accent: rgba(17, 232, 116, 1.00);
   /* The default color for text or elements that appear on top of accent colored elements. */
   --accent-foreground: rgba(255, 255, 255, 1.00);
   /* The color used for background in destructive actions, such as delete buttons or error messages. */
-  --destructive: rgba(255, 31, 31, 1.00);
+  --destructive: rgba(217, 26, 26, 1.00);
   /* The default color for text or elements that appear on top of destructive colored elements. */
   --destructive-foreground: rgba(255, 255, 255, 1.00);
   /* The default border color for elements such as inputs, buttons, and other containers. */
@@ -68,7 +68,7 @@
   /* Light background tint for primary color */
   --primary-background: rgba(47, 128, 237, 0.1);
   /* Light background tint for destructive color */
-  --destructive-background: rgba(255, 31, 31, 0.1);
+  --destructive-background: rgba(217, 26, 26, 0.1);
   /* Warning color for non-critical alerts */
   --warning: rgba(255, 193, 7, 1.00);
   /* Success color for positive actions and confirmations */
@@ -308,4 +308,53 @@ html {
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: var(--muted) var(--secondary);
+}
+
+/* Focus ring for keyboard navigation accessibility */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Skip-to-content link for screen reader / keyboard accessibility */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 9999;
+}
+.skip-to-content:focus {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  width: auto;
+  height: auto;
+  padding: 8px 16px;
+  background: var(--background);
+  color: var(--foreground);
+  border: 2px solid var(--ring);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Minimum touch target size (WCAG 2.5.8) */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Prevent mobile browsers from zooming on input focus */
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: max(16px, 1rem) !important;
+  }
 }

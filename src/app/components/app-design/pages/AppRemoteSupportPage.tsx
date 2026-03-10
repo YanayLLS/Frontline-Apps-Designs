@@ -1,5 +1,5 @@
 import { Search, Phone, Video, MessageSquare, Plus, ChevronDown, Users, PhoneCall, Calendar, MoreVertical, Clock, X, Copy, Check } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AppCallDeviceModal } from './AppCallDevicePage';
 import { AppMeetingJoinModal } from './AppMeetingJoinPage';
 import { AppScheduleMeetingModal } from './AppScheduleMeetingPage';
@@ -26,6 +26,9 @@ interface Meeting {
   participants: string[];
   status: 'upcoming' | 'past';
 }
+
+const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const shortTz = new Date().toLocaleTimeString('en-US', { timeZoneName: 'short' }).split(' ').pop() || '';
 
 const mockMeetings: Meeting[] = [
   { id: 'm1', title: 'Maintenance Review', time: '10:00 AM', date: 'Today', participants: ['LR', 'DA'], status: 'upcoming' },
@@ -54,6 +57,12 @@ export function AppRemoteSupportPage() {
   const [showJoinMeetingModal, setShowJoinMeetingModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  }, []);
 
   const openCallDevice = (open: boolean) => { setShowCallDeviceModal(open); setUrlParam('calldevice', open ? '1' : null); };
   const openJoinMeeting = (open: boolean) => { setShowJoinMeetingModal(open); setUrlParam('joinmeeting', open ? '1' : null); };
@@ -70,7 +79,11 @@ export function AppRemoteSupportPage() {
   );
 
   const handleCopyMeetingId = (id: string) => {
-    navigator.clipboard.writeText(id);
+    navigator.clipboard.writeText(id).then(() => {
+      showToast('Meeting ID copied to clipboard');
+    }).catch(() => {
+      showToast('Failed to copy meeting ID');
+    });
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
@@ -78,7 +91,7 @@ export function AppRemoteSupportPage() {
   const handleStartMeeting = () => {
     setShowNewSessionMenu(false);
     // In a real app this would start a video call
-    alert('Starting instant meeting...');
+    showToast('Starting instant meeting...');
   };
 
 
@@ -253,7 +266,7 @@ export function AppRemoteSupportPage() {
                             {meeting.title}
                           </h4>
                           <p style={{ fontSize: '12px', color: '#7F7F7F', marginTop: '2px' }}>
-                            {meeting.date} at {meeting.time}
+                            {meeting.date} at {meeting.time} {shortTz}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -261,6 +274,7 @@ export function AppRemoteSupportPage() {
                             onClick={() => handleCopyMeetingId(meeting.id)}
                             className="p-1.5 text-muted hover:text-foreground hover:bg-secondary rounded transition-colors"
                             title="Copy meeting ID"
+                            aria-label="Copy meeting ID"
                           >
                             {copiedId === meeting.id ? <Check className="size-3.5 text-accent" /> : <Copy className="size-3.5" />}
                           </button>
@@ -335,6 +349,25 @@ export function AppRemoteSupportPage() {
           )}
         </div>
       </div>
+
+      {/* ===== TOAST ===== */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-[#36415D] text-white rounded-lg shadow-elevation-lg flex items-center gap-2"
+          style={{ fontSize: '13px', fontWeight: 'var(--font-weight-medium)', animation: 'toast-in 0.2s ease-out' }}
+        >
+          <Check className="size-4 shrink-0" />
+          {toast}
+        </div>
+      )}
+      <style>{`
+        @keyframes toast-in {
+          from { opacity: 0; transform: translate(-50%, 8px); }
+          to { opacity: 1; transform: translate(-50%, 0); }
+        }
+      `}</style>
 
       {/* ===== MODALS ===== */}
       <AppCallDeviceModal isOpen={showCallDeviceModal} onClose={() => openCallDevice(false)} />

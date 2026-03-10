@@ -24,8 +24,12 @@ export function ConfirmDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60]">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60]" role="presentation">
       <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
         className="bg-card rounded-[var(--radius)] shadow-lg w-full max-w-md mx-4 border border-border overflow-hidden"
         style={{ boxShadow: 'var(--elevation-lg)' }}
       >
@@ -35,20 +39,21 @@ export function ConfirmDialog({
             <div className={`p-2 rounded-[var(--radius)] ${
               variant === 'danger' ? 'bg-red-500/10' : 'bg-accent/10'
             }`}>
-              <AlertCircle 
-                size={20} 
-                className={variant === 'danger' ? 'text-red-500' : 'text-accent'} 
+              <AlertCircle
+                size={20}
+                className={variant === 'danger' ? 'text-red-500' : 'text-accent'}
+                aria-hidden="true"
               />
             </div>
-            <h2 className="text-base text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-              {title}
+            <h2 id="confirm-dialog-title" className="text-base text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+              {variant === 'danger' ? 'Warning: ' : ''}{title}
             </h2>
           </div>
         </div>
 
         {/* Content */}
         <div className="px-6 py-4">
-          <p className="text-sm text-foreground">{message}</p>
+          <p className="text-sm text-foreground" id="confirm-dialog-description">{message}</p>
         </div>
 
         {/* Actions */}

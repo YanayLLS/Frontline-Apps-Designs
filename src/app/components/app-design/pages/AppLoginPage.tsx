@@ -34,7 +34,7 @@ export function AppLoginPage({ onLogin }: AppLoginPageProps) {
         <div className="w-full max-w-sm bg-card rounded-[var(--radius)] p-6 sm:p-8" style={{ boxShadow: 'var(--elevation-lg)' }}>
           {/* Back button + Title */}
           <div className="flex items-center gap-3 mb-6">
-            <button className="p-1 text-muted hover:text-foreground rounded transition-colors">
+            <button className="p-1 text-muted hover:text-foreground rounded transition-colors" aria-label="Go back">
               <ArrowLeft className="size-5" />
             </button>
             <h2 className="text-foreground" style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-h2)' }}>
@@ -53,16 +53,19 @@ export function AppLoginPage({ onLogin }: AppLoginPageProps) {
                 onChange={(e) => { setPassword(e.target.value); setError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                 className="w-full h-12 pl-10 pr-10 rounded-lg text-sm bg-card border-2 border-input outline-none text-foreground placeholder:text-muted focus:border-primary transition-colors"
+                aria-invalid={error ? 'true' : undefined}
+                aria-describedby={error ? 'password-error' : undefined}
               />
               <button
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
+                aria-label="Toggle password visibility"
               >
                 {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
             {error && (
-              <p className="text-xs text-destructive mt-1.5 flex items-center gap-1">
+              <p id="password-error" className="text-xs text-destructive mt-1.5 flex items-center gap-1" role="alert">
                 <AlertCircle className="size-3" /> {error}
               </p>
             )}

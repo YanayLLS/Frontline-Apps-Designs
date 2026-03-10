@@ -19,6 +19,10 @@ export function GroupDeleteModal({
       onClick={onCancel}
     >
       <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="group-delete-title"
+        aria-describedby="group-delete-description"
         className="bg-card rounded-[var(--radius-lg)] p-6 max-w-md mx-4 w-full"
         style={{ boxShadow: 'var(--shadow-elevation-lg)' }}
         onClick={(e) => e.stopPropagation()}
@@ -29,12 +33,13 @@ export function GroupDeleteModal({
             className="w-12 h-12 rounded-full flex items-center justify-center"
             style={{ backgroundColor: 'rgba(255, 31, 31, 0.1)' }}
           >
-            <AlertTriangle size={24} style={{ color: 'var(--destructive)' }} />
+            <AlertTriangle size={24} style={{ color: 'var(--destructive)' }} aria-hidden="true" />
           </div>
         </div>
 
         {/* Title */}
         <h3
+          id="group-delete-title"
           className="text-center mb-1"
           style={{
             color: 'var(--foreground)',
@@ -43,11 +48,12 @@ export function GroupDeleteModal({
             fontFamily: 'var(--font-family)',
           }}
         >
-          Delete Group
+          Warning: Delete Group
         </h3>
 
         {/* Subtitle */}
         <p
+          id="group-delete-description"
           className="text-center mb-4"
           style={{
             color: 'var(--muted)',

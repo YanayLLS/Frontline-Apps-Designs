@@ -30,15 +30,16 @@ export function SecondarySidebar({
   const canCreateNewProject = hasAccess(currentRole, 'project-create');
 
   return (
-    <div className="h-full flex flex-col bg-sidebar" style={{ fontFamily: 'var(--font-family)' }}>
+    <div className="h-full flex flex-col bg-sidebar" role="navigation" aria-label="Project navigation" style={{ fontFamily: 'var(--font-family)' }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <h3 className="text-foreground" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-bold)' }}>
           Projects
         </h3>
-        <button 
+        <button
           onClick={onClose}
           className="text-muted hover:text-foreground transition-colors p-1 hover:bg-secondary rounded-[var(--radius)]"
+          aria-label="Close project navigation"
         >
           <ChevronLeft size={20} />
         </button>

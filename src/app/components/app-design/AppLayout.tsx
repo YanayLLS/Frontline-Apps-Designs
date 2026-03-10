@@ -225,6 +225,8 @@ export function AppLayout() {
         <button
           className="lg:hidden p-1.5 hover:bg-black/5 rounded-lg" style={{ color: '#36415D' }}
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={isMobileMenuOpen}
         >
           {isMobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
@@ -370,6 +372,7 @@ export function AppLayout() {
               e.stopPropagation();
               setShowNotifPanel(!showNotifPanel);
             }}
+            aria-label="Notifications"
           >
             <Bell className="size-5" />
             {initialAppNotifications.filter(n => !n.read).length > 0 && (
@@ -386,6 +389,7 @@ export function AppLayout() {
           <button
             className="p-1.5 hover:bg-black/5 rounded-lg hidden sm:flex" style={{ color: '#36415D' }}
             onClick={(e) => { e.stopPropagation(); openSettings(true); }}
+            aria-label="Settings"
           >
             <Settings className="size-5" />
           </button>
@@ -396,6 +400,8 @@ export function AppLayout() {
               className="rounded-full bg-primary flex items-center justify-center text-white hover:bg-primary/90"
               style={{ width: '32px', height: '32px', fontWeight: 'var(--font-weight-bold)', fontSize: '14px', fontFamily: "'Titillium Web', sans-serif" }}
               onClick={() => setShowUserMenu(!showUserMenu)}
+              aria-label="User menu"
+              aria-expanded={showUserMenu}
             >
               CO
             </button>
@@ -421,36 +427,36 @@ export function AppLayout() {
             )}
           </div>
 
-          {/* Windows window controls (desktop only) */}
-          <div className="hidden lg:flex items-center ml-2" style={{ gap: '2px' }}>
+          {/* Windows window controls (desktop only) — decorative, non-functional */}
+          <div className="hidden lg:flex items-center ml-2" style={{ gap: '2px' }} aria-hidden="true">
             <div style={{ width: '1px', height: '20px', backgroundColor: '#C2C9DB', marginRight: '6px' }} />
             {/* Minimize */}
-            <button
+            <div
               className="flex items-center justify-center hover:bg-black/5 transition-colors"
               style={{ width: '36px', height: '36px' }}
             >
               <svg width="10" height="1" viewBox="0 0 10 1" fill="none">
                 <rect width="10" height="1" fill="#36415D" />
               </svg>
-            </button>
+            </div>
             {/* Maximize */}
-            <button
+            <div
               className="flex items-center justify-center hover:bg-black/5 transition-colors"
               style={{ width: '36px', height: '36px' }}
             >
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <rect x="0.5" y="0.5" width="9" height="9" stroke="#36415D" strokeWidth="1" fill="none" />
               </svg>
-            </button>
+            </div>
             {/* Close */}
-            <button
+            <div
               className="flex items-center justify-center hover:bg-[#E81123] hover:text-white transition-colors group"
               style={{ width: '36px', height: '36px' }}
             >
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <path d="M1 1L9 9M9 1L1 9" stroke="#36415D" strokeWidth="1.2" className="group-hover:stroke-white" />
               </svg>
-            </button>
+            </div>
           </div>
         </div>
       </header>
@@ -464,6 +470,8 @@ export function AppLayout() {
 
         {/* ===== LEFT SIDEBAR (icon nav) ===== */}
         {!isFullscreenEmbed && <nav
+          role="navigation"
+          aria-label="Main navigation"
           className={`shrink-0 bg-card flex flex-col z-50
             ${isMobileMenuOpen
               ? 'fixed top-[55px] left-0 bottom-0 w-56 lg:w-[70px] lg:relative lg:top-0 lg:items-center'
@@ -549,6 +557,7 @@ export function AppLayout() {
                 fontWeight: 'var(--font-weight-bold)',
               }}
               title="Help"
+              aria-label="Help"
             >
               ?
             </button>
@@ -610,10 +619,10 @@ export function AppLayout() {
                         </div>
                       </div>
                       <div className="flex items-center gap-0.5 shrink-0">
-                        <button className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                        <button className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors" aria-label={`Video call ${contact.name}`}>
                           <Video className="size-3.5" />
                         </button>
-                        <button className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                        <button className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors" aria-label={`Phone call ${contact.name}`}>
                           <Phone className="size-3.5" />
                         </button>
                       </div>
@@ -722,7 +731,7 @@ export function AppLayout() {
       </div>
 
       {/* ===== MOBILE BOTTOM NAV ===== */}
-      {!isFullscreenEmbed && <nav className="lg:hidden shrink-0 bg-card flex items-center justify-around" style={{ borderTop: '1px solid #C2C9DB', height: '56px', padding: '0 4px' }}>
+      {!isFullscreenEmbed && <nav role="navigation" aria-label="Mobile navigation" className="lg:hidden shrink-0 bg-card flex items-center justify-around" style={{ borderTop: '1px solid #C2C9DB', height: '56px', padding: '0 4px' }}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeNav === item.id;
@@ -797,6 +806,7 @@ export function AppLayout() {
               onClick={() => setShowNotifPanel(false)}
               className="absolute right-3 z-10 p-2 hover:bg-secondary rounded-lg transition-colors"
               style={{ color: '#7F7F7F', top: '16px' }}
+              aria-label="Close notifications"
             >
               <X className="size-5" />
             </button>
