@@ -55,6 +55,9 @@
             validate:function(){ var cb=document.getElementById('hmShowLines'); return cb && cb.checked; }},
           { target:'.hs-marker.show-line:not(.hs-hidden)', text:'Connection lines are now visible on the 3D markers, making hotspot positions easier to identify on the model.', pos:'top', wait:'observe', trackTip:true,            setup:function(){ var sp=document.getElementById('hmSettingsPanel'); if(sp) sp.style.display='none'; var sb=document.getElementById('hmSettingsBtn'); if(sb) sb.classList.remove('active'); var m=document.getElementById('hsManager'); if(m&&!m.classList.contains('hidden')){ var cf=typeof closeHotspotManager==='function'; if(cf) closeHotspotManager(); else m.classList.add('hidden'); } }},
           { target:'#btSave', text:'Save your work before previewing. Click Save now.', pos:'top', wait:'click' },
+          { target:'#btSave', text:'A publish prompt will appear. You can <b>Publish</b> to make changes live for other users, or click <b>Not now</b> to skip.', pos:'top', wait:'validate',
+            setup:function(){ this._seen=false; },
+            validate:function(){ if(document.getElementById('publishNo')){this._seen=true;return false;} return this._seen; }},
           { target:'#btPreview', text:'Click Preview to see your hotspots as end users will experience them.', pos:'top', wait:'click' },
           { target:'.hs-marker:not(.hs-hidden)', text:'You\'re in Viewer mode. Click any hotspot marker to see its content.', pos:'top', wait:'validate', viewerMode:true, trackTip:true,            setup:function(){ var m=document.getElementById('hsManager'); if(m&&!m.classList.contains('hidden')){ var cf=typeof closeHotspotManager==='function'; if(cf) closeHotspotManager(); else m.classList.add('hidden'); } },
             validate:function(){ var p=document.getElementById('hsViewerPopup'); return p && !p.classList.contains('hidden'); }},
@@ -71,6 +74,9 @@
             setup:function(){ var b=document.querySelector('[data-menu="parts"]'); if(b&&!b.classList.contains('active')) b.click(); }},
           { target:'#partsList', text:'Your imported model appears here in the parts tree. Click it to select it in the 3D view.', pos:'left', wait:'observe' },
           { target:'#btSave', text:'Save your work to persist the imported model. Click Save now.', pos:'top', wait:'click' },
+          { target:'#btSave', text:'A publish prompt will appear. <b>Publish</b> to share with other users, or <b>Not now</b> to skip.', pos:'top', wait:'validate',
+            setup:function(){ this._seen=false; },
+            validate:function(){ if(document.getElementById('publishNo')){this._seen=true;return false;} return this._seen; }},
           { target:'#btPreview', text:'Click Preview to see the model in Viewer mode — exactly as end users will see it.', pos:'top', wait:'click' },
           { target:'#viewport', text:'You\'re now in Viewer mode. The imported model is visible in the scene. Orbit, pan, and zoom to inspect it. Import complete!', pos:'top', wait:'observe', viewerMode:true },
         ]},
@@ -87,6 +93,9 @@
           { target:'#toolboxGrid', text:'Double-click any tool card to import it into your scene. Right-click for more options: Edit, Duplicate, Info, or Delete.', pos:'left', wait:'observe' },
           { target:'#btSave', text:'After importing, save your work. Click Save.', pos:'top', wait:'click',
             setup:function(){ var o=document.getElementById('toolboxOverlay'); if(o&&o.style.display!=='none'){o.style.display='none';} }},
+          { target:'#btSave', text:'A publish prompt will appear. <b>Publish</b> to share with other users, or <b>Not now</b> to skip.', pos:'top', wait:'validate',
+            setup:function(){ this._seen=false; },
+            validate:function(){ if(document.getElementById('publishNo')){this._seen=true;return false;} return this._seen; }},
           { target:'#btPreview', text:'Click Preview to see the tool in Viewer mode.', pos:'top', wait:'click' },
           { target:'#viewport', text:'Your imported tool is now in the scene. Viewer mode shows exactly what end users experience. Done!', pos:'top', wait:'observe', viewerMode:true },
         ]},
@@ -126,6 +135,9 @@
         flow:['Click Save to persist all changes','Click Preview to enter Viewer mode','Interact with hotspots in Viewer mode','Return to Editor mode from the three-dot menu'],
         demo:[
           { target:'#btSave', text:'Click Save to persist all your changes — parts, hotspots, and settings.', pos:'top', wait:'click' },
+          { target:'#btSave', text:'A publish prompt will appear. <b>Publish</b> to make them live, or <b>Not now</b> to skip.', pos:'top', wait:'validate',
+            setup:function(){ this._seen=false; },
+            validate:function(){ if(document.getElementById('publishNo')){this._seen=true;return false;} return this._seen; }},
           { target:'#btPreview', text:'Click Preview to enter Viewer mode. The editing UI hides and hotspots become interactive.', pos:'top', wait:'click' },
           { target:'#viewport', text:'You\'re in Viewer mode — this is exactly what end users see. Orbit, pan, and zoom to explore. Click hotspot markers to interact.', pos:'top', wait:'observe', viewerMode:true },
           { target:'#viewerMoreBtn', text:'Click the three-dot menu to access viewer options.', pos:'left', wait:'validate', viewerMode:true,
@@ -145,6 +157,9 @@
             setup:function(){ var p=document.getElementById('leftPanel'); if(p&&p.classList.contains('hidden')){var b=document.getElementById('btSettings'); if(b)b.click();} }},
           { target:'.panel-tab', text:'Use these tabs to switch between different setting sections.', pos:'right', wait:'observe' },
           { target:'#btSave', text:'After adjusting settings, save your changes. Click Save.', pos:'top', wait:'click' },
+          { target:'#btSave', text:'A publish prompt will appear. <b>Publish</b> to share updates, or <b>Not now</b> to skip.', pos:'top', wait:'validate',
+            setup:function(){ this._seen=false; },
+            validate:function(){ if(document.getElementById('publishNo')){this._seen=true;return false;} return this._seen; }},
           { target:'#btPreview', text:'Preview the scene to verify your settings look correct to end users.', pos:'top', wait:'click' },
           { target:'#viewport', text:'Check that everything looks right in Viewer mode. Grid & Settings demo complete!', pos:'top', wait:'observe', viewerMode:true },
         ]},
@@ -163,6 +178,9 @@
           { target:'#animFilterBtn', text:'Use filters to show only animations linked to specific parts or procedures.', pos:'left', wait:'observe' },
           { target:'#btSave', text:'Save your animations. Click Save.', pos:'top', wait:'click',
             setup:function(){ var m=document.getElementById('animManager'); if(m&&!m.classList.contains('hidden')){var c=document.getElementById('animManagerClose'); if(c)c.click();} }},
+          { target:'#btSave', text:'A publish prompt will appear. <b>Publish</b> to share updates, or <b>Not now</b> to skip.', pos:'top', wait:'validate',
+            setup:function(){ this._seen=false; },
+            validate:function(){ if(document.getElementById('publishNo')){this._seen=true;return false;} return this._seen; }},
           { target:'#btPreview', text:'Preview to see animations play as end users will experience them.', pos:'top', wait:'click' },
           { target:'#viewport', text:'Animations are now active in Viewer mode. Animation Manager demo complete!', pos:'top', wait:'observe', viewerMode:true },
         ]},
@@ -256,6 +274,12 @@
     animation: { bg:'#FFE8E8', color:'#DC2626' },
   };
   const TYPE_LABELS = { page:'Pages', feature:'Features', part:'Parts', hotspot:'Hotspots', animation:'Animations' };
+
+  // ==================== COMPLETION TRACKING ====================
+  var COMPLETED_KEY = 'debug-demo-completed';
+  function getCompleted() { try { return JSON.parse(localStorage.getItem(COMPLETED_KEY)) || {}; } catch(e) { return {}; } }
+  function markCompleted(featureId) { var c = getCompleted(); c[featureId] = Date.now(); localStorage.setItem(COMPLETED_KEY, JSON.stringify(c)); }
+  function isCompleted(featureId) { return !!getCompleted()[featureId]; }
 
   // ==================== FUZZY SEARCH ====================
   function fuzzyScore(q, t) {
@@ -379,6 +403,17 @@
       '.gs-search-icon{color:#868D9E;flex-shrink:0}',
       '.gs-search{flex:1;border:none;outline:none;font-size:13px;font-family:inherit;color:#36415D;background:transparent}',
       '.gs-search::placeholder{color:#868D9E}',
+      '.gs-filters{display:flex;gap:6px;padding:8px 20px;border-bottom:1px solid #E9E9E9;flex-shrink:0;flex-wrap:wrap}',
+      '.gs-filter{padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #C2C9DB;color:#5E677D;background:#fff;font-family:inherit;transition:all .15s}',
+      '.gs-filter:hover{border-color:#2F80ED;color:#2F80ED}',
+      '.gs-filter.gs-filter-active{background:#2F80ED;color:#fff;border-color:#2F80ED}',
+      '.gs-r-demo-count{font-size:10px;color:#868D9E;margin-left:6px;font-weight:400}',
+      '.gs-r-completed{color:#11E874;font-size:14px;margin-left:4px;vertical-align:middle}',
+      '.gs-r-play{width:28px;height:28px;border-radius:6px;border:none;background:none;cursor:pointer;display:none;align-items:center;justify-content:center;flex-shrink:0;color:#2F80ED}',
+      '.gs-r-play:hover{background:#D9E0F0}',
+      '.gs-r-play svg{width:14px;height:14px;fill:currentColor}',
+      '.gs-result:hover .gs-r-play{display:flex}',
+      '.gs-r-current-badge{font-size:9px;font-weight:700;background:#D9E0F0;color:#5E677D;border-radius:4px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.3px}',
       '.gs-results{flex:1;overflow-y:auto;padding:4px 0;min-height:0}',
       '.gs-results::-webkit-scrollbar{width:4px} .gs-results::-webkit-scrollbar-thumb{background:#c2c9db;border-radius:2px}',
       '.gs-group-label{padding:6px 20px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#868D9E;user-select:none}',
@@ -445,7 +480,15 @@
     '</div>' +
     '<div class="gs-search-wrap">' +
       '<svg class="gs-search-icon" width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.5"/><line x1="10.5" y1="10.5" x2="14.5" y2="14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>' +
-      '<input class="gs-search" type="text" placeholder="Filter..." autofocus/>' +
+      '<input class="gs-search" type="text" placeholder="Search pages, features, parts, hotspots..." autofocus/>' +
+    '</div>' +
+    '<div class="gs-filters">' +
+      '<button class="gs-filter gs-filter-active" data-filter="all">All</button>' +
+      '<button class="gs-filter" data-filter="page">Pages</button>' +
+      '<button class="gs-filter" data-filter="feature">Features</button>' +
+      '<button class="gs-filter" data-filter="part">Parts</button>' +
+      '<button class="gs-filter" data-filter="hotspot">Hotspots</button>' +
+      '<button class="gs-filter" data-filter="animation">Animations</button>' +
     '</div>' +
     '<div class="gs-results"></div>' +
     '<div class="gs-footer"><span><kbd>Shift+F</kbd> toggle</span><span><kbd>&uarr;&darr;</kbd> navigate</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div>' +
@@ -467,12 +510,31 @@
   var sInput = overlay.querySelector('.gs-search');
   var rContainer = overlay.querySelector('.gs-results');
   var footer = overlay.querySelector('.gs-footer');
-  var aIdx = 0, curResults = [], viewMode = 'search'; // 'search' or 'guide'
+  var aIdx = 0, curResults = [], viewMode = 'search', activeFilter = 'all'; // 'search' or 'guide'
+  var filtersWrap = overlay.querySelector('.gs-filters');
+
+  // Filter tabs
+  filtersWrap.addEventListener('click', function(e) {
+    var btn = e.target.closest('.gs-filter');
+    if (!btn) return;
+    activeFilter = btn.dataset.filter;
+    filtersWrap.querySelectorAll('.gs-filter').forEach(function(b) { b.classList.toggle('gs-filter-active', b.dataset.filter === activeFilter); });
+    renderResults(sInput.value);
+  });
 
   // ==================== RENDER SEARCH RESULTS ====================
   function renderResults(q) {
-    curResults = gatherResults(q);
+    var allResults = gatherResults(q);
+    curResults = activeFilter === 'all' ? allResults : allResults.filter(function(r) { return r.type === activeFilter; });
     aIdx = 0;
+    // Update filter counts
+    var counts = {};
+    allResults.forEach(function(r) { counts[r.type] = (counts[r.type] || 0) + 1; });
+    filtersWrap.querySelectorAll('.gs-filter').forEach(function(btn) {
+      var f = btn.dataset.filter;
+      if (f === 'all') { btn.textContent = 'All (' + allResults.length + ')'; }
+      else { btn.textContent = (TYPE_LABELS[f] || f) + ' (' + (counts[f] || 0) + ')'; btn.style.display = (counts[f] || 0) === 0 ? 'none' : ''; }
+    });
     if (!curResults.length) { rContainer.innerHTML = '<div class="gs-empty">No results found</div>'; return; }
     var query = (q || '').trim();
     var html = '';
@@ -504,10 +566,17 @@
   function buildResultItem(r, idx, query) {
     var tc = TYPE_COLORS[r.type] || { bg:'#F5F5F5', color:'#868D9E' };
     var isCurrent = r.type === 'page' && r.data.file === currentFile;
-    return '<div class="gs-result' + (idx === 0 ? ' gs-active' : '') + (isCurrent ? ' gs-current' : '') + '" data-i="' + idx + '">' +
+    var hasDemo = r.type === 'feature' && r.data.demo && r.data.demo.length > 0;
+    var completed = hasDemo && isCompleted(r.data.id);
+    var demoCountHtml = hasDemo ? '<span class="gs-r-demo-count">' + r.data.demo.length + ' steps</span>' : '';
+    var completedHtml = completed ? '<span class="gs-r-completed" title="Completed">&#10003;</span>' : '';
+    var currentHtml = isCurrent ? '<span class="gs-r-current-badge">current</span>' : '';
+    var playBtn = hasDemo ? '<button class="gs-r-play" data-demo-i="' + idx + '" title="Start demo"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>' : '';
+    return '<div class="gs-result' + (idx === 0 ? ' gs-active' : '') + '" data-i="' + idx + '">' +
       '<div class="gs-r-icon">' + r.icon + '</div>' +
-      '<div class="gs-r-info"><div class="gs-r-name">' + hl(r.name, query) + (isCurrent ? ' <span style="font-size:11px;color:#868D9E">(current)</span>' : '') + '</div>' +
+      '<div class="gs-r-info"><div class="gs-r-name">' + hl(r.name, query) + currentHtml + completedHtml + demoCountHtml + '</div>' +
       '<div class="gs-r-sub">' + hl(r.sub, query) + '</div></div>' +
+      playBtn +
       '<div class="gs-r-type" style="background:' + tc.bg + ';color:' + tc.color + '">' + r.type + '</div>' +
     '</div>';
   }
@@ -549,15 +618,17 @@
   function showGuide(feat) {
     viewMode = 'guide';
     searchWrap.style.display = 'none';
+    filtersWrap.style.display = 'none';
     footer.style.display = 'none';
     headerEl.style.display = 'none';
 
     var hasDemo = feat.demo && feat.demo.length > 0;
+    var guideDone = hasDemo && isCompleted(feat.id);
     var guideHtml = '<div class="gs-guide">' +
       '<div class="gs-guide-hdr">' +
         '<button class="gs-guide-back"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>' +
         '<div class="gs-guide-icon">' + (feat.icon||'✦') + '</div>' +
-        '<div class="gs-guide-info"><div class="gs-guide-name">' + feat.name + '</div><div class="gs-guide-desc">' + feat.desc + '</div></div>' +
+        '<div class="gs-guide-info"><div class="gs-guide-name">' + feat.name + (guideDone ? ' <span style="color:#11E874;font-size:14px" title="Completed">&#10003;</span>' : '') + '</div><div class="gs-guide-desc">' + feat.desc + '</div></div>' +
       '</div>' +
       '<div class="gs-guide-body">' +
         '<div class="gs-guide-label">User Flow</div>' +
@@ -595,6 +666,7 @@
     viewMode = 'search';
     headerEl.style.display = '';
     searchWrap.style.display = '';
+    filtersWrap.style.display = '';
     footer.style.display = '';
     renderResults(sInput.value);
     requestAnimationFrame(function(){ sInput.focus(); });
@@ -603,8 +675,11 @@
   // ==================== OPEN / CLOSE ====================
   function openPanel() {
     viewMode = 'search';
+    activeFilter = 'all';
+    filtersWrap.querySelectorAll('.gs-filter').forEach(function(b) { b.classList.toggle('gs-filter-active', b.dataset.filter === 'all'); });
     headerEl.style.display = '';
     searchWrap.style.display = '';
+    filtersWrap.style.display = '';
     footer.style.display = '';
     overlay.classList.add('gs-open');
     fab.style.display = 'none';
@@ -612,7 +687,7 @@
     renderResults('');
     requestAnimationFrame(function(){ sInput.focus(); });
   }
-  function closePanel() { overlay.classList.remove('gs-open'); fab.style.display = ''; sInput.value = ''; viewMode = 'search'; headerEl.style.display = ''; searchWrap.style.display = ''; footer.style.display = ''; }
+  function closePanel() { overlay.classList.remove('gs-open'); fab.style.display = ''; sInput.value = ''; viewMode = 'search'; headerEl.style.display = ''; searchWrap.style.display = ''; filtersWrap.style.display = ''; footer.style.display = ''; }
   function isOpen() { return overlay.classList.contains('gs-open'); }
 
   // ==================== EVENT HANDLERS ====================
@@ -623,7 +698,12 @@
     else if (e.key==='Enter') { e.preventDefault(); activate(aIdx); }
     else if (e.key==='Escape') { e.preventDefault(); closePanel(); }
   });
-  rContainer.addEventListener('click', function(e) { var it = e.target.closest('.gs-result'); if (it) activate(+it.dataset.i); });
+  rContainer.addEventListener('click', function(e) {
+    // Quick demo play button
+    var playBtn = e.target.closest('.gs-r-play');
+    if (playBtn) { e.stopPropagation(); var ri = +playBtn.dataset.demoI; var r = curResults[ri]; if (r && r.data.demo) { closePanel(); startDemo(r.data); } return; }
+    var it = e.target.closest('.gs-result'); if (it) activate(+it.dataset.i);
+  });
   overlay.addEventListener('click', function(e) { if (e.target===overlay) closePanel(); });
 
   // Handle Escape in guide mode — go back to search instead of closing
@@ -860,26 +940,49 @@
     tip.appendChild(arrow);
   }
 
+  function getNextFeature(currentFeatId) {
+    var feats = FEATURES[currentFile] || [];
+    for (var i = 0; i < feats.length; i++) {
+      if (feats[i].id === currentFeatId && i + 1 < feats.length && feats[i+1].demo && feats[i+1].demo.length > 0) {
+        return feats[i+1];
+      }
+    }
+    // Find first incomplete feature
+    for (var j = 0; j < feats.length; j++) {
+      if (feats[j].id !== currentFeatId && feats[j].demo && feats[j].demo.length > 0 && !isCompleted(feats[j].id)) {
+        return feats[j];
+      }
+    }
+    return null;
+  }
+
   function showCompletion() {
     if (!demo) return;
     demo.cleanup.forEach(function(fn){ fn(); }); demo.cleanup = [];
     if (demo.hlEl) demo.hlEl.style.display = 'none';
     var feat = demo.feat;
+    markCompleted(feat.id);
+    var nextFeat = getNextFeature(feat.id);
     var allDone = buildDots(feat.demo.length, feat.demo.length);
+    var nextHtml = nextFeat ? '<button class="gd-b gd-b-pri gd-next-feat" style="display:flex;align-items:center;gap:5px"><span>' + nextFeat.icon + '</span> Try: ' + nextFeat.name + '</button>' : '';
     demo.tipEl.innerHTML =
       allDone +
-      '<div class="gd-complete-icon">✓</div>' +
+      '<div class="gd-complete-icon">&#10003;</div>' +
       '<div class="gd-complete-title">Tutorial Complete</div>' +
       '<div class="gd-complete-desc">You\'ve completed the <b>' + feat.name + '</b> tutorial.</div>' +
-      '<div class="gd-btns">' +
+      (nextFeat ? '<div style="font-size:11px;color:#868D9E;text-align:center;margin-bottom:8px">Up next</div>' : '') +
+      '<div class="gd-btns" style="flex-wrap:wrap;justify-content:center">' +
         '<button class="gd-b gd-b-sec gd-restart">Show again</button>' +
         '<button class="gd-b gd-b-sec gd-share-complete"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor;vertical-align:-2px;margin-right:4px"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>Share</button>' +
+        nextHtml +
         '<button class="gd-b gd-b-done gd-close">Done</button>' +
       '</div>';
     demo.tipEl.style.left = '50%';
     demo.tipEl.style.top = '40%';
     demo.tipEl.style.transform = 'translate(-50%, -50%)';
     demo.tipEl.querySelector('.gd-restart').onclick = function() { startDemo(feat); };
+    var nextBtn = demo.tipEl.querySelector('.gd-next-feat');
+    if (nextBtn && nextFeat) { nextBtn.onclick = function() { startDemo(nextFeat); }; }
     demo.tipEl.querySelector('.gd-share-complete').onclick = function() {
       var btn = this;
       var url = new URL(window.location.href);

@@ -1,16 +1,15 @@
-import { useState, useMemo } from 'react';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Clock, 
-  Eye, 
-  Users, 
-  Monitor, 
+import { useState, useMemo, useEffect } from 'react';
+import {
+  BarChart3,
+  TrendingUp,
+  Clock,
+  Eye,
+  Users,
+  Monitor,
   Smartphone,
   ChevronDown,
   Search,
   Download,
-  Calendar,
   CheckCircle2,
   XCircle,
   AlertCircle,
@@ -22,22 +21,29 @@ import {
   ChevronLeft,
   ChevronRight,
   Image as ImageIcon,
-  Maximize2
+  Maximize2,
+  Globe,
+  Layers,
+  Glasses,
+  ArrowUpRight,
+  ArrowDownRight,
+  Timer,
+  Link2
 } from 'lucide-react';
-import { 
-  AreaChart, 
-  Area, 
-  BarChart, 
-  Bar, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  AreaChart,
+  Area,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
-  Legend 
+  Sector
 } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -72,6 +78,7 @@ interface Session {
   procedureName: string;
   workspace: string;
   user: string;
+  isGuest: boolean;
   duration: string;
   date: string;
   deviceType: DeviceType;
@@ -161,12 +168,12 @@ const generateDataForPeriod = (period: TimeRange, projectId?: string) => {
     'last-90': 2.8,
     'all': 4.5
   };
-  
+
   const mult = multipliers[period];
   const projectData = projectId ? projectBaseData[projectId] : projectBaseData['915-i-series'];
   const projectMult = projectData?.multiplier || 1;
   const finalMult = mult * projectMult;
-  
+
   // Views over time data
   const getViewsData = () => {
     if (period === 'last-7') {
@@ -210,34 +217,67 @@ const generateDataForPeriod = (period: TimeRange, projectId?: string) => {
       ];
     }
   };
-  
+
+  // Per-procedure views over time (for "Individual" chart mode)
+  const getPerProcedureData = () => {
+    const procs = (projectData?.procedures || projectBaseData['915-i-series'].procedures).slice(0, 5);
+    const baseData = getViewsData();
+    return baseData.map(point => {
+      const result: Record<string, any> = { date: point.date };
+      procs.forEach((name, i) => {
+        const share = [0.32, 0.24, 0.18, 0.14, 0.12][i];
+        result[name] = Math.round(point.views * share * (0.85 + Math.random() * 0.3));
+      });
+      return result;
+    });
+  };
+
   // Top procedures data - uses project-specific procedure names
   const procedureNames = projectData?.procedures || projectBaseData['915-i-series'].procedures;
   const topProceduresData = procedureNames.map((name, index) => ({
     name,
     views: Math.round((342 - index * 30) * finalMult),
     avgDuration: projectData?.avgDuration || '8:24',
-    completion: 94 - index * 2
+    completion: 94 - index * 2,
+    failRate: [3, 5, 2, 8, 4, 6, 1][index] || 3,
   }));
-  
+
   // Device data - varies by project
   const deviceData = [
     { name: 'Desktop', value: Math.round(452 * finalMult), color: 'var(--color-primary)' },
     { name: 'HoloLens', value: Math.round(186 * finalMult), color: 'var(--color-accent)' },
     { name: 'Mobile', value: Math.round(98 * finalMult), color: 'var(--color-muted)' },
   ];
-  
+
   // Session type data - varies by project
   const sessionTypeData = [
-    { name: 'Flow', value: Math.round(456 * finalMult), color: '#8404b3' },
-    { name: 'Digital Twin', value: Math.round(280 * finalMult), color: 'var(--color-accent)' },
+    { name: 'Flow', value: Math.round(456 * finalMult), color: 'var(--color-accent)' },
+    { name: 'Digital Twin', value: Math.round(280 * finalMult), color: 'var(--color-primary)' },
   ];
-  
+
+  // Previous period data for trend calculation
+  const prevMultipliers: Record<TimeRange, number> = {
+    'last-7': 0.25,
+    'last-30': 0.85,
+    'last-90': 2.2,
+    'all': 4.5
+  };
+  const prevMult = prevMultipliers[period] * projectMult;
+  const trends = {
+    prevViews: Math.round(topProceduresData.reduce((a, p) => a + p.views, 0) * (prevMult / finalMult) * 0.88),
+    prevSessions: Math.round(10 * prevMult * 0.9),
+    prevCompleted: Math.round(8 * prevMult * 0.85),
+    prevAvgCompletion: 82,
+    prevAvgDuration: '9:12',
+  };
+
   return {
     viewsOverTime: getViewsData(),
+    perProcedureData: getPerProcedureData(),
     topProcedures: topProceduresData,
     devices: deviceData,
-    sessionTypes: sessionTypeData
+    sessionTypes: sessionTypeData,
+    trends,
   };
 };
 
@@ -257,7 +297,7 @@ const createMockSteps = (totalSteps: number, completedSteps: number): ProcedureS
       startTime: `10:${String(i * 2).padStart(2, '0')}`,
       endTime: isCompleted ? `10:${String(i * 2 + 2).padStart(2, '0')}` : '—',
       duration: isCompleted ? `0:${30 + i * 5}` : '—',
-      status: isCompleted ? (i % 8 === 0 ? 'completed' : 'completed') : (i === completedSteps ? 'failed' : 'skipped'),
+      status: isCompleted ? 'completed' : (i === completedSteps ? 'failed' : 'skipped'),
       images: isCompleted && i % 3 === 0 ? [
         'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=400',
         'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400'
@@ -288,6 +328,7 @@ const generateMockSessions = (projectId?: string): Session[] => {
       procedureName: procedures[0],
       workspace: 'Nymeo',
       user: 'Yoav Nader',
+      isGuest: false,
       duration: projectData?.avgDuration || '8:24',
       date: 'Feb 09, 2026',
       deviceType: 'Desktop',
@@ -311,6 +352,7 @@ const generateMockSessions = (projectId?: string): Session[] => {
       procedureName: procedures[1],
       workspace: 'Nymeo',
       user: 'Yoav Nader',
+      isGuest: false,
       duration: '6:12',
       date: 'Feb 08, 2026',
       deviceType: 'Desktop',
@@ -334,6 +376,7 @@ const generateMockSessions = (projectId?: string): Session[] => {
       procedureName: procedures[2],
       workspace: 'Nymeo',
       user: 'Sarah Chen',
+      isGuest: false,
       duration: '3:45',
       date: 'Feb 09, 2026',
       deviceType: 'HoloLens',
@@ -357,6 +400,7 @@ const generateMockSessions = (projectId?: string): Session[] => {
       procedureName: procedures[0],
       workspace: 'Nymeo',
       user: 'Mike Johnson',
+      isGuest: false,
       duration: '7:58',
       date: 'Feb 08, 2026',
       deviceType: 'Desktop',
@@ -380,6 +424,7 @@ const generateMockSessions = (projectId?: string): Session[] => {
       procedureName: procedures[3],
       workspace: 'Nymeo',
       user: 'Emma Davis',
+      isGuest: false,
       duration: '2:15',
       date: 'Feb 07, 2026',
       deviceType: 'Mobile',
@@ -403,6 +448,7 @@ const generateMockSessions = (projectId?: string): Session[] => {
       procedureName: procedures[4],
       workspace: 'Nymeo',
       user: 'James Wilson',
+      isGuest: false,
       duration: '4:18',
       date: 'Feb 07, 2026',
       deviceType: 'HoloLens',
@@ -426,6 +472,7 @@ const generateMockSessions = (projectId?: string): Session[] => {
       procedureName: procedures[5],
       workspace: 'Nymeo',
       user: 'Alex Martinez',
+      isGuest: false,
       duration: '9:02',
       date: 'Feb 06, 2026',
       deviceType: 'Desktop',
@@ -449,6 +496,7 @@ const generateMockSessions = (projectId?: string): Session[] => {
       procedureName: procedures[6],
       workspace: 'Nymeo',
       user: 'Lisa Park',
+      isGuest: false,
       duration: '6:55',
       date: 'Feb 06, 2026',
       deviceType: 'Desktop',
@@ -472,6 +520,7 @@ const generateMockSessions = (projectId?: string): Session[] => {
       procedureName: procedures[0],
       workspace: 'Nymeo',
       user: 'David Brown',
+      isGuest: false,
       duration: projectData?.avgDuration || '8:15',
       date: 'Jan 15, 2026',
       deviceType: 'Desktop',
@@ -495,6 +544,7 @@ const generateMockSessions = (projectId?: string): Session[] => {
       procedureName: procedures[3],
       workspace: 'Nymeo',
       user: 'Rachel Green',
+      isGuest: false,
       duration: '5:45',
       date: 'Dec 20, 2025',
       deviceType: 'HoloLens',
@@ -510,6 +560,150 @@ const generateMockSessions = (projectId?: string): Session[] => {
       completedSteps: 6,
       errors: 0,
       timestamp: new Date('2025-12-20T14:30:00'),
+      procedureSteps: createMockSteps(6, 6)
+    },
+    {
+      id: '11',
+      status: 'completed',
+      procedureName: procedures[0],
+      workspace: 'Nymeo',
+      user: 'Guest',
+      isGuest: true,
+      duration: '5:32',
+      date: 'Feb 09, 2026',
+      deviceType: 'Mobile',
+      sessionType: 'Procedure',
+      score: 78,
+      videoMarkers: 0,
+      hasRecording: false,
+      isTest: false,
+      completionRate: 100,
+      startTime: '08:12',
+      endTime: '08:17',
+      steps: 12,
+      completedSteps: 12,
+      errors: 2,
+      timestamp: new Date('2026-02-09T08:12:00'),
+      procedureSteps: createMockSteps(12, 12)
+    },
+    {
+      id: '12',
+      status: 'abandoned',
+      procedureName: procedures[2],
+      workspace: 'Nymeo',
+      user: 'Guest',
+      isGuest: true,
+      duration: '1:45',
+      date: 'Feb 08, 2026',
+      deviceType: 'Mobile',
+      sessionType: 'Procedure',
+      score: null,
+      videoMarkers: 0,
+      hasRecording: false,
+      isTest: false,
+      completionRate: 22,
+      startTime: '19:30',
+      endTime: '—',
+      steps: 10,
+      completedSteps: 2,
+      errors: 0,
+      timestamp: new Date('2026-02-08T19:30:00'),
+      procedureSteps: createMockSteps(10, 2)
+    },
+    {
+      id: '13',
+      status: 'completed',
+      procedureName: procedures[1],
+      workspace: 'Nymeo',
+      user: 'Guest',
+      isGuest: true,
+      duration: '7:10',
+      date: 'Feb 07, 2026',
+      deviceType: 'Desktop',
+      sessionType: 'Procedure',
+      score: 82,
+      videoMarkers: 0,
+      hasRecording: false,
+      isTest: false,
+      completionRate: 100,
+      startTime: '12:05',
+      endTime: '12:12',
+      steps: 8,
+      completedSteps: 8,
+      errors: 1,
+      timestamp: new Date('2026-02-07T12:05:00'),
+      procedureSteps: createMockSteps(8, 8)
+    },
+    {
+      id: '14',
+      status: 'completed',
+      procedureName: procedures[0],
+      workspace: 'Nymeo',
+      user: 'Guest',
+      isGuest: true,
+      duration: '6:48',
+      date: 'Feb 06, 2026',
+      deviceType: 'Mobile',
+      sessionType: 'Procedure',
+      score: 74,
+      videoMarkers: 0,
+      hasRecording: false,
+      isTest: false,
+      completionRate: 85,
+      startTime: '21:15',
+      endTime: '21:22',
+      steps: 12,
+      completedSteps: 10,
+      errors: 3,
+      timestamp: new Date('2026-02-06T21:15:00'),
+      procedureSteps: createMockSteps(12, 10)
+    },
+    {
+      id: '15',
+      status: 'failed',
+      procedureName: procedures[4],
+      workspace: 'Nymeo',
+      user: 'Guest',
+      isGuest: true,
+      duration: '0:58',
+      date: 'Feb 05, 2026',
+      deviceType: 'Mobile',
+      sessionType: 'Procedure',
+      score: 20,
+      videoMarkers: 0,
+      hasRecording: false,
+      isTest: false,
+      completionRate: 14,
+      startTime: '16:00',
+      endTime: '16:01',
+      steps: 7,
+      completedSteps: 1,
+      errors: 5,
+      timestamp: new Date('2026-02-05T16:00:00'),
+      procedureSteps: createMockSteps(7, 1)
+    },
+    {
+      id: '16',
+      status: 'completed',
+      procedureName: procedures[3],
+      workspace: 'Nymeo',
+      user: 'Guest',
+      isGuest: true,
+      duration: '4:22',
+      date: 'Jan 28, 2026',
+      deviceType: 'Desktop',
+      sessionType: 'Procedure',
+      score: 88,
+      videoMarkers: 0,
+      hasRecording: false,
+      isTest: false,
+      completionRate: 100,
+      startTime: '10:45',
+      endTime: '10:49',
+      steps: 6,
+      completedSteps: 6,
+      errors: 0,
+      timestamp: new Date('2026-01-28T10:45:00'),
       procedureSteps: createMockSteps(6, 6)
     },
   ];
@@ -575,6 +769,22 @@ function CustomDropdown({
   );
 }
 
+// Shared status helpers
+function getStatusIconShared(status: SessionStatus, size = 14) {
+  switch (status) {
+    case 'completed': return <CheckCircle2 size={size} className="text-[#10b981]" />;
+    case 'abandoned': return <AlertCircle size={size} className="text-muted" />;
+    case 'failed': return <XCircle size={size} className="text-destructive" />;
+  }
+}
+function getStatusLabelShared(status: SessionStatus) {
+  switch (status) {
+    case 'completed': return 'Completed';
+    case 'abandoned': return 'Abandoned';
+    case 'failed': return 'Failed';
+  }
+}
+
 // Fullscreen Media Viewer
 function FullscreenMediaViewer({ 
   mediaUrl, 
@@ -617,28 +827,6 @@ function SessionDetailsModal({
   
   const currentStep = session.procedureSteps[currentStepIndex];
 
-  const getStatusIcon = (status: SessionStatus) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle2 size={20} className="text-[#10b981]" />;
-      case 'abandoned':
-        return <AlertCircle size={20} className="text-muted" />;
-      case 'failed':
-        return <XCircle size={20} className="text-destructive" />;
-    }
-  };
-
-  const getStatusLabel = (status: SessionStatus) => {
-    switch (status) {
-      case 'completed':
-        return 'Completed';
-      case 'abandoned':
-        return 'Abandoned';
-      case 'failed':
-        return 'Failed';
-    }
-  };
-
   const getStepStatusColor = (status: 'completed' | 'skipped' | 'failed') => {
     switch (status) {
       case 'completed':
@@ -662,12 +850,14 @@ function SessionDetailsModal({
           <div className="flex items-start justify-between p-6 border-b border-border">
             <div className="flex items-start gap-4 flex-1">
               <div className="flex items-center gap-2">
-                {getStatusIcon(session.status)}
+                {getStatusIconShared(session.status, 20)}
                 <div>
                   <h2 className="text-lg text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
                     {session.procedureName}
                   </h2>
-                  <p className="text-xs text-muted mt-0.5">{getStatusLabel(session.status)}</p>
+                  <p className="text-xs text-muted mt-0.5">
+                    {getStatusLabelShared(session.status)} · {session.isGuest ? 'Guest via link' : session.user} · {session.date}
+                  </p>
                 </div>
               </div>
             </div>
@@ -709,7 +899,7 @@ function SessionDetailsModal({
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs text-foreground truncate" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                              Step {step.stepNumber}
+                              {step.title.includes(':') ? step.title.split(': ').slice(1).join(': ') : `Step ${step.stepNumber}`}
                             </p>
                             <p className="text-[10px] text-muted mt-0.5">
                               {step.duration}
@@ -949,28 +1139,6 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
   // Get dynamic data based on selected time range and project
   const dynamicData = useMemo(() => generateDataForPeriod(timeRange, projectId), [timeRange, projectId]);
 
-  const getStatusIcon = (status: SessionStatus) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle2 size={14} className="text-[#10b981]" />;
-      case 'abandoned':
-        return <AlertCircle size={14} className="text-muted" />;
-      case 'failed':
-        return <XCircle size={14} className="text-destructive" />;
-    }
-  };
-
-  const getStatusLabel = (status: SessionStatus) => {
-    switch (status) {
-      case 'completed':
-        return 'Completed';
-      case 'abandoned':
-        return 'Abandoned';
-      case 'failed':
-        return 'Failed';
-    }
-  };
-
   const getStatusColor = (status: SessionStatus) => {
     switch (status) {
       case 'completed':
@@ -1054,7 +1222,7 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
       startY: finalY + 14,
       head: [['Status', 'Flow', 'User', 'Duration', 'Date', 'Score']],
       body: filteredSessions.slice(0, 20).map(session => [
-        getStatusLabel(session.status),
+        getStatusLabelShared(session.status),
         session.procedureName,
         session.user,
         session.duration,
@@ -1093,316 +1261,498 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
 
   const sessionTypeOptions = [
     { value: 'all', label: 'All Types' },
-    { value: 'Flow', label: 'Flow' },
+    { value: 'Procedure', label: 'Flow' },
     { value: 'Digital Twin', label: 'Digital Twin' },
   ];
 
+  const [chartMode, setChartMode] = useState<'aggregate' | 'individual'>('aggregate');
+  const [activeDeviceIndex, setActiveDeviceIndex] = useState<number | null>(null);
+
+  // Compute device totals for the donut center
+  const deviceTotal = dynamicData.devices.reduce((acc, d) => acc + d.value, 0);
+
+  // Session type totals for the table
+  const sessionTypeTotal = dynamicData.sessionTypes.reduce((acc, t) => acc + t.value, 0);
+
+  // Trend calculations
+  const trends = dynamicData.trends;
+  const calcTrend = (current: number, prev: number) => {
+    if (prev === 0) return { pct: 0, up: true };
+    const pct = Math.round(((current - prev) / prev) * 100);
+    return { pct: Math.abs(pct), up: pct >= 0 };
+  };
+  const viewsTrend = calcTrend(totalViews, trends.prevViews);
+  const sessionsTrend = calcTrend(totalSessions, trends.prevSessions);
+  const completedTrend = calcTrend(completedSessions, trends.prevCompleted);
+  const completionTrend = calcTrend(avgCompletionRate, trends.prevAvgCompletion);
+
+  // Avg duration from sessions
+  const avgDurationMinutes = totalSessions > 0
+    ? filteredByTime.reduce((acc, s) => {
+        const parts = s.duration.split(':');
+        return acc + parseInt(parts[0]) * 60 + parseInt(parts[1]);
+      }, 0) / totalSessions
+    : 0;
+  const avgDurationStr = `${Math.floor(avgDurationMinutes / 60)}:${String(Math.round(avgDurationMinutes % 60)).padStart(2, '0')}`;
+
+  // Per-procedure chart colors
+  const procChartColors = ['var(--color-primary)', 'var(--color-accent)', '#10b981', '#f59e0b', '#8404b3'];
+  const topProcNames = (dynamicData.topProcedures || []).slice(0, 5).map(p => p.name);
+
+  // User performance aggregation
+  const userPerformance = useMemo(() => {
+    const userMap = new Map<string, { sessions: number; completed: number; totalScore: number; scoreCount: number; totalCompletion: number; lastActive: Date; isGuest: boolean }>();
+    filteredByTime.forEach(s => {
+      const key = s.isGuest ? '__guest__' : s.user;
+      const existing = userMap.get(key) || { sessions: 0, completed: 0, totalScore: 0, scoreCount: 0, totalCompletion: 0, lastActive: new Date(0), isGuest: s.isGuest };
+      existing.sessions++;
+      if (s.status === 'completed') existing.completed++;
+      if (s.score !== null) { existing.totalScore += s.score; existing.scoreCount++; }
+      existing.totalCompletion += s.completionRate;
+      if (s.timestamp > existing.lastActive) existing.lastActive = s.timestamp;
+      userMap.set(key, existing);
+    });
+    return Array.from(userMap.entries()).map(([key, data]) => ({
+      name: data.isGuest ? 'Guest Users' : key,
+      isGuest: data.isGuest,
+      sessions: data.sessions,
+      completed: data.completed,
+      avgScore: data.scoreCount > 0 ? Math.round(data.totalScore / data.scoreCount) : null,
+      avgCompletion: Math.round(data.totalCompletion / data.sessions),
+      lastActive: data.lastActive.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    })).sort((a, b) => b.sessions - a.sessions);
+  }, [filteredByTime]);
+
+  // Content health — procedure failure/abandon rates
+  const contentHealth = useMemo(() => {
+    const procMap = new Map<string, { total: number; failed: number; abandoned: number; totalErrors: number }>();
+    filteredByTime.forEach(s => {
+      const existing = procMap.get(s.procedureName) || { total: 0, failed: 0, abandoned: 0, totalErrors: 0 };
+      existing.total++;
+      if (s.status === 'failed') existing.failed++;
+      if (s.status === 'abandoned') existing.abandoned++;
+      existing.totalErrors += s.errors;
+      procMap.set(s.procedureName, existing);
+    });
+    return Array.from(procMap.entries()).map(([name, data]) => ({
+      name,
+      total: data.total,
+      failRate: data.total > 0 ? Math.round(((data.failed + data.abandoned) / data.total) * 100) : 0,
+      avgErrors: data.total > 0 ? (data.totalErrors / data.total).toFixed(1) : '0',
+    })).sort((a, b) => b.failRate - a.failRate);
+  }, [filteredByTime]);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+  const totalPages = Math.max(1, Math.ceil(filteredSessions.length / rowsPerPage));
+  const paginatedSessions = filteredSessions.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+  // Reset page when filters change
+  useEffect(() => { setCurrentPage(1); }, [sessionSearchQuery, statusFilter, deviceFilter, sessionTypeFilter, timeRange]);
+
   return (
     <div className="flex flex-col h-full bg-background overflow-auto">
-      {/* Header with Summary Stats */}
-      <div className="shrink-0 border-b border-border bg-card px-6 py-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-lg text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-              Analytics Dashboard
-            </h1>
-            <p className="text-xs text-muted mt-0.5">Monitor content usage and session performance</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <CustomDropdown
-              value={timeRange}
-              options={timeRangeOptions}
-              onChange={(value) => setTimeRange(value as TimeRange)}
-              className="w-40"
-            />
-            <button
-              onClick={exportToPDF}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-[var(--radius)] text-xs hover:bg-primary/90 transition-colors"
-            >
-              <Download size={14} />
-              <span>Export PDF</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="bg-background border border-border rounded-[var(--radius)] p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-[var(--radius)] bg-primary/10 flex items-center justify-center">
-                <Eye size={18} className="text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted">Total Views</p>
-                <p className="text-xl text-foreground mt-0.5" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                  {totalViews.toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-background border border-border rounded-[var(--radius)] p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-[var(--radius)] bg-accent/10 flex items-center justify-center">
-                <Activity size={18} className="text-accent" />
-              </div>
-              <div>
-                <p className="text-xs text-muted">Total Sessions</p>
-                <p className="text-xl text-foreground mt-0.5" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                  {totalSessions}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-background border border-border rounded-[var(--radius)] p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-[var(--radius)] bg-[#10b981]/10 flex items-center justify-center">
-                <CheckCircle2 size={18} className="text-[#10b981]" />
-              </div>
-              <div>
-                <p className="text-xs text-muted">Completed</p>
-                <p className="text-xl text-foreground mt-0.5" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                  {completedSessions}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-background border border-border rounded-[var(--radius)] p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-[var(--radius)] bg-[#8404b3]/10 flex items-center justify-center">
-                <Target size={18} style={{ color: '#8404b3' }} />
-              </div>
-              <div>
-                <p className="text-xs text-muted">Avg Completion</p>
-                <p className="text-xl text-foreground mt-0.5" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                  {avgCompletionRate}%
-                </p>
-              </div>
-            </div>
-          </div>
+      {/* Page Header with global time range */}
+      <div className="shrink-0 px-6 py-5 flex items-center justify-between">
+        <h1 className="text-lg text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+          Analytics
+        </h1>
+        <div className="flex items-center gap-3">
+          <CustomDropdown
+            value={timeRange}
+            options={timeRangeOptions}
+            onChange={(value) => setTimeRange(value as TimeRange)}
+            className="w-36"
+          />
+          <button
+            onClick={exportToPDF}
+            className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-[var(--radius)] text-xs text-foreground hover:bg-secondary transition-colors"
+          >
+            <Download size={14} />
+            <span>Export Report</span>
+          </button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto p-6 space-y-6">
-        {/* Charts Row */}
-        <div className="grid grid-cols-2 gap-6">
-          {/* Views Over Time */}
-          <div className="bg-card border border-border rounded-[var(--radius)] p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                Views & Completions Over Time
-              </h2>
-              <TrendingUp size={16} className="text-muted" />
+      <div className="flex-1 overflow-auto px-6 pb-6 space-y-5">
+
+        {/* ===== HERO CHART CARD ===== */}
+        <div className="bg-card border border-border rounded-[var(--radius)] p-5">
+          {/* Top row: chart title + mode toggle */}
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={16} className="text-primary" />
+              <span className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                Views &amp; Completions
+              </span>
             </div>
-            <ResponsiveContainer width="100%" height={250}>
+            <div className="flex bg-secondary rounded-[var(--radius)] p-0.5">
+              <button
+                onClick={() => setChartMode('aggregate')}
+                className={`px-3 py-1.5 text-[11px] rounded-[var(--radius)] transition-colors ${
+                  chartMode === 'aggregate'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted hover:text-foreground'
+                }`}
+                style={chartMode === 'aggregate' ? { fontWeight: 'var(--font-weight-bold)' } : {}}
+              >
+                Aggregate
+              </button>
+              <button
+                onClick={() => setChartMode('individual')}
+                className={`px-3 py-1.5 text-[11px] rounded-[var(--radius)] transition-colors ${
+                  chartMode === 'individual'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted hover:text-foreground'
+                }`}
+                style={chartMode === 'individual' ? { fontWeight: 'var(--font-weight-bold)' } : {}}
+              >
+                By Flow
+              </button>
+            </div>
+          </div>
+
+          {/* Chart */}
+          <ResponsiveContainer width="100%" height={260}>
+            {chartMode === 'aggregate' ? (
               <AreaChart data={dynamicData.viewsOverTime}>
                 <defs>
                   <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
+                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.2}/>
                     <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
                   </linearGradient>
                   <linearGradient id="colorCompletions" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.3}/>
+                    <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.2}/>
                     <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis 
-                  dataKey="date" 
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                <XAxis
+                  dataKey="date"
                   tick={{ fill: 'var(--color-muted)', fontSize: 11 }}
                   stroke="var(--color-border)"
+                  axisLine={false}
+                  tickLine={false}
                 />
-                <YAxis 
+                <YAxis
                   tick={{ fill: 'var(--color-muted)', fontSize: 11 }}
                   stroke="var(--color-border)"
+                  axisLine={false}
+                  tickLine={false}
                 />
-                <Tooltip 
-                  contentStyle={{ 
+                <Tooltip
+                  contentStyle={{
                     backgroundColor: 'var(--color-card)',
                     border: '1px solid var(--color-border)',
                     borderRadius: 'var(--radius)',
-                    fontSize: '12px'
+                    fontSize: '12px',
+                    boxShadow: 'var(--elevation-sm)'
                   }}
                 />
-                <Legend 
-                  wrapperStyle={{ fontSize: '12px' }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="views" 
-                  stroke="var(--color-primary)" 
+                <Area
+                  type="monotone"
+                  dataKey="views"
+                  stroke="var(--color-primary)"
                   strokeWidth={2}
-                  fillOpacity={1} 
-                  fill="url(#colorViews)" 
+                  fillOpacity={1}
+                  fill="url(#colorViews)"
                   name="Views"
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="completions" 
-                  stroke="var(--color-accent)" 
+                <Area
+                  type="monotone"
+                  dataKey="completions"
+                  stroke="var(--color-accent)"
                   strokeWidth={2}
-                  fillOpacity={1} 
-                  fill="url(#colorCompletions)" 
+                  fillOpacity={1}
+                  fill="url(#colorCompletions)"
                   name="Completions"
                 />
               </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Top Procedures */}
-          <div className="bg-card border border-border rounded-[var(--radius)] p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                Top Procedures by Views
-              </h2>
-              <BarChart3 size={16} className="text-muted" />
-            </div>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={dynamicData.topProcedures.slice(0, 5)}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis 
-                  dataKey="name" 
-                  tick={{ fill: 'var(--color-muted)', fontSize: 10 }}
-                  stroke="var(--color-border)"
-                  angle={-15}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis 
+            ) : (
+              <LineChart data={dynamicData.perProcedureData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                <XAxis
+                  dataKey="date"
                   tick={{ fill: 'var(--color-muted)', fontSize: 11 }}
                   stroke="var(--color-border)"
+                  axisLine={false}
+                  tickLine={false}
                 />
-                <Tooltip 
-                  contentStyle={{ 
+                <YAxis
+                  tick={{ fill: 'var(--color-muted)', fontSize: 11 }}
+                  stroke="var(--color-border)"
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
                     backgroundColor: 'var(--color-card)',
                     border: '1px solid var(--color-border)',
                     borderRadius: 'var(--radius)',
-                    fontSize: '12px'
+                    fontSize: '12px',
+                    boxShadow: 'var(--elevation-sm)'
                   }}
                 />
-                <Bar dataKey="views" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+                {topProcNames.map((name, i) => (
+                  <Line key={name} type="monotone" dataKey={name} stroke={procChartColors[i]} strokeWidth={2} dot={false} name={name} />
+                ))}
+              </LineChart>
+            )}
+          </ResponsiveContainer>
+
+          {/* Legend row */}
+          <div className="flex items-center gap-5 mt-3 pl-2 flex-wrap">
+            {chartMode === 'aggregate' ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--color-primary)' }} />
+                  <span className="text-[11px] text-muted">Views</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
+                  <span className="text-[11px] text-muted">Completions</span>
+                </div>
+              </>
+            ) : (
+              topProcNames.map((name, i) => (
+                <div key={name} className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: procChartColors[i] }} />
+                  <span className="text-[11px] text-muted">{name}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
-        {/* Analytics Grid */}
-        <div className="grid grid-cols-3 gap-6">
-          {/* Procedure Performance Table */}
-          <div className="col-span-2 bg-card border border-border rounded-[var(--radius)] p-5">
-            <h2 className="text-sm text-foreground mb-4" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-              Flow Performance
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left pb-3">
-                      <span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                        Flow
+        {/* ===== SUMMARY CARDS ROW ===== */}
+        <div className="grid grid-cols-5 gap-4">
+          {[
+            { label: 'Total Views', value: totalViews.toLocaleString(), icon: <Eye size={16} className="text-primary" />, bg: 'bg-primary/10', trend: viewsTrend },
+            { label: 'Total Sessions', value: totalSessions.toString(), icon: <Activity size={16} className="text-accent" />, bg: 'bg-accent/10', trend: sessionsTrend },
+            { label: 'Completed', value: completedSessions.toString(), icon: <CheckCircle2 size={16} className="text-[#10b981]" />, bg: 'bg-[#10b981]/10', trend: completedTrend },
+            { label: 'Avg Completion', value: `${avgCompletionRate}%`, icon: <Target size={16} style={{ color: '#8404b3' }} />, bg: 'bg-[#8404b3]/10', trend: completionTrend },
+            { label: 'Avg Duration', value: avgDurationStr, icon: <Timer size={16} className="text-primary" />, bg: 'bg-primary/10', trend: null },
+          ].map((card) => (
+            <div key={card.label} className="bg-card border border-border rounded-[var(--radius)] p-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-[var(--radius)] ${card.bg} flex items-center justify-center`}>
+                  {card.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-muted">{card.label}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                      {card.value}
+                    </p>
+                    {card.trend && card.trend.pct > 0 && (
+                      <span className={`flex items-center gap-0.5 text-[10px] ${card.trend.up ? 'text-[#10b981]' : 'text-destructive'}`}
+                            style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                        {card.trend.up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                        {card.trend.pct}%
                       </span>
-                    </th>
-                    <th className="text-left pb-3">
-                      <span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                        Views
-                      </span>
-                    </th>
-                    <th className="text-left pb-3">
-                      <span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                        Avg Duration
-                      </span>
-                    </th>
-                    <th className="text-left pb-3">
-                      <span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                        Completion
-                      </span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dynamicData.topProcedures.map((procedure, index) => (
-                    <tr key={index} className="border-b border-border last:border-0">
-                      <td className="py-3">
-                        <span className="text-xs text-foreground">{procedure.name}</span>
-                      </td>
-                      <td className="py-3">
-                        <span className="text-xs text-muted">{procedure.views.toLocaleString()}</span>
-                      </td>
-                      <td className="py-3">
-                        <span className="text-xs text-muted">{procedure.avgDuration}</span>
-                      </td>
-                      <td className="py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden max-w-[80px]">
-                            <div 
-                              className="h-full bg-primary rounded-full"
-                              style={{ width: `${procedure.completion}%` }}
-                            />
-                          </div>
-                          <span className="text-[10px] text-muted w-8">{procedure.completion}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          ))}
+        </div>
 
-          {/* Device Distribution */}
+        {/* ===== THREE-COLUMN CARDS ROW ===== */}
+        <div className="grid grid-cols-3 gap-5">
+
+          {/* Devices Card - donut chart */}
           <div className="bg-card border border-border rounded-[var(--radius)] p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                Device Distribution
-              </h2>
-              <Monitor size={16} className="text-muted" />
+            <div className="flex items-center gap-2 mb-2">
+              <Monitor size={15} className="text-muted" />
+              <h2 className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>Devices</h2>
             </div>
-            <div className="flex items-center justify-center mb-4">
+            <div className="relative flex items-center justify-center" style={{ height: 180 }}>
               <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
                   <Pie
                     data={dynamicData.devices}
                     cx="50%"
                     cy="50%"
-                    innerRadius={50}
-                    outerRadius={70}
-                    paddingAngle={2}
+                    innerRadius={52}
+                    outerRadius={74}
+                    paddingAngle={4}
                     dataKey="value"
+                    startAngle={210}
+                    endAngle={-30}
+                    cornerRadius={6}
+                    cursor="pointer"
+                    activeIndex={activeDeviceIndex ?? undefined}
+                    activeShape={(props: any) => (
+                      <Sector
+                        {...props}
+                        innerRadius={props.innerRadius - 2}
+                        outerRadius={props.outerRadius + 5}
+                        cornerRadius={8}
+                      />
+                    )}
+                    onMouseEnter={(_, index) => setActiveDeviceIndex(index)}
+                    onMouseLeave={() => setActiveDeviceIndex(null)}
                   >
                     {dynamicData.devices.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
+                  <Tooltip
+                    wrapperStyle={{ zIndex: 50, pointerEvents: 'none' }}
+                    contentStyle={{
                       backgroundColor: 'var(--color-card)',
                       border: '1px solid var(--color-border)',
                       borderRadius: 'var(--radius)',
-                      fontSize: '12px'
+                      fontSize: '12px',
+                      boxShadow: 'var(--elevation-lg)'
                     }}
                   />
                 </PieChart>
               </ResponsiveContainer>
+              {/* Center label */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="text-center">
+                  <p className="text-xl text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                    {deviceTotal.toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-muted">Sessions</p>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
+            {/* Legend rows */}
+            <div className="space-y-2.5 mt-1">
               {dynamicData.devices.map((device) => {
-                const total = dynamicData.devices.reduce((acc, d) => acc + d.value, 0);
-                const percentage = Math.round((device.value / total) * 100);
-                
+                const percentage = Math.round((device.value / deviceTotal) * 100);
                 return (
                   <div key={device.name} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: device.color }}
-                      />
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: device.color }} />
                       <span className="text-xs text-foreground">{device.name}</span>
                     </div>
-                    <span className="text-xs text-muted" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                      {device.value} ({percentage}%)
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                        {device.value.toLocaleString()}
+                      </span>
+                      <span className="text-[11px] text-muted w-10 text-right">{percentage}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Activity Overview Card */}
+          <div className="bg-card border border-border rounded-[var(--radius)] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Layers size={15} className="text-muted" />
+              <h2 className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>Activity Overview</h2>
+            </div>
+            {/* Key engagement stats */}
+            <div className="space-y-4 mb-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users size={14} className="text-primary" />
+                  <span className="text-xs text-muted">Identified Users</span>
+                </div>
+                <span className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>{userPerformance.filter(u => !u.isGuest).length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Link2 size={14} className="text-muted" />
+                  <span className="text-xs text-muted">Guest Sessions</span>
+                </div>
+                <span className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>{filteredByTime.filter(s => s.isGuest).length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target size={14} className="text-[#10b981]" />
+                  <span className="text-xs text-muted">Success Rate</span>
+                </div>
+                <span className="text-sm text-[#10b981]" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                  {totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <XCircle size={14} className="text-destructive" />
+                  <span className="text-xs text-muted">Failure Rate</span>
+                </div>
+                <span className="text-sm text-destructive" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                  {totalSessions > 0 ? Math.round((filteredByTime.filter(s => s.status === 'failed').length / totalSessions) * 100) : 0}%
+                </span>
+              </div>
+            </div>
+            {/* Session type split */}
+            <div className="text-[10px] text-muted uppercase tracking-wide mb-2" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+              Session Types
+            </div>
+            {dynamicData.sessionTypes.map((type) => {
+              const percentage = Math.round((type.value / sessionTypeTotal) * 100);
+              return (
+                <div key={type.name} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-5 h-5 rounded flex items-center justify-center" style={{ backgroundColor: type.color + '20' }}>
+                      {type.name === 'Flow' ? (
+                        <Activity size={11} style={{ color: type.color }} />
+                      ) : (
+                        <Globe size={11} style={{ color: type.color }} />
+                      )}
+                    </div>
+                    <span className="text-xs text-foreground">{type.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>{type.value.toLocaleString()}</span>
+                    <span className="text-[11px] text-muted w-8 text-right">{percentage}%</span>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="pt-3">
+              <div className="h-2 bg-secondary rounded-full overflow-hidden flex">
+                {dynamicData.sessionTypes.map((type) => (
+                  <div
+                    key={type.name}
+                    className="h-full"
+                    style={{ width: `${(type.value / sessionTypeTotal) * 100}%`, backgroundColor: type.color }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Flow Performance Card - table style like "Browsers" */}
+          <div className="bg-card border border-border rounded-[var(--radius)] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 size={15} className="text-muted" />
+              <h2 className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>Top Flows</h2>
+            </div>
+            {/* Table header */}
+            <div className="flex items-center pb-2.5 border-b border-border mb-1">
+              <span className="flex-1 text-[10px] text-muted uppercase tracking-wide">Flow</span>
+              <span className="w-16 text-right text-[10px] text-muted uppercase tracking-wide">Views</span>
+              <span className="w-14 text-right text-[10px] text-muted uppercase tracking-wide">Done %</span>
+            </div>
+            {/* Rows */}
+            <div className="space-y-0">
+              {dynamicData.topProcedures.slice(0, 5).map((procedure, index) => {
+                return (
+                  <div key={index} className="flex items-center py-3 border-b border-border last:border-0">
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <div
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: procChartColors[index] }}
+                      />
+                      <span className="text-xs text-foreground truncate">{procedure.name}</span>
+                    </div>
+                    <span className="w-16 text-right text-xs text-foreground shrink-0" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                      {procedure.views.toLocaleString()}
+                    </span>
+                    <span className={`w-14 text-right text-[11px] shrink-0 ${procedure.completion >= 90 ? 'text-[#10b981]' : procedure.completion >= 70 ? 'text-foreground' : 'text-destructive'}`}
+                          style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                      {procedure.completion}%
                     </span>
                   </div>
                 );
@@ -1411,44 +1761,132 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
           </div>
         </div>
 
-        {/* Session Types */}
-        <div className="bg-card border border-border rounded-[var(--radius)] p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-              Session Types Distribution
-            </h2>
-            <Users size={16} className="text-muted" />
+        {/* ===== TEAM PERFORMANCE & CONTENT HEALTH ROW ===== */}
+        <div className="grid grid-cols-2 gap-5">
+          {/* User Performance */}
+          <div className="bg-card border border-border rounded-[var(--radius)]">
+            <div className="flex items-center gap-2 p-5 pb-0 mb-3">
+              <Users size={15} className="text-muted" />
+              <h2 className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>User Performance</h2>
+              <span className="text-[10px] text-muted ml-auto">{userPerformance.length} users</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-secondary/50">
+                  <tr>
+                    <th className="px-5 py-2.5 text-left"><span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>User</span></th>
+                    <th className="px-3 py-2.5 text-center"><span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>Sessions</span></th>
+                    <th className="px-3 py-2.5 text-center"><span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>Avg Score</span></th>
+                    <th className="px-3 py-2.5 text-center"><span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>Completion</span></th>
+                    <th className="px-3 py-2.5 text-right"><span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>Last Active</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userPerformance.map(user => (
+                    <tr key={user.name} className="border-t border-border">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2.5">
+                          {user.isGuest ? (
+                            <div className="w-7 h-7 rounded-full bg-muted/15 flex items-center justify-center">
+                              <Link2 size={12} className="text-muted" />
+                            </div>
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] text-primary" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                              {user.name.split(' ').map(n => n[0]).join('')}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-foreground">{user.name}</span>
+                            {user.isGuest && (
+                              <span className="px-1.5 py-0.5 bg-muted/10 text-muted rounded text-[9px]">via link</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <span className="text-xs text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>{user.sessions}</span>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        {user.avgScore !== null ? (
+                          <span className={`text-xs ${user.avgScore >= 80 ? 'text-[#10b981]' : user.avgScore >= 60 ? 'text-foreground' : 'text-destructive'}`}
+                                style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                            {user.avgScore}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <div className="flex items-center gap-2 justify-center">
+                          <div className="w-12 h-1.5 bg-secondary rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${user.avgCompletion === 100 ? 'bg-[#10b981]' : user.avgCompletion >= 70 ? 'bg-accent' : 'bg-destructive'}`}
+                              style={{ width: `${user.avgCompletion}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-muted">{user.avgCompletion}%</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <span className="text-xs text-muted">{user.lastActive}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-6">
-            {dynamicData.sessionTypes.map((type) => {
-              const total = dynamicData.sessionTypes.reduce((acc, t) => acc + t.value, 0);
-              const percentage = Math.round((type.value / total) * 100);
-              
-              return (
-                <div key={type.name}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs text-foreground">{type.name}</span>
-                    <span className="text-xs text-muted" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                      {type.value}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div 
-                      className="h-full rounded-full"
-                      style={{ 
-                        width: `${percentage}%`,
-                        backgroundColor: type.color
-                      }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-muted mt-1">{percentage}% of total sessions</p>
-                </div>
-              );
-            })}
+
+          {/* Content Health */}
+          <div className="bg-card border border-border rounded-[var(--radius)]">
+            <div className="flex items-center gap-2 p-5 pb-0 mb-3">
+              <AlertCircle size={15} className="text-muted" />
+              <h2 className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>Content Health</h2>
+              <span className="text-[10px] text-muted ml-auto">Failure &amp; abandon rates</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-secondary/50">
+                  <tr>
+                    <th className="px-5 py-2.5 text-left"><span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>Flow</span></th>
+                    <th className="px-3 py-2.5 text-center"><span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>Sessions</span></th>
+                    <th className="px-3 py-2.5 text-center"><span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>Fail Rate</span></th>
+                    <th className="px-3 py-2.5 text-center"><span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>Avg Errors</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {contentHealth.map(proc => (
+                    <tr key={proc.name} className="border-t border-border">
+                      <td className="px-5 py-3">
+                        <span className="text-xs text-foreground">{proc.name}</span>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <span className="text-xs text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>{proc.total}</span>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] ${
+                          proc.failRate === 0 ? 'bg-[#10b981]/10 text-[#10b981]' :
+                          proc.failRate <= 10 ? 'bg-[#f59e0b]/10 text-[#f59e0b]' :
+                          'bg-destructive/10 text-destructive'
+                        }`} style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                          {proc.failRate}%
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <span className="text-xs text-muted">{proc.avgErrors}</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {contentHealth.length === 0 && (
+                    <tr><td colSpan={4} className="px-5 py-8 text-center text-xs text-muted">No data available</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        {/* Session Details Table */}
+        {/* ===== SESSION DETAILS TABLE ===== */}
         <div className="bg-card border border-border rounded-[var(--radius)]">
           <div className="p-5 border-b border-border">
             <div className="flex items-center justify-between mb-4">
@@ -1538,12 +1976,7 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
                       Device
                     </span>
                   </th>
-                  <th className="px-4 py-3 text-left">
-                    <span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                      Type
-                    </span>
-                  </th>
-                  <th className="px-4 py-3 text-left">
+                  <th className="px-4 py-3 text-left" title="Performance score based on completion rate, time efficiency, and error count">
                     <span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>
                       Score
                     </span>
@@ -1553,25 +1986,20 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
                       Completion
                     </span>
                   </th>
-                  <th className="px-4 py-3 text-left">
-                    <span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                      Recording
-                    </span>
-                  </th>
                 </tr>
               </thead>
               <tbody>
-                {filteredSessions.map((session) => (
-                  <tr 
-                    key={session.id} 
+                {paginatedSessions.map((session) => (
+                  <tr
+                    key={session.id}
                     className="border-t border-border hover:bg-secondary/30 transition-colors cursor-pointer"
                     onClick={() => setSelectedSession(session)}
                   >
                     <td className="px-4 py-3">
                       <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${getStatusColor(session.status)}`}>
-                        {getStatusIcon(session.status)}
+                        {getStatusIconShared(session.status)}
                         <span className="text-[10px]" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                          {getStatusLabel(session.status)}
+                          {getStatusLabelShared(session.status)}
                         </span>
                       </div>
                     </td>
@@ -1586,7 +2014,10 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs text-muted">{session.user}</span>
+                      <div className="flex items-center gap-1.5">
+                        {session.isGuest && <Link2 size={11} className="text-muted shrink-0" />}
+                        <span className="text-xs text-muted">{session.isGuest ? 'Guest' : session.user}</span>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs text-muted">{session.duration}</span>
@@ -1599,7 +2030,7 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
                         {session.deviceType === 'Desktop' ? (
                           <Monitor size={12} className="text-muted" />
                         ) : session.deviceType === 'HoloLens' ? (
-                          <Users size={12} className="text-muted" />
+                          <Glasses size={12} className="text-muted" />
                         ) : (
                           <Smartphone size={12} className="text-muted" />
                         )}
@@ -1607,11 +2038,9 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs text-foreground">{session.sessionType}</span>
-                    </td>
-                    <td className="px-4 py-3">
                       {session.score !== null ? (
-                        <span className="text-xs text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
+                        <span className={`text-xs ${session.score >= 80 ? 'text-[#10b981]' : session.score >= 60 ? 'text-foreground' : 'text-destructive'}`}
+                              style={{ fontWeight: 'var(--font-weight-bold)' }}>
                           {session.score}
                         </span>
                       ) : (
@@ -1621,7 +2050,7 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden max-w-[60px]">
-                          <div 
+                          <div
                             className={`h-full rounded-full transition-all ${
                               session.completionRate === 100 ? 'bg-[#10b981]' :
                               session.completionRate >= 50 ? 'bg-accent' :
@@ -1633,18 +2062,6 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
                         <span className="text-[10px] text-muted">
                           {session.completionRate}%
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {session.hasRecording ? (
-                          <>
-                            <div className="w-1.5 h-1.5 rounded-full bg-destructive" />
-                            <span className="text-xs text-foreground">{session.videoMarkers} markers</span>
-                          </>
-                        ) : (
-                          <span className="text-xs text-muted">—</span>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -1659,14 +2076,53 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
               <p className="text-sm text-muted">No sessions found matching your filters</p>
             </div>
           )}
+
+          {/* Pagination */}
+          {filteredSessions.length > 0 && (
+            <div className="flex items-center justify-between px-5 py-3 border-t border-border">
+              <span className="text-[11px] text-muted">
+                Showing {((currentPage - 1) * rowsPerPage) + 1}–{Math.min(currentPage * rowsPerPage, filteredSessions.length)} of {filteredSessions.length} sessions
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="p-1.5 rounded-[var(--radius)] hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft size={16} className="text-foreground" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-8 h-8 rounded-[var(--radius)] text-xs transition-colors ${
+                      currentPage === page
+                        ? 'bg-primary text-white'
+                        : 'text-foreground hover:bg-secondary'
+                    }`}
+                    style={currentPage === page ? { fontWeight: 'var(--font-weight-bold)' } : {}}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-1.5 rounded-[var(--radius)] hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight size={16} className="text-foreground" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Session Details Modal */}
       {selectedSession && (
-        <SessionDetailsModal 
-          session={selectedSession} 
-          onClose={() => setSelectedSession(null)} 
+        <SessionDetailsModal
+          session={selectedSession}
+          onClose={() => setSelectedSession(null)}
         />
       )}
     </div>

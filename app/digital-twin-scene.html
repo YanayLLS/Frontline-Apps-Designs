@@ -1650,32 +1650,38 @@ html.embedded .right-panel { top:12px !important; }
 
 /* ===== ANIMATION EDITOR / TIMELINE ===== */
 .anim-editor-active .top-bar, .anim-editor-active .left-toolbar,
-.anim-editor-active #rightPanel, .anim-editor-active #animManager { display:none !important; }
-.anim-editor-active #viewport { bottom:260px !important; }
+.anim-editor-active #rightPanel, .anim-editor-active #animManager,
+.anim-editor-active #bottomToolbar, .anim-editor-active #slicerPanel,
+.anim-editor-active #hsPlacingToast, .anim-editor-active .viewer-more-btn,
+.anim-editor-active #leftPanel { display:none !important; }
+.anim-editor-active .gizmo-bar.visible { display:flex !important; top:60px; }
+.anim-editor-active .selection-info.visible { display:flex !important; bottom:auto; top:60px; }
+.anim-editor-active #viewport { bottom:260px !important; top:48px !important; }
 #animEditorBar {
   position:fixed; top:0; left:0; right:0; height:48px; z-index:200;
-  background:#1b1d24; display:flex; align-items:center; padding:0 12px; gap:10px;
-  border-bottom:1px solid #2a2d38; font-family:var(--font-family);
+  background:#fff; display:flex; align-items:center; padding:0 12px; gap:10px;
+  border-bottom:1px solid #C2C9DB; font-family:var(--font-family);
+  box-shadow:0 1px 4px rgba(0,0,0,0.06);
 }
 #animEditorBar .ae-back {
-  width:32px; height:32px; border:none; background:rgba(255,255,255,0.08); border-radius:8px;
+  width:32px; height:32px; border:none; background:#F5F5F5; border-radius:8px;
   cursor:pointer; display:flex; align-items:center; justify-content:center;
 }
-#animEditorBar .ae-back:hover { background:rgba(255,255,255,0.15); }
-#animEditorBar .ae-back svg { width:18px; height:18px; fill:#c0c8e0; }
+#animEditorBar .ae-back:hover { background:#E9E9E9; }
+#animEditorBar .ae-back svg { width:18px; height:18px; fill:#36415D; }
 #animEditorBar .ae-name {
   flex:1; background:transparent; border:1px solid transparent; border-radius:6px;
-  color:#f0f2fa; font-size:14px; font-weight:600; padding:4px 8px; font-family:inherit;
+  color:#36415D; font-size:14px; font-weight:600; padding:4px 8px; font-family:inherit;
 }
-#animEditorBar .ae-name:focus { border-color:#2f80ed; outline:none; background:rgba(255,255,255,0.06); }
+#animEditorBar .ae-name:focus { border-color:#2E80ED; outline:none; background:#F5F5F5; }
 #animEditorBar .ae-duration {
-  display:flex; align-items:center; gap:4px; color:#868d9e; font-size:11px;
+  display:flex; align-items:center; gap:4px; color:#868D9E; font-size:11px;
 }
 #animEditorBar .ae-duration input {
-  width:48px; background:rgba(255,255,255,0.08); border:1px solid #2a2d38; border-radius:6px;
-  color:#f0f2fa; font-size:12px; text-align:center; padding:4px; font-family:inherit;
+  width:48px; background:#F5F5F5; border:1px solid #C2C9DB; border-radius:6px;
+  color:#36415D; font-size:12px; text-align:center; padding:4px; font-family:inherit;
 }
-#animEditorBar .ae-duration input:focus { border-color:#2f80ed; outline:none; }
+#animEditorBar .ae-duration input:focus { border-color:#2E80ED; outline:none; }
 #animEditorBar .ae-btn {
   height:32px; padding:0 14px; border:none; border-radius:8px; font-size:12px;
   font-weight:600; cursor:pointer; font-family:inherit; display:flex; align-items:center; gap:5px;
@@ -1686,50 +1692,51 @@ html.embedded .right-panel { top:12px !important; }
 /* Timeline panel */
 #animTimeline {
   position:fixed; bottom:0; left:0; right:0; height:260px; z-index:150;
-  background:#1b1d24; border-top:2px solid #2a2d38; display:flex; flex-direction:column;
-  font-family:var(--font-family); color:#c0c8e0; font-size:11px; user-select:none;
+  background:#fff; border-top:2px solid #C2C9DB; display:flex; flex-direction:column;
+  font-family:var(--font-family); color:#36415D; font-size:11px; user-select:none;
+  box-shadow:0 -2px 8px rgba(0,0,0,0.06);
 }
 #animTimeline .tl-toolbar {
   height:36px; display:flex; align-items:center; gap:6px; padding:0 10px;
-  background:#22252e; border-bottom:1px solid #2a2d38; flex-shrink:0;
+  background:#F5F5F5; border-bottom:1px solid #C2C9DB; flex-shrink:0;
 }
 .tl-toolbar button {
-  width:28px; height:28px; border:none; background:rgba(255,255,255,0.06); border-radius:6px;
-  cursor:pointer; display:flex; align-items:center; justify-content:center; color:#c0c8e0;
+  width:28px; height:28px; border:none; background:#E9E9E9; border-radius:6px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center; color:#36415D;
 }
-.tl-toolbar button:hover { background:rgba(255,255,255,0.12); }
+.tl-toolbar button:hover { background:#D9E0F0; }
 .tl-toolbar button.active { background:#2f80ed; color:#fff; }
 .tl-toolbar button svg { width:16px; height:16px; fill:currentColor; }
-.tl-toolbar .tl-sep { width:1px; height:20px; background:#2a2d38; flex-shrink:0; }
+.tl-toolbar .tl-sep { width:1px; height:20px; background:#C2C9DB; flex-shrink:0; }
 .tl-toolbar .tl-zoom {
   display:flex; align-items:center; gap:4px; margin-left:auto;
 }
 .tl-toolbar .tl-zoom input[type=range] {
   width:80px; height:4px; accent-color:#2f80ed; cursor:pointer;
 }
-.tl-toolbar .tl-zoom-label { font-size:10px; color:#868d9e; width:32px; text-align:center; }
+.tl-toolbar .tl-zoom-label { font-size:10px; color:#868D9E; width:32px; text-align:center; }
 
 /* Timeline body: sidebar + canvas */
 .tl-body { flex:1; display:flex; min-height:0; overflow:hidden; }
 .tl-sidebar {
   width:180px; min-width:140px; max-width:320px; flex-shrink:0;
-  border-right:1px solid #2a2d38; display:flex; flex-direction:column; overflow:hidden;
+  border-right:1px solid #C2C9DB; display:flex; flex-direction:column; overflow:hidden;
 }
 .tl-sidebar-header {
   height:24px; display:flex; align-items:center; padding:0 8px;
-  background:#22252e; border-bottom:1px solid #2a2d38; font-size:10px; color:#868d9e;
+  background:#F5F5F5; border-bottom:1px solid #C2C9DB; font-size:10px; color:#868D9E;
   font-weight:600; text-transform:uppercase; letter-spacing:0.5px; flex-shrink:0;
 }
 .tl-sidebar-list { flex:1; overflow-y:auto; overflow-x:hidden; }
 .tl-sidebar-list::-webkit-scrollbar { width:3px; }
-.tl-sidebar-list::-webkit-scrollbar-thumb { background:#3a3d48; border-radius:2px; }
+.tl-sidebar-list::-webkit-scrollbar-thumb { background:#C2C9DB; border-radius:2px; }
 .tl-track-row {
   height:28px; display:flex; align-items:center; gap:4px; padding:0 8px; cursor:pointer;
-  border-bottom:1px solid rgba(255,255,255,0.03);
+  border-bottom:1px solid rgba(54,65,93,0.06);
 }
-.tl-track-row:hover { background:rgba(255,255,255,0.04); }
-.tl-track-row.track-header { font-weight:600; color:#e0e4f0; }
-.tl-track-row.channel-row { padding-left:24px; color:#868d9e; font-size:10px; }
+.tl-track-row:hover { background:#F5F5F5; }
+.tl-track-row.track-header { font-weight:600; color:#36415D; }
+.tl-track-row.channel-row { padding-left:24px; color:#868D9E; font-size:10px; }
 .tl-track-row .tl-expand {
   width:16px; height:16px; display:flex; align-items:center; justify-content:center;
   cursor:pointer; opacity:0.5; transition:transform 0.15s;
@@ -1750,33 +1757,34 @@ html.embedded .right-panel { top:12px !important; }
 /* Canvas area */
 .tl-canvas-wrap { flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative; }
 .tl-ruler {
-  height:24px; position:relative; background:#22252e; border-bottom:1px solid #2a2d38;
+  height:24px; position:relative; background:#F5F5F5; border-bottom:1px solid #C2C9DB;
   overflow:hidden; cursor:pointer; flex-shrink:0;
 }
 .tl-ruler-inner { position:absolute; top:0; height:100%; }
 .tl-ruler .tl-sec-mark {
   position:absolute; top:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end;
-  font-size:9px; color:#868d9e; padding:0 0 2px 4px; border-left:1px solid #3a3d48;
+  font-size:9px; color:#868D9E; padding:0 0 2px 4px; border-left:1px solid #D9E0F0;
 }
 .tl-canvas {
   flex:1; position:relative; overflow-x:auto; overflow-y:auto; cursor:crosshair;
+  background:#fff;
 }
 .tl-canvas::-webkit-scrollbar { width:4px; height:4px; }
-.tl-canvas::-webkit-scrollbar-thumb { background:#3a3d48; border-radius:2px; }
+.tl-canvas::-webkit-scrollbar-thumb { background:#C2C9DB; border-radius:2px; }
 .tl-canvas-inner { position:absolute; top:0; left:0; min-width:100%; }
 .tl-kf-row {
   height:28px; position:relative;
-  border-bottom:1px solid rgba(255,255,255,0.03);
+  border-bottom:1px solid rgba(54,65,93,0.06);
 }
-.tl-kf-row:nth-child(odd) { background:rgba(255,255,255,0.015); }
+.tl-kf-row:nth-child(odd) { background:rgba(54,65,93,0.02); }
 
 /* Keyframe diamonds */
 .tl-kf {
   position:absolute; width:12px; height:12px; top:50%; transform:translate(-50%,-50%) rotate(45deg);
-  background:#4a8cf0; border:1.5px solid #5fa0f8; border-radius:2px;
+  background:#2F80ED; border:1.5px solid #82B3F4; border-radius:2px;
   cursor:pointer; transition:transform 0.1s, background 0.1s, box-shadow 0.1s; z-index:5;
 }
-.tl-kf:hover { transform:translate(-50%,-50%) rotate(45deg) scale(1.2); background:#6ab0ff; }
+.tl-kf:hover { transform:translate(-50%,-50%) rotate(45deg) scale(1.2); background:#5999F1; }
 .tl-kf.selected {
   background:#11e874; border-color:#11e874;
   box-shadow:0 0 8px rgba(17,232,116,0.5);
@@ -1798,6 +1806,91 @@ html.embedded .right-panel { top:12px !important; }
   position:absolute; top:0; bottom:0; left:50%; width:2px; transform:translateX(-1px);
   background:#ff3b3b;
 }
+
+/* Time input */
+.tl-time-input {
+  width:58px; height:22px; border:1px solid #C2C9DB; border-radius:4px;
+  font-size:11px; text-align:center; padding:0 4px; background:#fff; color:#36415D;
+  font-family:inherit; outline:none;
+}
+.tl-time-input:focus { border-color:#2E80ED; }
+
+/* Recording mode */
+.tl-toolbar button#tlRecord { background:transparent; color:#FF1F1F; }
+.tl-toolbar button#tlRecord svg { fill:#FF1F1F; }
+.tl-toolbar button#tlRecord:hover { background:rgba(255,31,31,0.1); }
+.tl-toolbar button#tlRecord.active { background:#FF1F1F; color:#fff; }
+.tl-toolbar button#tlRecord.active svg { fill:#fff; }
+#animTimeline.recording { border-top-color:#FF1F1F; }
+#animTimeline.recording .tl-toolbar { background:rgba(255,31,31,0.04); }
+
+/* Sidebar resize */
+.tl-sidebar-resize {
+  width:4px; cursor:col-resize; background:transparent; flex-shrink:0;
+  transition:background 0.15s;
+}
+.tl-sidebar-resize:hover { background:#2F80ED; }
+
+/* Search in sidebar header */
+.tl-sidebar-header { gap:4px; }
+.tl-search {
+  flex:1; height:18px; border:1px solid #C2C9DB; border-radius:3px;
+  font-size:10px; padding:0 4px; background:#fff; color:#36415D;
+  font-family:inherit; outline:none; min-width:0;
+}
+.tl-search:focus { border-color:#2E80ED; }
+.tl-header-btn {
+  width:18px; height:18px; border:none; background:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; opacity:0.5;
+  border-radius:3px; flex-shrink:0;
+}
+.tl-header-btn:hover { opacity:1; background:#E9E9E9; }
+
+/* Channel value display in sidebar */
+.tl-ch-value {
+  font-size:9px; color:#868D9E; margin-left:auto; white-space:nowrap;
+  background:#F5F5F5; border-radius:3px; padding:1px 4px; min-width:28px; text-align:right;
+}
+
+/* Track row enhancements */
+.tl-track-row .tl-track-opts {
+  width:16px; height:16px; opacity:0; cursor:pointer; display:flex; align-items:center;
+  justify-content:center; border:none; background:none; border-radius:3px; flex-shrink:0;
+}
+.tl-track-row:hover .tl-track-opts { opacity:0.5; }
+.tl-track-row .tl-track-opts:hover { opacity:1; background:#E9E9E9; }
+
+/* Interpolation lines between keyframes */
+.tl-interp-line {
+  position:absolute; top:50%; height:2px; background:#D9E0F0;
+  pointer-events:none; z-index:3; transform:translateY(-1px);
+}
+
+/* Selection box */
+.tl-sel-box {
+  position:absolute; border:1px dashed #2F80ED; background:rgba(47,128,237,0.08);
+  pointer-events:none; z-index:20; display:none;
+}
+
+/* Track context menu */
+.tl-ctx-menu {
+  position:fixed; z-index:400; min-width:160px;
+  background:#fff; border-radius:8px;
+  box-shadow:0 4px 20px rgba(0,0,0,.15); padding:4px 0;
+  display:none; font-size:12px;
+}
+.tl-ctx-menu.visible { display:block; }
+.tl-ctx-menu button {
+  display:flex; align-items:center; gap:8px; padding:7px 14px;
+  cursor:pointer; border:none; background:none; width:100%; text-align:left;
+  font-family:inherit; font-size:12px; color:#36415D;
+}
+.tl-ctx-menu button:hover { background:#F5F5F5; }
+.tl-ctx-menu button svg { width:14px; height:14px; fill:#868D9E; flex-shrink:0; }
+.tl-ctx-menu button.danger { color:#FF1F1F; }
+.tl-ctx-menu button.danger svg { fill:#FF1F1F; }
+.tl-ctx-menu .tl-ctx-divider { height:1px; background:#E9E9E9; margin:2px 0; }
+.tl-ctx-menu button .tl-shortcut { margin-left:auto; font-size:10px; color:#C2C9DB; }
 
 /* ===== HOTSPOT PLACEMENT TOAST ===== */
 #hsPlacingToast {
@@ -1883,32 +1976,86 @@ html.embedded .right-panel { top:12px !important; }
 }
 #procModal .pm-run-btn:hover { background:#5999f1; }
 
-/* ===== PROCEDURES PANEL ===== */
-#procPanel .pp-search {
-  display:flex; align-items:center; gap:6px; padding:8px 10px; border-bottom:1px solid #e9e9e9;
+/* ===== PROCEDURES MODAL ===== */
+#procPanelOverlay {
+  position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.45); backdrop-filter:blur(4px); opacity:0; pointer-events:none;
+  transition:opacity .2s ease;
 }
-#procPanel .pp-search-input {
-  flex:1; height:28px; background:#fff; border:1.5px solid #c2c9db; border-radius:6px;
-  padding:0 10px; font-family:inherit; font-size:12px; color:#36415d; outline:none;
+#procPanelOverlay.visible { opacity:1; pointer-events:auto; }
+#procPanelOverlay .pp-modal {
+  background:#fff; border-radius:14px; width:480px; max-width:calc(100vw - 40px);
+  max-height:calc(100vh - 80px); display:flex; flex-direction:column;
+  box-shadow:0 24px 80px rgba(0,0,0,.25), 0 4px 16px rgba(0,0,0,.1);
+  transform:scale(.95) translateY(12px); transition:transform .25s cubic-bezier(.22,1,.36,1);
+  overflow:hidden;
 }
-#procPanel .pp-search-input:focus { border-color:#2e80ed; }
-#procPanel .pp-list { padding:4px 0; }
-#procPanel .pp-folder {
-  display:flex; align-items:center; gap:6px; padding:7px 12px; cursor:pointer;
-  font-weight:600; font-size:12px; color:#36415d;
+#procPanelOverlay.visible .pp-modal { transform:scale(1) translateY(0); }
+.pp-header {
+  display:flex; align-items:center; gap:10px; padding:18px 22px 14px; border-bottom:1px solid #e9e9e9; flex-shrink:0;
 }
-#procPanel .pp-folder:hover { background:rgba(54,65,93,.045); }
-#procPanel .pp-folder svg { width:14px; height:14px; fill:#868d9e; flex-shrink:0; transition:transform .15s; }
-#procPanel .pp-folder svg.expanded { transform:rotate(90deg); }
-#procPanel .pp-folder-icon { width:14px; height:14px; fill:#c2c9db; flex-shrink:0; }
-#procPanel .pp-item {
-  display:flex; align-items:center; gap:8px; padding:6px 12px 6px 32px; cursor:pointer;
+.pp-header-icon { width:22px; height:22px; fill:#2f80ed; flex-shrink:0; }
+.pp-header-title { flex:1; font-size:18px; font-weight:700; color:#36415d; }
+.pp-header-close {
+  width:30px; height:30px; border:none; background:none; cursor:pointer; border-radius:8px;
+  display:flex; align-items:center; justify-content:center; transition:background .15s;
 }
-#procPanel .pp-item:hover { background:rgba(54,65,93,.045); }
-#procPanel .pp-item-icon { width:14px; height:14px; fill:#2f80ed; flex-shrink:0; }
-#procPanel .pp-item-info { flex:1; min-width:0; }
-#procPanel .pp-item-name { font-size:12px; color:#36415d; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-#procPanel .pp-item-meta { font-size:10px; color:#868d9e; }
+.pp-header-close:hover { background:#f0f0f0; }
+.pp-header-close svg { width:18px; height:18px; fill:#868d9e; }
+.pp-search-bar {
+  display:flex; align-items:center; gap:8px; padding:12px 22px; flex-shrink:0;
+}
+.pp-search-bar input {
+  flex:1; height:36px; background:#f5f5f5; border:1.5px solid #e0e0e0; border-radius:8px;
+  padding:0 12px; font-family:inherit; font-size:13px; color:#36415d; outline:none;
+  transition:border-color .15s, background .15s;
+}
+.pp-search-bar input:focus { border-color:#2e80ed; background:#fff; }
+.pp-body { flex:1; overflow-y:auto; padding:4px 0 12px; }
+.pp-folder {
+  display:flex; align-items:center; gap:8px; padding:9px 22px; cursor:pointer;
+  font-weight:600; font-size:13px; color:#36415d; transition:background .12s;
+}
+.pp-folder:hover { background:rgba(54,65,93,.05); }
+.pp-folder svg { width:16px; height:16px; fill:#868d9e; flex-shrink:0; transition:transform .15s; }
+.pp-folder svg.expanded { transform:rotate(90deg); }
+.pp-folder-icon { width:16px; height:16px; fill:#c2c9db; flex-shrink:0; }
+.pp-item {
+  display:flex; align-items:center; gap:10px; padding:8px 22px 8px 52px; cursor:pointer;
+  transition:background .12s; border-radius:0;
+}
+.pp-item:hover { background:rgba(47,128,237,.06); }
+.pp-item-icon { width:16px; height:16px; fill:#2f80ed; flex-shrink:0; }
+.pp-item-info { flex:1; min-width:0; }
+.pp-item-name { font-size:13px; color:#36415d; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pp-item-meta { font-size:11px; color:#868d9e; margin-top:1px; }
+.pp-empty { padding:40px 22px; text-align:center; font-size:13px; color:#868d9e; }
+/* Draft toggle */
+.pp-draft-toggle {
+  display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none;
+}
+.pp-draft-toggle input { display:none; }
+.pp-draft-slider {
+  width:32px; height:18px; background:#ccc; border-radius:9px; position:relative;
+  transition:background .2s;
+}
+.pp-draft-slider::after {
+  content:''; position:absolute; left:2px; top:2px; width:14px; height:14px;
+  background:#fff; border-radius:50%; transition:transform .2s;
+}
+.pp-draft-toggle input:checked + .pp-draft-slider { background:#2f80ed; }
+.pp-draft-toggle input:checked + .pp-draft-slider::after { transform:translateX(14px); }
+.pp-draft-label { font-size:11px; font-weight:600; color:#868d9e; }
+.pp-draft-toggle input:checked ~ .pp-draft-label { color:#2f80ed; }
+/* Draft badge */
+.pp-draft-badge {
+  display:inline-block; font-size:9px; font-weight:700; color:#e68a00; background:#fff3d6;
+  border:1px solid #f0d080; padding:1px 5px; border-radius:4px; margin-left:6px;
+  text-transform:uppercase; letter-spacing:.3px;
+}
+.pp-item-version-row { display:flex; align-items:center; gap:4px; }
+.pp-item-published { font-size:10px; color:#11e874; }
+.pp-item-draft { font-size:10px; color:#e68a00; }
 
 /* ===== BOOKMARKS PANEL ===== */
 /* Bookmarks panel header overrides */
@@ -2189,20 +2336,28 @@ html.embedded .right-panel { top:12px !important; }
   <div class="fl-resize"></div>
 </div>
 
-<!-- PROCEDURES PANEL (fl-window) -->
-<div id="procPanel" class="fl-window hidden">
-  <div class="fl-header">
-    <svg class="fl-icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg>
-    <span class="fl-title">Procedures</span>
-    <button class="fl-close" id="procPanelClose"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+<!-- PROCEDURES MODAL -->
+<div id="procPanelOverlay">
+  <div class="pp-modal">
+    <div class="pp-header">
+      <svg class="pp-header-icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg>
+      <span class="pp-header-title">Procedures</span>
+      <div style="display:flex;align-items:center;gap:6px;margin-right:4px;">
+        <label class="pp-draft-toggle" id="ppDraftToggle" title="Show unpublished (draft) versions">
+          <input type="checkbox" id="ppDraftCheck">
+          <span class="pp-draft-slider"></span>
+          <span class="pp-draft-label">Drafts</span>
+        </label>
+      </div>
+      <button class="pp-header-close" id="procPanelClose"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="pp-search-bar">
+      <input type="text" id="ppSearch" placeholder="Search procedures...">
+    </div>
+    <div class="pp-body">
+      <div id="ppList"></div>
+    </div>
   </div>
-  <div class="pp-search">
-    <input class="pp-search-input" type="text" id="ppSearch" placeholder="Search procedures...">
-  </div>
-  <div class="fl-body">
-    <div class="pp-list" id="ppList"></div>
-  </div>
-  <div class="fl-resize"></div>
 </div>
 
 <!-- HIDDEN FILE INPUT FOR MEDIA -->
@@ -2495,30 +2650,52 @@ html.embedded .right-panel { top:12px !important; }
 <!-- ANIMATION TIMELINE -->
 <div id="animTimeline" class="hidden">
   <div class="tl-toolbar">
+    <button id="tlRecord" title="Toggle recording mode (auto-keyframe on transform)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg></button>
+    <div class="tl-sep"></div>
+    <button id="tlGoStart" title="Go to start (Home)"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+    <button id="tlStepBack" title="Step backward (←)"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
     <button id="tlStop" title="Stop"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg></button>
-    <button id="tlPlay" title="Play / Pause"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+    <button id="tlPlay" title="Play / Pause (Space)"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+    <button id="tlStepFwd" title="Step forward (→)"><svg viewBox="0 0 24 24"><path d="M16 18h2V6h-2zM6 18l8.5-6L6 6z"/></svg></button>
+    <button id="tlGoEnd" title="Go to end (End)"><svg viewBox="0 0 24 24"><path d="M16 18h2V6h-2zM6 18l8.5-6L6 6z"/></svg></button>
     <button id="tlLoop" title="Loop"><svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg></button>
     <div class="tl-sep"></div>
-    <button id="tlAddKf" title="Add keyframe at playhead"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></button>
-    <button id="tlDelKf" title="Delete selected keyframes"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+    <input type="text" id="tlTimeInput" class="tl-time-input" value="0.00s" title="Current time (click to edit)">
+    <span style="font-size:10px;color:#868D9E;margin:0 2px;">/</span>
+    <span style="font-size:10px;color:#868D9E;" id="tlDurationDisplay">5.0s</span>
     <div class="tl-sep"></div>
-    <span style="font-size:10px;color:#868d9e;" id="tlTimeDisplay">0:00.0</span>
+    <button id="tlAddKf" title="Add keyframe at playhead (K)"><svg viewBox="0 0 24 24"><path d="M12 1L9 9H1l6.5 5-2.5 8L12 17l7 5-2.5-8L23 9h-8z"/></svg></button>
+    <button id="tlDelKf" title="Delete selected keyframes (Del)"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+    <div class="tl-sep"></div>
+    <div id="tlKfEdit" style="display:none;align-items:center;gap:4px;font-size:10px;color:#868D9E;">
+      <span id="tlKfLabel">Value:</span>
+      <input type="number" id="tlKfValue" step="0.5" style="width:56px;height:22px;border:1px solid #C2C9DB;border-radius:4px;font-size:11px;text-align:center;padding:0 4px;background:#fff;color:#36415D;">
+      <span style="font-size:9px;color:#C2C9DB;">|</span>
+      <span style="font-size:9px;color:#868D9E;" id="tlKfTime"></span>
+    </div>
+    <div style="flex:1"></div>
     <div class="tl-zoom">
+      <button id="tlFitAll" title="Fit all" style="width:22px;height:22px;"><svg viewBox="0 0 24 24"><path d="M3 5v4h2V5h4V3H5c-1.1 0-2 .9-2 2zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/></svg></button>
       <button id="tlZoomOut" style="width:22px;height:22px;"><svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg></button>
-      <input type="range" id="tlZoomSlider" min="10" max="300" value="80">
+      <input type="range" id="tlZoomSlider" min="10" max="500" value="80">
       <button id="tlZoomIn" style="width:22px;height:22px;"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></button>
       <span class="tl-zoom-label" id="tlZoomLabel">80%</span>
     </div>
   </div>
   <div class="tl-body">
-    <div class="tl-sidebar">
-      <div class="tl-sidebar-header">Tracks</div>
+    <div class="tl-sidebar" id="tlSidebar">
+      <div class="tl-sidebar-header">
+        <span>Tracks</span>
+        <input type="text" id="tlTrackSearch" class="tl-search" placeholder="Search tracks..." style="display:none;">
+        <button id="tlSearchToggle" class="tl-header-btn" title="Search tracks"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
+      </div>
       <div class="tl-sidebar-list" id="tlTrackList"></div>
       <div class="tl-add-track" id="tlAddTrack">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
         Add selected part
       </div>
     </div>
+    <div class="tl-sidebar-resize" id="tlSidebarResize"></div>
     <div class="tl-canvas-wrap">
       <div class="tl-ruler" id="tlRuler"><div class="tl-ruler-inner" id="tlRulerInner"></div>
         <div class="tl-playhead-handle" id="tlPlayheadHandle"></div>
@@ -2526,9 +2703,23 @@ html.embedded .right-panel { top:12px !important; }
       <div class="tl-canvas" id="tlCanvas">
         <div class="tl-canvas-inner" id="tlCanvasInner"></div>
         <div class="tl-playhead" id="tlPlayhead"><div class="tl-playhead-line"></div></div>
+        <div class="tl-sel-box" id="tlSelBox"></div>
       </div>
     </div>
   </div>
+</div>
+
+<!-- TIMELINE CONTEXT MENU -->
+<div class="tl-ctx-menu" id="tlCtxMenu">
+  <button data-action="addKf"><svg viewBox="0 0 24 24"><path d="M12 1L9 9H1l6.5 5-2.5 8L12 17l7 5-2.5-8L23 9h-8z"/></svg>Add keyframe here<span class="tl-shortcut">DblClick</span></button>
+  <button data-action="record"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>Record transform<span class="tl-shortcut">K</span></button>
+  <div class="tl-ctx-divider"></div>
+  <button data-action="copyKf"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>Copy keyframe<span class="tl-shortcut">Ctrl+C</span></button>
+  <button data-action="pasteKf"><svg viewBox="0 0 24 24"><path d="M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm7 18H5V4h2v3h10V4h2v16z"/></svg>Paste keyframe<span class="tl-shortcut">Ctrl+V</span></button>
+  <div class="tl-ctx-divider"></div>
+  <button data-action="delKf" class="danger"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Delete keyframe<span class="tl-shortcut">Del</span></button>
+  <div class="tl-ctx-divider"></div>
+  <button data-action="delTrack" class="danger"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Remove track</button>
 </div>
 
 <!-- SLICER PANEL -->
@@ -3246,6 +3437,10 @@ transformControls.addEventListener('dragging-changed', (e) => {
     undoStack.push(preTransform);
     redoStack.length = 0;
     preTransform = null;
+    // Record keyframe in animation editor when drag ends (if recording mode on)
+    if (typeof animEditor !== 'undefined' && animEditor.active && animEditor.recording) {
+      aeRecordFromGizmo();
+    }
   }
 });
 
@@ -5656,8 +5851,7 @@ document.querySelectorAll('.toolbar-btn[data-menu]').forEach(btn=>{
         createHotspotMarkers();
       }
     } else if(btn.dataset.menu==='procedures'){
-      // Toggle procedures panel (fl-window)
-      flToggle('procPanel');
+      toggleProcModal();
       renderProceduresPanel();
     } else if(btn.dataset.menu==='bookmarks'){
       flToggle('bookmarksPanel');
@@ -6268,8 +6462,8 @@ document.getElementById('animFilterParts').onclick = (e) => {
 // Filter by Procedure
 document.getElementById('animFilterProcs').onclick = (e) => {
   e.stopPropagation(); document.getElementById('animFilterMenu').classList.remove('visible');
-  document.getElementById('procPanel').dataset.filterMode = 'animation';
-  flShow('procPanel');
+  document.getElementById('procPanelOverlay').dataset.filterMode = 'animation';
+  showProcModal();
 };
 
 // Animation context menu actions
@@ -6393,15 +6587,99 @@ function findPartsByNameMatch(nameMatch) {
 function playAnimation(animId, playMode) {
   var anim = animations.find(a => a.id === animId);
   if (!anim) return null;
+  var hasEditorTracks = anim._editorTracks && anim._editorTracks.length;
   var hasKeyframes = anim.keyframes && anim.keyframes.length;
   var hasExplode = anim.explode;
-  if (!hasKeyframes && !hasExplode) return null;
+  if (!hasKeyframes && !hasExplode && !hasEditorTracks) return null;
   // Stop any currently running instance of this animation
   stopAnimation(animId);
   var duration = parseFloat(anim.duration) * 1000 || 1500;
   var mode = playMode || 'once';
   var startTime = performance.now();
-  // Collect targets from keyframes
+  var TICKS_PER_SEC = 100;
+  var totalTicks = Math.round((duration / 1000) * TICKS_PER_SEC);
+
+  // If editor tracks exist, use multi-keyframe interpolation
+  if (hasEditorTracks) {
+    var editorChannels = ['posX','posY','posZ','rotX','rotY','rotZ'];
+    // Collect track objects with original transforms
+    var edTracks = [];
+    for (var ti = 0; ti < anim._editorTracks.length; ti++) {
+      var et = anim._editorTracks[ti];
+      var meshes = state.partMeshMap.get(et.partId);
+      if (!meshes || !meshes.length) continue;
+      var m = meshes[0];
+      var obj = m;
+      if (m.parent && m.parent !== scene) obj = m.parent;
+      edTracks.push({
+        channels: et.channels,
+        obj: obj,
+        origPos: obj.position.clone(),
+        origRot: new THREE.Vector3(
+          THREE.MathUtils.radToDeg(obj.rotation.x),
+          THREE.MathUtils.radToDeg(obj.rotation.y),
+          THREE.MathUtils.radToDeg(obj.rotation.z)
+        )
+      });
+    }
+    if (!edTracks.length) return null;
+    var animState = { id: animId, mode: mode, running: true, edTracks: edTracks };
+    activeAnimations.push(animState);
+    function ease(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+    function interpChannel(kfs, time) {
+      if (!kfs || kfs.length === 0) return 0;
+      var sorted = kfs.slice().sort(function(a,b){ return a.time - b.time; });
+      if (time <= sorted[0].time) return sorted[0].value;
+      if (time >= sorted[sorted.length-1].time) return sorted[sorted.length-1].value;
+      for (var i = 0; i < sorted.length - 1; i++) {
+        if (time >= sorted[i].time && time <= sorted[i+1].time) {
+          var t = (time - sorted[i].time) / (sorted[i+1].time - sorted[i].time);
+          var e = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+          return sorted[i].value + (sorted[i+1].value - sorted[i].value) * e;
+        }
+      }
+      return sorted[sorted.length-1].value;
+    }
+    function edTick() {
+      if (!animState.running) {
+        edTracks.forEach(function(et) {
+          et.obj.position.copy(et.origPos);
+          et.obj.rotation.set(
+            THREE.MathUtils.degToRad(et.origRot.x),
+            THREE.MathUtils.degToRad(et.origRot.y),
+            THREE.MathUtils.degToRad(et.origRot.z)
+          );
+        });
+        return;
+      }
+      var elapsed = performance.now() - startTime;
+      var t = elapsed / duration;
+      if (mode === 'once' && t >= 1) { t = 1; }
+      else if (mode === 'pingpong') { t = t % 2; if (t > 1) t = 2 - t; }
+      else if (mode === 'loop') { t = t % 1; }
+      var timeTick = t * totalTicks;
+      edTracks.forEach(function(et) {
+        for (var ci = 0; ci < editorChannels.length; ci++) {
+          var ch = editorChannels[ci];
+          var kfs = et.channels[ch];
+          if (!kfs || kfs.length === 0) continue;
+          var val = interpChannel(kfs, timeTick);
+          if (ch === 'posX') et.obj.position.x = et.origPos.x + val;
+          else if (ch === 'posY') et.obj.position.y = et.origPos.y + val;
+          else if (ch === 'posZ') et.obj.position.z = et.origPos.z + val;
+          else if (ch === 'rotX') et.obj.rotation.x = THREE.MathUtils.degToRad(et.origRot.x + val);
+          else if (ch === 'rotY') et.obj.rotation.y = THREE.MathUtils.degToRad(et.origRot.y + val);
+          else if (ch === 'rotZ') et.obj.rotation.z = THREE.MathUtils.degToRad(et.origRot.z + val);
+        }
+      });
+      if (mode === 'once' && t >= 1) { animState.running = false; return; }
+      requestAnimationFrame(edTick);
+    }
+    requestAnimationFrame(edTick);
+    return animState;
+  }
+
+  // Legacy: simple offset-based animation
   var targets = [];
   if (hasKeyframes) {
     anim.keyframes.forEach(function(kf) {
@@ -6415,13 +6693,12 @@ function playAnimation(animId, playMode) {
       });
     });
   }
-  // Collect explode targets: children of matching parts move outward from center
+  // Collect explode targets
   if (hasExplode) {
     var ex = anim.explode;
     var parentParts = ex.partNameMatch ? findPartsByNameMatch(ex.partNameMatch) : [];
     parentParts.forEach(function(pp) {
       if (!pp.children || !pp.children.length) return;
-      // Compute center of children
       var cx = 0, cy = 0, cz = 0, count = 0;
       pp.children.forEach(function(child) {
         if (!child.object3D) return;
@@ -6437,7 +6714,6 @@ function playAnimation(animId, playMode) {
         var dz = child.object3D.position.z - cz;
         var dist = Math.sqrt(dx*dx + dy*dy + dz*dz) || 1;
         var s = ex.strength / dist;
-        // Spread along each axis proportionally + add y lift
         targets.push({ obj: child.object3D, property: 'position', axis: 'x', offset: dx * s, orig: child.object3D.position.x });
         targets.push({ obj: child.object3D, property: 'position', axis: 'y', offset: dy * s + (ci + 1) * 2, orig: child.object3D.position.y });
         targets.push({ obj: child.object3D, property: 'position', axis: 'z', offset: dz * s, orig: child.object3D.position.z });
@@ -6480,9 +6756,19 @@ function stopAnimation(animId) {
   for (var i = activeAnimations.length - 1; i >= 0; i--) {
     if (activeAnimations[i].id === animId) {
       activeAnimations[i].running = false;
-      // Reset targets
+      // Reset targets (legacy)
       var tgts = activeAnimations[i].targets;
       if (tgts) tgts.forEach(function(t) { t.obj[t.property][t.axis] = t.orig; });
+      // Reset editor tracks
+      var edT = activeAnimations[i].edTracks;
+      if (edT) edT.forEach(function(et) {
+        et.obj.position.copy(et.origPos);
+        et.obj.rotation.set(
+          THREE.MathUtils.degToRad(et.origRot.x),
+          THREE.MathUtils.degToRad(et.origRot.y),
+          THREE.MathUtils.degToRad(et.origRot.z)
+        );
+      });
       activeAnimations.splice(i, 1);
     }
   }
@@ -6492,6 +6778,14 @@ function stopAllAnimations() {
   activeAnimations.forEach(function(a) {
     a.running = false;
     if (a.targets) a.targets.forEach(function(t) { t.obj[t.property][t.axis] = t.orig; });
+    if (a.edTracks) a.edTracks.forEach(function(et) {
+      et.obj.position.copy(et.origPos);
+      et.obj.rotation.set(
+        THREE.MathUtils.degToRad(et.origRot.x),
+        THREE.MathUtils.degToRad(et.origRot.y),
+        THREE.MathUtils.degToRad(et.origRot.z)
+      );
+    });
   });
   activeAnimations = [];
 }
@@ -8907,17 +9201,16 @@ window.addEventListener('resize',()=>{
   outlinePass.setSize(w,h); hoverOutlinePass.setSize(w,h);
 });
 
-// ==================== PROCEDURE MODAL ====================
+// ==================== PROCEDURES MODAL ====================
 const kbProcedures = {
-  p1: { name:'Routine Maintenance', steps:35, version:'1.5', lastUpdated:'02/15/2025', description:'Complete routine maintenance procedure for high-volume equipment. Covers inspection, cleaning, lubrication, and basic part replacement across all major assemblies.', dt:'Generator Assembly', config:'Standard', mode:'Maintenance' },
-  p2: { name:'Engine Calibration', steps:22, version:'2.1', lastUpdated:'01/28/2025', description:'Step-by-step calibration procedure for engine timing, fuel mixture, and governor settings. Requires calibration tools and diagnostic equipment.', dt:'Generator Assembly', config:'Calibration', mode:'Diagnostics' },
-  p3: { name:'Belt Replacement', steps:15, version:'1.0', lastUpdated:'03/01/2025', description:'Guide for inspecting and replacing drive belts. Includes tensioning procedures and alignment checks.', dt:'Generator Assembly', config:'Standard', mode:'Repair' },
-  p4: { name:'Spark Plug Replacement', steps:12, version:'1.2', lastUpdated:'02/20/2025', description:'Remove and replace spark plugs. Includes gap measurement, torque specifications, and wire routing.', dt:'Generator Assembly', config:'Standard', mode:'Repair' },
-  p5: { name:'Oil Change Procedure', steps:8, version:'3.0', lastUpdated:'02/10/2025', description:'Drain and refill engine oil. Includes filter replacement and used oil disposal guidelines.', dt:'Generator Assembly', config:'Standard', mode:'Maintenance' },
-  p6: { name:'Starting Procedure', steps:6, version:'2.0', lastUpdated:'01/15/2025', description:'Safe engine starting sequence. Covers choke position, throttle setting, fuel valve, and pull-start technique.', dt:'Generator Assembly', config:'Standard', mode:'Operation' },
+  p1: { name:'Routine Maintenance', steps:35, version:'1.5', draftVersion:'1.6', lastUpdated:'02/15/2025', draftUpdated:'03/08/2025', description:'Complete routine maintenance procedure for high-volume equipment. Covers inspection, cleaning, lubrication, and basic part replacement across all major assemblies.', dt:'Generator Assembly', config:'Standard', mode:'Maintenance', hasDraft:true, draftSteps:38 },
+  p2: { name:'Engine Calibration', steps:22, version:'2.1', lastUpdated:'01/28/2025', description:'Step-by-step calibration procedure for engine timing, fuel mixture, and governor settings. Requires calibration tools and diagnostic equipment.', dt:'Generator Assembly', config:'Calibration', mode:'Diagnostics', hasDraft:false },
+  p3: { name:'Belt Replacement', steps:15, version:'1.0', lastUpdated:'03/01/2025', description:'Guide for inspecting and replacing drive belts. Includes tensioning procedures and alignment checks.', dt:'Generator Assembly', config:'Standard', mode:'Repair', hasDraft:false },
+  p4: { name:'Spark Plug Replacement', steps:12, version:'1.2', draftVersion:'1.3', lastUpdated:'02/20/2025', draftUpdated:'03/05/2025', description:'Remove and replace spark plugs. Includes gap measurement, torque specifications, and wire routing.', dt:'Generator Assembly', config:'Standard', mode:'Repair', hasDraft:true, draftSteps:14 },
+  p5: { name:'Oil Change Procedure', steps:8, version:'3.0', lastUpdated:'02/10/2025', description:'Drain and refill engine oil. Includes filter replacement and used oil disposal guidelines.', dt:'Generator Assembly', config:'Standard', mode:'Maintenance', hasDraft:false },
+  p6: { name:'Starting Procedure', steps:6, version:'2.0', draftVersion:'2.1', lastUpdated:'01/15/2025', draftUpdated:'03/09/2025', description:'Safe engine starting sequence. Covers choke position, throttle setting, fuel valve, and pull-start technique.', dt:'Generator Assembly', config:'Standard', mode:'Operation', hasDraft:true, draftSteps:7 },
 };
 
-// Procedure hierarchy for the procedures panel
 const kbProcedureTree = [
   { type:'folder', name:'Maintenance', expanded:true, children:[
     { type:'proc', id:'p1', name:'Routine Maintenance' },
@@ -8935,14 +9228,46 @@ const kbProcedureTree = [
   ]},
 ];
 
+// --- Procedures modal show/hide ---
+function showProcModal() {
+  const ov = document.getElementById('procPanelOverlay');
+  ov.classList.add('visible');
+  renderProceduresPanel();
+  setTimeout(() => document.getElementById('ppSearch').focus(), 80);
+}
+function hideProcModal() {
+  const ov = document.getElementById('procPanelOverlay');
+  ov.classList.remove('visible');
+  delete ov.dataset.filterMode;
+}
+function toggleProcModal() {
+  const ov = document.getElementById('procPanelOverlay');
+  if (ov.classList.contains('visible')) hideProcModal(); else showProcModal();
+}
+// Close on backdrop click
+document.getElementById('procPanelOverlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) hideProcModal();
+});
+// Close button
+document.getElementById('procPanelClose').addEventListener('click', hideProcModal);
+// Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('procPanelOverlay').classList.contains('visible')) {
+    hideProcModal();
+  }
+});
+// Draft toggle
+document.getElementById('ppDraftCheck').addEventListener('change', renderProceduresPanel);
+document.getElementById('ppSearch').addEventListener('input', renderProceduresPanel);
+
 function renderProceduresPanel() {
   const list = document.getElementById('ppList');
   const filter = (document.getElementById('ppSearch').value || '').toLowerCase();
+  const showDrafts = document.getElementById('ppDraftCheck').checked;
   list.innerHTML = '';
   kbProcedureTree.forEach(folder => {
     const children = folder.children.filter(c => !filter || c.name.toLowerCase().includes(filter));
     if (filter && !children.length) return;
-    // Folder row
     const fEl = document.createElement('div');
     fEl.className = 'pp-folder';
     fEl.innerHTML = `<svg class="${folder.expanded?'expanded':''}" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
@@ -8955,22 +9280,25 @@ function renderProceduresPanel() {
         const pEl = document.createElement('div');
         pEl.className = 'pp-item';
         const meta = kbProcedures[proc.id];
+        const steps = showDrafts && meta.hasDraft ? (meta.draftSteps || meta.steps) : meta.steps;
+        const ver = showDrafts && meta.hasDraft ? meta.draftVersion : meta.version;
+        const updated = showDrafts && meta.hasDraft ? meta.draftUpdated : meta.lastUpdated;
+        const draftBadge = showDrafts && meta.hasDraft ? '<span class="pp-draft-badge">Draft</span>' : '';
         pEl.innerHTML = `<svg class="pp-item-icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg>
           <div class="pp-item-info">
-            <div class="pp-item-name">${proc.name}</div>
-            <div class="pp-item-meta">${meta ? meta.steps+' steps · v'+meta.version : ''}</div>
+            <div class="pp-item-name">${proc.name}${draftBadge}</div>
+            <div class="pp-item-meta">${meta ? steps+' steps · v'+ver+' · '+updated : ''}</div>
           </div>`;
         pEl.addEventListener('click', () => {
-          // Animation Manager filter mode — select procedure as filter
-          const pp = document.getElementById('procPanel');
-          if (pp.dataset.filterMode === 'animation') {
+          const ov = document.getElementById('procPanelOverlay');
+          if (ov.dataset.filterMode === 'animation') {
             animActiveFilters.procedureName = proc.id;
-            delete pp.dataset.filterMode;
-            pp.classList.add('hidden');
+            delete ov.dataset.filterMode;
+            hideProcModal();
             renderAnimList();
             return;
           }
-          // If embedded, tell parent to open the KB procedure modal
+          hideProcModal();
           if (window.parent !== window) {
             window.parent.postMessage({ type:'openProcedureInfo', procedureId: proc.id }, '*');
           } else {
@@ -8982,22 +9310,25 @@ function renderProceduresPanel() {
     }
   });
   if (!list.children.length) {
-    list.innerHTML = '<div style="padding:24px;text-align:center;font-size:12px;color:#868d9e;">No procedures found</div>';
+    list.innerHTML = '<div class="pp-empty">No procedures found</div>';
   }
 }
 
 function openProcedureModal(procedureId) {
   const proc = kbProcedures[procedureId];
   if (!proc) return;
+  const showDrafts = document.getElementById('ppDraftCheck').checked;
+  const steps = showDrafts && proc.hasDraft ? (proc.draftSteps || proc.steps) : proc.steps;
+  const ver = showDrafts && proc.hasDraft ? proc.draftVersion : proc.version;
+  const updated = showDrafts && proc.hasDraft ? proc.draftUpdated : proc.lastUpdated;
   document.getElementById('pmTitle').textContent = proc.name;
-  document.getElementById('pmMeta').innerHTML = `<span>${proc.steps} steps</span><span>|</span><span>Last updated ${proc.lastUpdated}</span><span>|</span><span>Version ${proc.version}</span>`;
+  document.getElementById('pmMeta').innerHTML = `<span>${steps} steps</span><span>|</span><span>Last updated ${updated}</span><span>|</span><span>Version ${ver}</span>`;
   document.getElementById('pmDesc').textContent = proc.description;
   document.getElementById('pmDT').textContent = proc.dt;
   document.getElementById('pmConfig').textContent = proc.config;
   document.getElementById('pmMode').textContent = proc.mode;
   document.getElementById('pmRun').onclick = () => {
     closeProcedureModal();
-    // If embedded in app, tell parent to open procedure editor
     if (window.parent !== window) {
       window.parent.postMessage({ type:'openProcedure', procedureId }, '*');
     }
@@ -9432,7 +9763,10 @@ const animEditor = {
   zoom: 0.8,         // pixels per tick
   playing: false,
   loop: false,
+  recording: false,
   selectedKf: null,  // { trackIdx, channel, kfIdx }
+  selectedKfs: [],   // multi-select array
+  _clipboard: null,  // { channel, value }
   _playRAF: null,
   _playLast: 0,
   _origTransforms: new Map(), // partId → { pos, rot }
@@ -9447,7 +9781,14 @@ function aeOpen(animId) {
   animEditor.animId = animId;
   animEditor.currentTime = 0;
   animEditor.playing = false;
+  animEditor.recording = false;
   animEditor.selectedKf = null;
+  animEditor.selectedKfs = [];
+  animEditor._clipboard = null;
+  document.getElementById('tlRecord').classList.remove('active');
+  document.getElementById('animTimeline').classList.remove('recording');
+  document.getElementById('tlTrackSearch').value = '';
+  document.getElementById('tlTrackSearch').style.display = 'none';
 
   // Find or create animation data
   let anim = animations.find(a => a.id === animId);
@@ -9580,29 +9921,67 @@ function aeRender() {
   aeRenderRuler();
   aeRenderCanvas();
   aeUpdatePlayhead();
+  // Update duration display
+  const durSec = (animEditor.duration / animEditor.TICKS_PER_SEC);
+  document.getElementById('tlDurationDisplay').textContent = durSec.toFixed(1) + 's';
+}
+
+function aeGetInterpolatedValue(track, ch, time) {
+  const kfs = track.channels[ch];
+  if (!kfs || kfs.length === 0) return 0;
+  const sorted = [...kfs].sort((a,b) => a.time - b.time);
+  if (time <= sorted[0].time) return sorted[0].value;
+  if (time >= sorted[sorted.length-1].time) return sorted[sorted.length-1].value;
+  for (let i = 0; i < sorted.length - 1; i++) {
+    if (time >= sorted[i].time && time <= sorted[i+1].time) {
+      const t = (time - sorted[i].time) / (sorted[i+1].time - sorted[i].time);
+      const e = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+      return sorted[i].value + (sorted[i+1].value - sorted[i].value) * e;
+    }
+  }
+  return sorted[sorted.length-1].value;
 }
 
 function aeRenderSidebar() {
   const list = document.getElementById('tlTrackList');
+  const searchTerm = (document.getElementById('tlTrackSearch').value || '').toLowerCase();
   list.innerHTML = '';
   animEditor.tracks.forEach((track, ti) => {
+    if (searchTerm && !track.name.toLowerCase().includes(searchTerm)) return;
     // Track header
     const row = document.createElement('div');
     row.className = 'tl-track-row track-header';
+    const hasKfs = animEditor.CHANNELS.some(ch => track.channels[ch].length > 0);
     row.innerHTML =
       '<div class="tl-expand' + (track.expanded ? ' expanded' : '') + '"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M10 6L16 12L10 18Z"/></svg></div>' +
       '<div class="tl-track-name">' + track.name + '</div>' +
+      (hasKfs ? '<span style="font-size:9px;color:#2F80ED;margin-left:2px;">' + animEditor.CHANNELS.reduce((n,c) => n + track.channels[c].length, 0) + 'kf</span>' : '') +
+      '<div class="tl-track-opts" title="Track options"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></div>' +
       '<div class="tl-track-del" title="Remove track"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></div>';
     row.querySelector('.tl-expand').onclick = () => { track.expanded = !track.expanded; aeRender(); };
     row.querySelector('.tl-track-del').onclick = (e) => { e.stopPropagation(); animEditor.tracks.splice(ti, 1); aeRender(); };
+    row.querySelector('.tl-track-opts').onclick = (e) => { e.stopPropagation(); aeShowCtxMenu(e, ti, null, null); };
+    row.addEventListener('contextmenu', (e) => { e.preventDefault(); aeShowCtxMenu(e, ti, null, null); });
+    // Click track row to select part in 3D
+    row.addEventListener('click', () => {
+      if (track.partId && typeof selectSinglePart === 'function') {
+        selectSinglePart(track.partId);
+      }
+    });
     list.appendChild(row);
 
-    // Channel rows
+    // Channel rows with current value
     if (track.expanded) {
       for (const ch of animEditor.CHANNELS) {
         const cr = document.createElement('div');
         cr.className = 'tl-track-row channel-row';
-        cr.innerHTML = '<div class="tl-track-name">' + animEditor.CHANNEL_NAMES[ch] + '</div>';
+        const curVal = aeGetInterpolatedValue(track, ch, animEditor.currentTime);
+        const kfCount = track.channels[ch].length;
+        const unit = ch.startsWith('rot') ? '\u00B0' : '';
+        cr.innerHTML =
+          '<div class="tl-track-name">' + animEditor.CHANNEL_NAMES[ch] + '</div>' +
+          (kfCount > 0 ? '<span class="tl-ch-value">' + curVal.toFixed(1) + unit + '</span>' : '<span class="tl-ch-value" style="opacity:0.3">--</span>');
+        cr.addEventListener('contextmenu', (e) => { e.preventDefault(); aeShowCtxMenu(e, ti, ch, null); });
         list.appendChild(cr);
       }
     }
@@ -9630,18 +10009,40 @@ function aeRenderRuler() {
   }
 }
 
+function aeIsKfSelected(ti, ch, ki) {
+  if (!animEditor.selectedKfs) return animEditor.selectedKf && animEditor.selectedKf.trackIdx === ti && animEditor.selectedKf.channel === ch && animEditor.selectedKf.kfIdx === ki;
+  return animEditor.selectedKfs.some(s => s.trackIdx === ti && s.channel === ch && s.kfIdx === ki);
+}
+
 function aeRenderCanvas() {
   const inner = document.getElementById('tlCanvasInner');
+  const searchTerm = (document.getElementById('tlTrackSearch').value || '').toLowerCase();
   const totalPx = animEditor.duration * animEditor.zoom;
   inner.innerHTML = '';
   inner.style.width = (totalPx + 200) + 'px';
 
   let rowIdx = 0;
   animEditor.tracks.forEach((track, ti) => {
-    // Track header row (no keyframes on it directly)
+    if (searchTerm && !track.name.toLowerCase().includes(searchTerm)) return;
+    // Track header row — show summary keyframe indicators
     const hRow = document.createElement('div');
     hRow.className = 'tl-kf-row';
     hRow.style.width = inner.style.width;
+    // Gather all unique keyframe times across channels for waypoint display
+    if (!track.expanded) {
+      const allTimes = new Set();
+      for (const ch of animEditor.CHANNELS) {
+        for (const kf of track.channels[ch]) allTimes.add(kf.time);
+      }
+      for (const t of allTimes) {
+        const dot = document.createElement('div');
+        dot.className = 'tl-kf';
+        dot.style.left = (t * animEditor.zoom) + 'px';
+        dot.style.width = '8px'; dot.style.height = '8px';
+        dot.style.opacity = '0.5';
+        hRow.appendChild(dot);
+      }
+    }
     inner.appendChild(hRow);
     rowIdx++;
 
@@ -9651,28 +10052,72 @@ function aeRenderCanvas() {
         kfRow.className = 'tl-kf-row';
         kfRow.style.width = inner.style.width;
 
-        // Render keyframes
+        // Render interpolation lines between keyframes
         const kfs = track.channels[ch];
+        if (kfs.length >= 2) {
+          const sorted = [...kfs].sort((a,b) => a.time - b.time);
+          for (let i = 0; i < sorted.length - 1; i++) {
+            const line = document.createElement('div');
+            line.className = 'tl-interp-line';
+            const x1 = sorted[i].time * animEditor.zoom;
+            const x2 = sorted[i+1].time * animEditor.zoom;
+            line.style.left = x1 + 'px';
+            line.style.width = (x2 - x1) + 'px';
+            kfRow.appendChild(line);
+          }
+        }
+
+        // Render keyframes
         kfs.forEach((kf, ki) => {
           const diamond = document.createElement('div');
-          diamond.className = 'tl-kf' + (animEditor.selectedKf && animEditor.selectedKf.trackIdx === ti && animEditor.selectedKf.channel === ch && animEditor.selectedKf.kfIdx === ki ? ' selected' : '');
+          diamond.className = 'tl-kf' + (aeIsKfSelected(ti, ch, ki) ? ' selected' : '');
           diamond.style.left = (kf.time * animEditor.zoom) + 'px';
+          diamond.title = animEditor.CHANNEL_NAMES[ch] + ': ' + kf.value.toFixed(2) + ' @ ' + (kf.time / animEditor.TICKS_PER_SEC).toFixed(2) + 's';
           // Click to select
           diamond.addEventListener('mousedown', (e) => {
             e.stopPropagation();
-            animEditor.selectedKf = { trackIdx: ti, channel: ch, kfIdx: ki };
+            if (e.ctrlKey || e.metaKey) {
+              // Multi-select toggle
+              if (!animEditor.selectedKfs) animEditor.selectedKfs = animEditor.selectedKf ? [animEditor.selectedKf] : [];
+              const idx = animEditor.selectedKfs.findIndex(s => s.trackIdx === ti && s.channel === ch && s.kfIdx === ki);
+              if (idx >= 0) animEditor.selectedKfs.splice(idx, 1);
+              else animEditor.selectedKfs.push({ trackIdx: ti, channel: ch, kfIdx: ki });
+              animEditor.selectedKf = animEditor.selectedKfs[animEditor.selectedKfs.length - 1] || null;
+            } else {
+              animEditor.selectedKf = { trackIdx: ti, channel: ch, kfIdx: ki };
+              animEditor.selectedKfs = [animEditor.selectedKf];
+            }
             aeRender();
-            // Start drag
-            const startX = e.clientX, startTime = kf.time;
+            // Start drag for all selected keyframes
+            const startX = e.clientX;
+            const startTimes = (animEditor.selectedKfs || [animEditor.selectedKf]).map(s => {
+              const t = animEditor.tracks[s.trackIdx];
+              return { sel: s, origTime: t ? t.channels[s.channel][s.kfIdx]?.time || 0 : 0 };
+            });
             const onMove = (me) => {
               const dx = me.clientX - startX;
-              kf.time = Math.max(0, Math.min(animEditor.duration, Math.round(startTime + dx / animEditor.zoom)));
-              diamond.style.left = (kf.time * animEditor.zoom) + 'px';
+              const dtick = Math.round(dx / animEditor.zoom);
+              for (const st of startTimes) {
+                const t = animEditor.tracks[st.sel.trackIdx];
+                if (!t) continue;
+                const kf2 = t.channels[st.sel.channel][st.sel.kfIdx];
+                if (kf2) kf2.time = Math.max(0, Math.min(animEditor.duration, st.origTime + dtick));
+              }
+              aeRenderCanvas();
               aeApplyAtTime(animEditor.currentTime);
             };
             const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); aeRender(); };
             document.addEventListener('mousemove', onMove);
             document.addEventListener('mouseup', onUp);
+          });
+          // Right-click context menu
+          diamond.addEventListener('contextmenu', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            if (!aeIsKfSelected(ti, ch, ki)) {
+              animEditor.selectedKf = { trackIdx: ti, channel: ch, kfIdx: ki };
+              animEditor.selectedKfs = [animEditor.selectedKf];
+            }
+            aeShowCtxMenu(e, ti, ch, ki);
           });
           kfRow.appendChild(diamond);
         });
@@ -9684,9 +10129,18 @@ function aeRenderCanvas() {
           const scrollLeft = canvasEl.scrollLeft;
           const x = e.clientX - rect.left + scrollLeft;
           const time = Math.round(Math.max(0, Math.min(animEditor.duration, x / animEditor.zoom)));
-          kfs.push({ time, value: 0 });
+          const val = aeGetInterpolatedValue(track, ch, time);
+          kfs.push({ time, value: val });
           kfs.sort((a, b) => a.time - b.time);
           aeRender();
+        });
+
+        // Right-click on empty area
+        kfRow.addEventListener('contextmenu', (e) => {
+          if (e.target === kfRow) {
+            e.preventDefault();
+            aeShowCtxMenu(e, ti, ch, null);
+          }
         });
 
         inner.appendChild(kfRow);
@@ -9703,11 +10157,37 @@ function aeUpdatePlayhead() {
   const px = animEditor.currentTime * animEditor.zoom;
   document.getElementById('tlPlayhead').style.left = px + 'px';
   document.getElementById('tlPlayheadHandle').style.left = px + 'px';
-  // Time display
+  // Time input
   const sec = animEditor.currentTime / animEditor.TICKS_PER_SEC;
-  const mins = Math.floor(sec / 60);
-  const secs = sec % 60;
-  document.getElementById('tlTimeDisplay').textContent = mins + ':' + secs.toFixed(1).padStart(4, '0');
+  const timeInput = document.getElementById('tlTimeInput');
+  if (document.activeElement !== timeInput) timeInput.value = sec.toFixed(2) + 's';
+  // Auto-scroll playhead into view during playback
+  if (animEditor.playing) {
+    const canvas = document.getElementById('tlCanvas');
+    const visLeft = canvas.scrollLeft;
+    const visRight = visLeft + canvas.clientWidth;
+    if (px > visRight - 40 || px < visLeft + 10) {
+      canvas.scrollLeft = Math.max(0, px - canvas.clientWidth * 0.3);
+    }
+  }
+  // Update keyframe value editor
+  const kfEdit = document.getElementById('tlKfEdit');
+  const sel = animEditor.selectedKf;
+  if (sel) {
+    const track = animEditor.tracks[sel.trackIdx];
+    if (track) {
+      const kf = track.channels[sel.channel][sel.kfIdx];
+      if (kf) {
+        kfEdit.style.display = 'flex';
+        const inp = document.getElementById('tlKfValue');
+        if (document.activeElement !== inp) inp.value = kf.value.toFixed(2);
+        document.getElementById('tlKfLabel').textContent = animEditor.CHANNEL_NAMES[sel.channel] + ':';
+        document.getElementById('tlKfTime').textContent = (kf.time / animEditor.TICKS_PER_SEC).toFixed(2) + 's';
+        return;
+      }
+    }
+  }
+  kfEdit.style.display = 'none';
 }
 
 // ---- Playback ----
@@ -9821,50 +10301,254 @@ document.getElementById('tlPlayheadHandle').addEventListener('mousedown', (e) =>
   document.addEventListener('mouseup', onUp);
 });
 
-// Toolbar buttons
+// ---- Toolbar buttons ----
 document.getElementById('tlPlay').onclick = aePlay;
 document.getElementById('tlStop').onclick = aeStop;
 document.getElementById('tlLoop').onclick = () => {
   animEditor.loop = !animEditor.loop;
   document.getElementById('tlLoop').classList.toggle('active', animEditor.loop);
 };
-document.getElementById('tlAddKf').onclick = () => {
-  // Add keyframe at current time for all channels of all tracks
+// Step forward/backward
+document.getElementById('tlStepFwd').onclick = () => {
+  animEditor.currentTime = Math.min(animEditor.duration, animEditor.currentTime + animEditor.TICKS_PER_SEC / 10);
+  aeApplyAtTime(animEditor.currentTime); aeUpdatePlayhead();
+};
+document.getElementById('tlStepBack').onclick = () => {
+  animEditor.currentTime = Math.max(0, animEditor.currentTime - animEditor.TICKS_PER_SEC / 10);
+  aeApplyAtTime(animEditor.currentTime); aeUpdatePlayhead();
+};
+// Go to start/end
+document.getElementById('tlGoStart').onclick = () => {
+  animEditor.currentTime = 0; aeApplyAtTime(0); aeUpdatePlayhead();
+};
+document.getElementById('tlGoEnd').onclick = () => {
+  // Go to last keyframe time
+  let maxTime = 0;
   for (const track of animEditor.tracks) {
     for (const ch of animEditor.CHANNELS) {
-      // Only add if channel already has keyframes (or if it's the first)
-      const kfs = track.channels[ch];
-      const exists = kfs.some(k => Math.abs(k.time - Math.round(animEditor.currentTime)) < 2);
-      if (!exists) {
-        // Calculate current interpolated value
-        const orig = animEditor._origTransforms.get(track.partId);
-        if (!orig) continue;
-        const obj = orig.obj;
-        let val = 0;
-        if (ch === 'posX') val = obj.position.x - orig.pos.x;
-        else if (ch === 'posY') val = obj.position.y - orig.pos.y;
-        else if (ch === 'posZ') val = obj.position.z - orig.pos.z;
-        else if (ch === 'rotX') val = THREE.MathUtils.radToDeg(obj.rotation.x) - orig.rot.x;
-        else if (ch === 'rotY') val = THREE.MathUtils.radToDeg(obj.rotation.y) - orig.rot.y;
-        else if (ch === 'rotZ') val = THREE.MathUtils.radToDeg(obj.rotation.z) - orig.rot.z;
-        if (Math.abs(val) > 0.001 || kfs.length > 0) {
-          kfs.push({ time: Math.round(animEditor.currentTime), value: val });
-          kfs.sort((a, b) => a.time - b.time);
-        }
-      }
+      for (const kf of track.channels[ch]) { if (kf.time > maxTime) maxTime = kf.time; }
     }
   }
-  aeRender();
+  animEditor.currentTime = maxTime || animEditor.duration;
+  aeApplyAtTime(animEditor.currentTime); aeUpdatePlayhead();
 };
-document.getElementById('tlDelKf').onclick = () => {
+// Recording toggle
+animEditor.recording = false;
+document.getElementById('tlRecord').onclick = () => {
+  animEditor.recording = !animEditor.recording;
+  document.getElementById('tlRecord').classList.toggle('active', animEditor.recording);
+  document.getElementById('animTimeline').classList.toggle('recording', animEditor.recording);
+};
+// Add keyframe at playhead
+document.getElementById('tlAddKf').onclick = () => { aeRecordFromGizmo(); };
+// Keyframe value editor
+document.getElementById('tlKfValue').addEventListener('change', (e) => {
   const sel = animEditor.selectedKf;
   if (!sel) return;
   const track = animEditor.tracks[sel.trackIdx];
   if (!track) return;
-  track.channels[sel.channel].splice(sel.kfIdx, 1);
+  const kf = track.channels[sel.channel][sel.kfIdx];
+  if (!kf) return;
+  kf.value = parseFloat(e.target.value) || 0;
+  aeApplyAtTime(animEditor.currentTime);
+  aeRender();
+});
+// Delete selected keyframes (supports multi-select)
+document.getElementById('tlDelKf').onclick = () => {
+  const sels = animEditor.selectedKfs && animEditor.selectedKfs.length ? animEditor.selectedKfs : (animEditor.selectedKf ? [animEditor.selectedKf] : []);
+  if (!sels.length) return;
+  // Sort descending by kfIdx to avoid index shifting
+  const sorted = [...sels].sort((a,b) => b.kfIdx - a.kfIdx);
+  for (const sel of sorted) {
+    const track = animEditor.tracks[sel.trackIdx];
+    if (track) track.channels[sel.channel].splice(sel.kfIdx, 1);
+  }
   animEditor.selectedKf = null;
+  animEditor.selectedKfs = [];
   aeRender();
 };
+// Time input — editable
+document.getElementById('tlTimeInput').addEventListener('focus', function() { this.select(); });
+document.getElementById('tlTimeInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    const val = parseFloat(this.value) || 0;
+    animEditor.currentTime = Math.max(0, Math.min(animEditor.duration, val * animEditor.TICKS_PER_SEC));
+    aeApplyAtTime(animEditor.currentTime); aeUpdatePlayhead();
+    this.blur();
+  }
+});
+document.getElementById('tlTimeInput').addEventListener('blur', function() {
+  const sec = animEditor.currentTime / animEditor.TICKS_PER_SEC;
+  this.value = sec.toFixed(2) + 's';
+});
+// Fit all zoom
+document.getElementById('tlFitAll').onclick = () => {
+  const canvas = document.getElementById('tlCanvas');
+  let maxTime = animEditor.duration;
+  for (const track of animEditor.tracks) {
+    for (const ch of animEditor.CHANNELS) {
+      for (const kf of track.channels[ch]) { if (kf.time > maxTime) maxTime = kf.time; }
+    }
+  }
+  if (maxTime <= 0) return;
+  const zoom = Math.max(0.1, Math.min(5, (canvas.clientWidth - 40) / maxTime));
+  animEditor.zoom = zoom;
+  const pct = Math.round(zoom * 100);
+  const slider = document.getElementById('tlZoomSlider');
+  slider.value = Math.min(500, Math.max(10, pct));
+  document.getElementById('tlZoomLabel').textContent = pct + '%';
+  canvas.scrollLeft = 0;
+  aeRender();
+};
+// Search toggle
+document.getElementById('tlSearchToggle').onclick = () => {
+  const inp = document.getElementById('tlTrackSearch');
+  if (inp.style.display === 'none') { inp.style.display = ''; inp.focus(); }
+  else { inp.style.display = 'none'; inp.value = ''; aeRender(); }
+};
+document.getElementById('tlTrackSearch').addEventListener('input', () => aeRender());
+
+// Sidebar resize
+(function() {
+  const handle = document.getElementById('tlSidebarResize');
+  const sidebar = document.getElementById('tlSidebar');
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    const startX = e.clientX, startW = sidebar.offsetWidth;
+    const onMove = (me) => {
+      const w = Math.max(140, Math.min(500, startW + me.clientX - startX));
+      sidebar.style.width = w + 'px';
+    };
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+})();
+
+// Context menu
+function aeShowCtxMenu(e, trackIdx, channel, kfIdx) {
+  const menu = document.getElementById('tlCtxMenu');
+  menu.classList.add('visible');
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 180) + 'px';
+  menu.style.top = Math.min(e.clientY, window.innerHeight - 200) + 'px';
+  menu._trackIdx = trackIdx;
+  menu._channel = channel;
+  menu._kfIdx = kfIdx;
+  // Show/hide items based on context
+  menu.querySelector('[data-action="delKf"]').style.display = kfIdx !== null || (animEditor.selectedKfs && animEditor.selectedKfs.length) ? '' : 'none';
+  menu.querySelector('[data-action="copyKf"]').style.display = animEditor.selectedKf ? '' : 'none';
+  menu.querySelector('[data-action="pasteKf"]').style.display = animEditor._clipboard ? '' : 'none';
+}
+document.addEventListener('click', () => document.getElementById('tlCtxMenu').classList.remove('visible'));
+document.getElementById('tlCtxMenu').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const menu = document.getElementById('tlCtxMenu');
+  const action = btn.dataset.action;
+  if (action === 'addKf') { document.getElementById('tlAddKf').click(); }
+  if (action === 'record') { aeRecordFromGizmo(); }
+  if (action === 'delKf') { document.getElementById('tlDelKf').click(); }
+  if (action === 'delTrack' && menu._trackIdx !== null) {
+    animEditor.tracks.splice(menu._trackIdx, 1); aeRender();
+  }
+  if (action === 'copyKf' && animEditor.selectedKf) {
+    const sel = animEditor.selectedKf;
+    const track = animEditor.tracks[sel.trackIdx];
+    if (track) {
+      const kf = track.channels[sel.channel][sel.kfIdx];
+      if (kf) animEditor._clipboard = { channel: sel.channel, value: kf.value };
+    }
+  }
+  if (action === 'pasteKf' && animEditor._clipboard && menu._trackIdx !== null) {
+    const track = animEditor.tracks[menu._trackIdx];
+    const ch = menu._channel || animEditor._clipboard.channel;
+    if (track && track.channels[ch]) {
+      const time = Math.round(animEditor.currentTime);
+      track.channels[ch].push({ time, value: animEditor._clipboard.value });
+      track.channels[ch].sort((a,b) => a.time - b.time);
+      aeRender();
+    }
+  }
+  menu.classList.remove('visible');
+});
+
+// Selection box drag on canvas
+(function() {
+  const canvas = document.getElementById('tlCanvas');
+  const selBox = document.getElementById('tlSelBox');
+  canvas.addEventListener('mousedown', (e) => {
+    if (e.target !== canvas && !e.target.classList.contains('tl-kf-row') && !e.target.classList.contains('tl-canvas-inner')) return;
+    if (e.button !== 0) return;
+    // Deselect if no modifier
+    if (!e.ctrlKey && !e.metaKey) {
+      animEditor.selectedKf = null;
+      animEditor.selectedKfs = [];
+      aeRender();
+    }
+    const startX = e.clientX, startY = e.clientY;
+    const canvasRect = canvas.getBoundingClientRect();
+    let dragging = false;
+    const onMove = (me) => {
+      const dx = Math.abs(me.clientX - startX), dy = Math.abs(me.clientY - startY);
+      if (dx < 5 && dy < 5) return;
+      dragging = true;
+      selBox.style.display = 'block';
+      const x1 = Math.min(startX, me.clientX) - canvasRect.left + canvas.scrollLeft;
+      const y1 = Math.min(startY, me.clientY) - canvasRect.top + canvas.scrollTop;
+      const w = Math.abs(me.clientX - startX);
+      const h = Math.abs(me.clientY - startY);
+      selBox.style.left = x1 + 'px'; selBox.style.top = y1 + 'px';
+      selBox.style.width = w + 'px'; selBox.style.height = h + 'px';
+    };
+    const onUp = (me) => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      selBox.style.display = 'none';
+      if (!dragging) return;
+      // Find all keyframes inside the selection box
+      const x1 = (Math.min(startX, me.clientX) - canvasRect.left + canvas.scrollLeft) / animEditor.zoom;
+      const x2 = (Math.max(startX, me.clientX) - canvasRect.left + canvas.scrollLeft) / animEditor.zoom;
+      const y1 = Math.min(startY, me.clientY) - canvasRect.top + canvas.scrollTop;
+      const y2 = Math.max(startY, me.clientY) - canvasRect.top + canvas.scrollTop;
+      const sels = [];
+      let row = 0;
+      const searchTerm = (document.getElementById('tlTrackSearch').value || '').toLowerCase();
+      animEditor.tracks.forEach((track, ti) => {
+        if (searchTerm && !track.name.toLowerCase().includes(searchTerm)) return;
+        row++; // header
+        if (track.expanded) {
+          for (const ch of animEditor.CHANNELS) {
+            const rowTop = row * animEditor.TRACK_H;
+            const rowBot = rowTop + animEditor.TRACK_H;
+            if (rowBot >= y1 && rowTop <= y2) {
+              track.channels[ch].forEach((kf, ki) => {
+                if (kf.time >= x1 && kf.time <= x2) {
+                  sels.push({ trackIdx: ti, channel: ch, kfIdx: ki });
+                }
+              });
+            }
+            row++;
+          }
+        }
+      });
+      animEditor.selectedKfs = sels;
+      animEditor.selectedKf = sels[sels.length - 1] || null;
+      aeRender();
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+})();
+
+// Mouse wheel zoom on canvas
+document.getElementById('tlCanvas').addEventListener('wheel', (e) => {
+  if (!animEditor.active) return;
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? -10 : 10;
+  const slider = document.getElementById('tlZoomSlider');
+  slider.value = Math.max(10, Math.min(500, parseInt(slider.value) + delta));
+  slider.dispatchEvent(new Event('input'));
+}, { passive: false });
 
 // Add track from selected parts
 document.getElementById('tlAddTrack').onclick = () => {
@@ -9894,7 +10578,7 @@ document.getElementById('tlZoomSlider').addEventListener('input', (e) => {
 });
 document.getElementById('tlZoomIn').onclick = () => {
   const s = document.getElementById('tlZoomSlider');
-  s.value = Math.min(300, parseInt(s.value) + 20);
+  s.value = Math.min(500, parseInt(s.value) + 20);
   s.dispatchEvent(new Event('input'));
 };
 document.getElementById('tlZoomOut').onclick = () => {
@@ -9923,14 +10607,107 @@ document.getElementById('aeSave').onclick = () => {
   setTimeout(() => { btn.style.background = ''; btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="#fff"><path d="M17 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg> Save'; }, 1500);
 };
 
+// Record current gizmo transform as keyframe for selected parts
+function aeRecordFromGizmo() {
+  if (!animEditor.active || state.selectedParts.size === 0) return;
+  const time = Math.round(animEditor.currentTime);
+  let changed = false;
+  for (const pid of state.selectedParts) {
+    // Find or create track for this part
+    let track = animEditor.tracks.find(t => t.partId === pid);
+    if (!track) {
+      let name = pid;
+      function findN(parts) { for (const p of parts) { if (p.id === pid) { name = p.name; return; } if (p.children) findN(p.children); } }
+      findN(state.parts);
+      track = aeCreateTrack(pid, name);
+      animEditor.tracks.push(track);
+      aeCapturePartTransform(pid);
+    }
+    const orig = animEditor._origTransforms.get(pid);
+    if (!orig) continue;
+    const obj = orig.obj;
+    // Record each channel's current offset from original
+    const vals = {
+      posX: obj.position.x - orig.pos.x,
+      posY: obj.position.y - orig.pos.y,
+      posZ: obj.position.z - orig.pos.z,
+      rotX: THREE.MathUtils.radToDeg(obj.rotation.x) - orig.rot.x,
+      rotY: THREE.MathUtils.radToDeg(obj.rotation.y) - orig.rot.y,
+      rotZ: THREE.MathUtils.radToDeg(obj.rotation.z) - orig.rot.z,
+    };
+    for (const ch of animEditor.CHANNELS) {
+      const val = vals[ch];
+      if (Math.abs(val) < 0.001 && track.channels[ch].length === 0) continue;
+      const kfs = track.channels[ch];
+      // Ensure a zero keyframe exists at time 0 if this is a new channel
+      if (kfs.length === 0 && time > 0) {
+        kfs.push({ time: 0, value: 0 });
+      }
+      // Update or insert keyframe at current time
+      const existing = kfs.find(k => Math.abs(k.time - time) < 2);
+      if (existing) {
+        existing.value = val;
+      } else {
+        kfs.push({ time, value: val });
+        kfs.sort((a, b) => a.time - b.time);
+      }
+      changed = true;
+    }
+  }
+  if (changed) aeRender();
+}
+
 // Keyboard shortcuts for animation editor
 document.addEventListener('keydown', (e) => {
   if (!animEditor.active) return;
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   if (e.code === 'Space') { e.preventDefault(); aePlay(); }
-  if (e.code === 'Delete' && animEditor.selectedKf) { document.getElementById('tlDelKf').click(); }
-  if (e.code === 'Home') { animEditor.currentTime = 0; aeApplyAtTime(0); aeUpdatePlayhead(); }
-  if (e.code === 'End') { animEditor.currentTime = animEditor.duration; aeApplyAtTime(animEditor.duration); aeUpdatePlayhead(); }
+  if ((e.code === 'Delete' || e.code === 'Backspace') && (animEditor.selectedKf || (animEditor.selectedKfs && animEditor.selectedKfs.length))) {
+    e.preventDefault(); document.getElementById('tlDelKf').click();
+  }
+  if (e.code === 'Home') { e.preventDefault(); document.getElementById('tlGoStart').click(); }
+  if (e.code === 'End') { e.preventDefault(); document.getElementById('tlGoEnd').click(); }
+  if (e.code === 'ArrowRight' && !e.ctrlKey) { e.preventDefault(); document.getElementById('tlStepFwd').click(); }
+  if (e.code === 'ArrowLeft' && !e.ctrlKey) { e.preventDefault(); document.getElementById('tlStepBack').click(); }
+  if (e.code === 'KeyK') { aeRecordFromGizmo(); }
+  if (e.code === 'Escape') { animEditor.selectedKf = null; animEditor.selectedKfs = []; aeRender(); }
+  // Copy/Paste keyframes
+  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyC' && animEditor.selectedKf) {
+    const sel = animEditor.selectedKf;
+    const track = animEditor.tracks[sel.trackIdx];
+    if (track) {
+      const kf = track.channels[sel.channel][sel.kfIdx];
+      if (kf) animEditor._clipboard = { channel: sel.channel, value: kf.value };
+    }
+  }
+  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyV' && animEditor._clipboard) {
+    // Paste at current time for focused track or first track
+    const ti = animEditor.selectedKf ? animEditor.selectedKf.trackIdx : 0;
+    const track = animEditor.tracks[ti];
+    if (track) {
+      const ch = animEditor._clipboard.channel;
+      if (track.channels[ch]) {
+        const time = Math.round(animEditor.currentTime);
+        track.channels[ch].push({ time, value: animEditor._clipboard.value });
+        track.channels[ch].sort((a,b) => a.time - b.time);
+        aeRender();
+      }
+    }
+  }
+  // Select all keyframes
+  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyA') {
+    e.preventDefault();
+    animEditor.selectedKfs = [];
+    animEditor.tracks.forEach((track, ti) => {
+      for (const ch of animEditor.CHANNELS) {
+        track.channels[ch].forEach((kf, ki) => {
+          animEditor.selectedKfs.push({ trackIdx: ti, channel: ch, kfIdx: ki });
+        });
+      }
+    });
+    animEditor.selectedKf = animEditor.selectedKfs[animEditor.selectedKfs.length - 1] || null;
+    aeRender();
+  }
 });
 
 // Scroll sync between sidebar and canvas
@@ -9978,13 +10755,11 @@ flInit('hsEditPanel',  { x: 360, y: topOff + 20, w: 290, h: 380, minW: 250, minH
 flInit('hsViewerPopup',{ x: 360, y: topOff + 20, w: 290, h: 340, minW: 230, minH: 160 });
 flInit('hsActionSetup',{ x: 400, y: topOff + 140, w: 280, h: 360, minW: 220, minH: 180 });
 flInit('procModal',    { x: Math.round(window.innerWidth/2 - 240), y: Math.round(window.innerHeight/2 - 250), w: 480, h: 500, minW: 300, minH: 280 });
-flInit('procPanel',    { x: 60, y: topOff + 20, w: 280, h: 420, minW: 220, minH: 200 });
 flInit('matWindow',    { x: 80, y: topOff + 20, w: 340, h: 520, minW: 260, minH: 280 });
 flInit('animManager',  { x: 80, y: topOff + 40, w: 320, h: 420, minW: 240, minH: 200 });
 flInit('bookmarksPanel', { x: window.innerWidth - 660, y: topOff + 20, w: 520, h: 700, minW: 320, minH: 300 });
 
 // Procedures panel search
-document.getElementById('ppSearch').addEventListener('input', renderProceduresPanel);
 
 // Initial state
 updateUI();
