@@ -29,13 +29,17 @@ import {
   ChevronUp,
   ChevronsUpDown,
   FolderPlus,
-  Star
+  Star,
+  Play,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { ProcedureModal } from '../modals/ProcedureModal';
 import { ConnectionPicker } from '../modals/ConnectionPicker';
 import { MediaLibraryModal } from '../modals/MediaLibraryModal';
 import { ProcedureCanvas } from './ProcedureCanvas';
 import { useProject, KnowledgeBaseItem, ItemType, MediaType } from '../../contexts/ProjectContext';
+import { getUrlParam, setUrlParam } from '../../utils/urlParams';
 import { useToast } from '../../contexts/ToastContext';
 import { useRole, hasAccess } from '../../contexts/RoleContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
@@ -85,21 +89,24 @@ export function KnowledgeBasePage() {
 }
 
 function KnowledgeBaseContent() {
-  const { 
-    knowledgeBaseItems, 
-    updateKnowledgeBaseItems, 
-    deleteKnowledgeBaseItem, 
+  const {
+    knowledgeBaseItems,
+    updateKnowledgeBaseItems,
+    deleteKnowledgeBaseItem,
     addKnowledgeBaseItem,
     digitalTwins,
     getDigitalTwinById,
-    currentProject 
+    currentProject
   } = useProject();
   const { showToast } = useToast();
   const { currentRole } = useRole();
   const { addFavorite, removeFavorite, isFavorite } = useFavorites();
-  
+
   // Check if user has edit permissions
   const canEdit = hasAccess(currentRole, 'projects-edit');
+
+  // URL param helpers for shareable modal state
+  const setCanvasParam = (id: string | null) => setUrlParam('canvas', id);
 
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [searchQuery, setSearchQuery] = useState('');
@@ -117,6 +124,7 @@ function KnowledgeBaseContent() {
   const [nameColumnWidth, setNameColumnWidth] = useState(250);
   const [openProcedure, setOpenProcedure] = useState<KnowledgeBaseItem | null>(null);
   const [openDigitalTwin, setOpenDigitalTwin] = useState<KnowledgeBaseItem | null>(null);
+  const [previewMedia, setPreviewMedia] = useState<KnowledgeBaseItem | null>(null);
   const [canvasProcedure, setCanvasProcedure] = useState<KnowledgeBaseItem | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after' | 'inside' | null>(null);
@@ -135,6 +143,9 @@ function KnowledgeBaseContent() {
   const [procedureSearchQuery, setProcedureSearchQuery] = useState('');
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [showDigitalTwinModal, setShowDigitalTwinModal] = useState(false);
+  const [dtImportFiles, setDtImportFiles] = useState<File[]>([]);
+  const [mediaFullscreen, setMediaFullscreen] = useState(false);
+  const dtFileInputRef = useRef<HTMLInputElement>(null);
   
   const filterMenuRef = useRef<HTMLDivElement>(null);
   const createMenuRef = useRef<HTMLDivElement>(null);
@@ -153,10 +164,86 @@ function KnowledgeBaseContent() {
 
   const [items, setItems] = useState<KnowledgeBaseItem[]>(knowledgeBaseItems);
 
+  // Wrappers that keep URL params in sync with modal state
+  const openProcedureModal = (item: KnowledgeBaseItem | null) => {
+    setOpenProcedure(item);
+    setUrlParam('open', item?.id ?? null);
+  };
+  const openDigitalTwinModal = (item: KnowledgeBaseItem | null) => {
+    setOpenDigitalTwin(item);
+    setUrlParam('twin', item?.id ?? null);
+  };
+  const openMediaPreview = (item: KnowledgeBaseItem | null) => {
+    setPreviewMedia(item);
+    setUrlParam('media', item?.id ?? null);
+  };
+  const openMediaLibrary = (open: boolean) => {
+    setIsMediaLibraryOpen(open);
+    setUrlParam('medialib', open ? '1' : null);
+  };
+  const openCanvas = (item: KnowledgeBaseItem | null) => {
+    setCanvasProcedure(item);
+    setCanvasParam(item?.id ?? null);
+  };
+
   // Sync with context
   useEffect(() => {
     setItems(knowledgeBaseItems);
   }, [knowledgeBaseItems]);
+
+  // Helper: find a knowledge-base item by id (recursive)
+  const findItemById = (list: KnowledgeBaseItem[], id: string): KnowledgeBaseItem | undefined => {
+    for (const item of list) {
+      if (item.id === id) return item;
+      if (item.children) {
+        const found = findItemById(item.children, id);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+
+  // Auto-open modals from URL params on mount
+  useEffect(() => {
+    const placeholder = (id: string, type: ItemType, name: string): KnowledgeBaseItem => ({
+      id, name, type, createdBy: '', createdDate: '', lastEditedBy: '', lastEdited: '',
+    });
+
+    // ?canvas=<id>
+    const canvasId = getUrlParam('canvas');
+    if (canvasId && !canvasProcedure) {
+      const item = findItemById(knowledgeBaseItems, canvasId);
+      setCanvasProcedure(item || placeholder(canvasId, 'procedure', 'Flow'));
+    }
+
+    // ?open=<id>  (procedure modal)
+    const openId = getUrlParam('open');
+    if (openId && !openProcedure) {
+      const item = findItemById(knowledgeBaseItems, openId);
+      if (item) setOpenProcedure(item);
+      else setOpenProcedure(placeholder(openId, 'procedure', 'Flow'));
+    }
+
+    // ?twin=<id>  (digital twin modal)
+    const twinId = getUrlParam('twin');
+    if (twinId && !openDigitalTwin) {
+      const item = findItemById(knowledgeBaseItems, twinId);
+      if (item) setOpenDigitalTwin(item);
+      else setOpenDigitalTwin(placeholder(twinId, 'digital-twin', 'Digital Twin'));
+    }
+
+    // ?media=<id>  (media preview)
+    const mediaId = getUrlParam('media');
+    if (mediaId && !previewMedia) {
+      const item = findItemById(knowledgeBaseItems, mediaId);
+      if (item) setPreviewMedia(item);
+    }
+
+    // ?medialib=1  (media library)
+    if (getUrlParam('medialib') === '1') {
+      setIsMediaLibraryOpen(true);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Focus editing input
   useEffect(() => {
@@ -518,7 +605,7 @@ function KnowledgeBaseContent() {
   const createProcedure = () => {
     const newProcedure: KnowledgeBaseItem = {
       id: `procedure-${Date.now()}`,
-      name: 'Untitled Procedure',
+      name: 'Untitled Flow',
       type: 'procedure',
       createdBy: 'Yanay Nadel',
       createdDate: new Date().toISOString().split('T')[0],
@@ -537,13 +624,13 @@ function KnowledgeBaseContent() {
     
     // Open the procedure modal with edit mode for title
     setTimeout(() => {
-      setOpenProcedure(newProcedure);
+      openProcedureModal(newProcedure);
     }, 100);
   };
 
   const createMediaItem = () => {
     setShowCreateMenu(false);
-    setIsMediaLibraryOpen(true);
+    openMediaLibrary(true);
   };
 
   const createFolder = () => {
@@ -710,7 +797,7 @@ function KnowledgeBaseContent() {
       case 'digital-twin':
         return 'Digital Twin';
       case 'procedure':
-        return 'Procedure';
+        return 'Flow';
       case 'media':
         if (item.mediaType === 'video') return 'Video';
         if (item.mediaType === 'image') return 'Image';
@@ -758,7 +845,7 @@ function KnowledgeBaseContent() {
       case 'digital-twin':
         return 'Digital Twins';
       case 'procedure':
-        return 'Procedures';
+        return 'Flows';
       case 'media':
         return 'Media';
       case 'folder':
@@ -1006,9 +1093,13 @@ function KnowledgeBaseContent() {
 
     const handleRowClick = () => {
       if (item.type === 'procedure') {
-        setOpenProcedure(item);
+        openProcedureModal(item);
       } else if (item.type === 'digital-twin') {
-        setOpenDigitalTwin(item);
+        openDigitalTwinModal(item);
+      } else if (item.type === 'media') {
+        openMediaPreview(item);
+      } else if (item.type === 'folder') {
+        toggleFolder(item.id);
       }
     };
     
@@ -1028,7 +1119,7 @@ function KnowledgeBaseContent() {
           } ${
             isSelected ? 'bg-primary/5' : 'hover:bg-secondary/50'
           } ${
-            item.type === 'procedure' ? 'cursor-pointer' : ''
+            item.type !== 'folder' ? 'cursor-pointer' : 'cursor-pointer'
           }`}
         >
           {/* Drag Handle - DARK */}
@@ -1260,9 +1351,11 @@ function KnowledgeBaseContent() {
                   onClick={(e) => {
                     e.stopPropagation();
                     if (item.type === 'procedure') {
-                      setOpenProcedure(item);
+                      openProcedureModal(item);
                     } else if (item.type === 'digital-twin') {
-                      setOpenDigitalTwin(item);
+                      openDigitalTwinModal(item);
+                    } else if (item.type === 'media') {
+                      openMediaPreview(item);
                     }
                     setActiveItemMenu(null);
                   }}
@@ -1271,7 +1364,7 @@ function KnowledgeBaseContent() {
                   <ExternalLink size={16} className="text-muted" />
                   <span>Open</span>
                 </button>
-                <button 
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setEditingItemId(item.id);
@@ -1345,9 +1438,11 @@ function KnowledgeBaseContent() {
       if (item.type === 'folder') {
         setCurrentFolderId(item.id);
       } else if (item.type === 'procedure') {
-        setOpenProcedure(item);
+        openProcedureModal(item);
       } else if (item.type === 'digital-twin') {
-        setOpenDigitalTwin(item);
+        openDigitalTwinModal(item);
+      } else if (item.type === 'media') {
+        openMediaPreview(item);
       }
     };
 
@@ -1374,6 +1469,14 @@ function KnowledgeBaseContent() {
                 />
                 {/* Gradient overlay on hover */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                {/* Play button overlay for video items */}
+                {item.type === 'media' && item.mediaType === 'video' && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center border border-white/20 transition-transform duration-300 group-hover:scale-110">
+                      <Play size={20} className="text-white ml-0.5" fill="white" />
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className={`w-full h-full flex items-center justify-center ${getItemTypeColor(item)} bg-opacity-10`}>
@@ -1432,9 +1535,9 @@ function KnowledgeBaseContent() {
                     if (item.type === 'folder') {
                       setCurrentFolderId(item.id);
                     } else if (item.type === 'procedure') {
-                      setOpenProcedure(item);
+                      openProcedureModal(item);
                     } else if (item.type === 'digital-twin') {
-                      setOpenDigitalTwin(item);
+                      openDigitalTwinModal(item);
                     }
                     setActiveItemMenu(null);
                   }}
@@ -1664,7 +1767,7 @@ function KnowledgeBaseContent() {
                   {[
                     { value: 'all', label: 'All Items', icon: null },
                     { value: 'digital-twin', label: 'Digital Twins', icon: Box },
-                    { value: 'procedure', label: 'Procedures', icon: FileText },
+                    { value: 'procedure', label: 'Flows', icon: FileText },
                     { value: 'media', label: 'Media', icon: Video },
                     { value: 'folder', label: 'Folders', icon: Folder },
                   ].map((filter) => {
@@ -2042,11 +2145,11 @@ function KnowledgeBaseContent() {
           }}
           startEditingTitle={openProcedure.id === newlyCreatedProcedureId}
           onOpenCanvas={() => {
-            setCanvasProcedure(openProcedure);
-            setOpenProcedure(null);
+            openCanvas(openProcedure);
+            openProcedureModal(null);
           }}
           onClose={() => {
-            setOpenProcedure(null);
+            openProcedureModal(null);
             setNewlyCreatedProcedureId(null);
           }}
           onSave={(updatedProcedure) => {
@@ -2065,7 +2168,7 @@ function KnowledgeBaseContent() {
             setItems(newItems);
             updateKnowledgeBaseItems(newItems);
             // Update the open procedure state to reflect new changes
-            setOpenProcedure(updatedProcedure);
+            openProcedureModal(updatedProcedure);
           }}
         />
       )}
@@ -2081,7 +2184,11 @@ function KnowledgeBaseContent() {
             publishedVersion: openDigitalTwin.publishedVersion || '1.0',
             publishedDate: openDigitalTwin.publishedDate || '01/15/2025',
           }}
-          onClose={() => setOpenDigitalTwin(null)}
+          onClose={() => openDigitalTwinModal(null)}
+          onOpenProcedure={(proc) => {
+            openDigitalTwinModal(null);
+            openProcedureModal(proc);
+          }}
           onSave={(updated) => {
             const updateItem = (items: KnowledgeBaseItem[]): KnowledgeBaseItem[] => {
               return items.map(item => {
@@ -2093,7 +2200,7 @@ function KnowledgeBaseContent() {
             const newItems = updateItem(items);
             setItems(newItems);
             updateKnowledgeBaseItems(newItems);
-            setOpenDigitalTwin(updated);
+            openDigitalTwinModal(updated);
           }}
         />
       )}
@@ -2101,7 +2208,7 @@ function KnowledgeBaseContent() {
       {/* Media Library Modal */}
       <MediaLibraryModal
         isOpen={isMediaLibraryOpen}
-        onClose={() => setIsMediaLibraryOpen(false)}
+        onClose={() => openMediaLibrary(false)}
         selectionMode={true}
         onSelectItem={(mediaItem) => {
           // Create a new knowledge base item from the selected media
@@ -2116,9 +2223,9 @@ function KnowledgeBaseContent() {
             lastEdited: new Date().toISOString().split('T')[0],
             thumbnail: mediaItem.thumbnail,
           };
-          
+
           addKnowledgeBaseItem(newMediaKBItem);
-          setIsMediaLibraryOpen(false);
+          openMediaLibrary(false);
         }}
       />
 
@@ -2251,89 +2358,305 @@ function KnowledgeBaseContent() {
           <ProcedureCanvas
             procedureId={canvasProcedure.id}
             procedureName={canvasProcedure.name}
-            onClose={() => setCanvasProcedure(null)}
+            onClose={() => openCanvas(null)}
           />
         </div>
       )}
 
-      {/* Digital Twin Creation Modal */}
+      {/* Digital Twin Import Overlay */}
       {showDigitalTwinModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div 
-            className="bg-card border border-border rounded-[var(--radius)] w-full max-w-md"
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center"
+          style={{ backgroundColor: '#FFFFFF' }}
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length > 0) setDtImportFiles(prev => [...prev, ...files]);
+          }}
+        >
+          {/* Hidden file input */}
+          <input
+            ref={dtFileInputRef}
+            type="file"
+            multiple
+            accept=".dwg,.stp,.step,.fbx,.obj,.x_t,.glb,.gltf,.stl,.iges,.igs,.3ds"
+            className="hidden"
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              if (files.length > 0) setDtImportFiles(prev => [...prev, ...files]);
+              e.target.value = '';
+            }}
+          />
+
+          {/* Center content */}
+          <div className="flex flex-col items-center" style={{ maxWidth: 520 }}>
+            {dtImportFiles.length === 0 ? (
+              <>
+                {/* File type icons - fading at edges */}
+                <div className="flex items-center gap-3 mb-8 relative">
+                  <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-white to-transparent z-10" />
+                  <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white to-transparent z-10" />
+                  {['.DWG', '.STP', '.FBX', '.OBJ', '.X_T', '.GLB', '.STL', '.IGES'].map((ext, i) => (
+                    <div
+                      key={ext}
+                      className="flex flex-col items-center justify-center flex-shrink-0"
+                      style={{
+                        width: 56,
+                        height: 64,
+                        borderRadius: 8,
+                        border: '1.5px solid #C2C9DB',
+                        opacity: i === 0 || i === 7 ? 0.3 : i === 1 || i === 6 ? 0.6 : 1,
+                      }}
+                    >
+                      <File size={20} style={{ color: '#868D9E' }} />
+                      <span style={{ fontSize: 9, fontWeight: 600, color: '#868D9E', marginTop: 2, fontFamily: 'var(--font-family)' }}>{ext}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Description text */}
+                <p style={{
+                  fontSize: 'var(--text-sm)',
+                  color: '#868D9E',
+                  fontFamily: 'var(--font-family)',
+                  textAlign: 'center',
+                  marginBottom: 12,
+                  lineHeight: 1.5,
+                }}>
+                  We support a wide range of 3D model formats including<br/>
+                  STEP, FBX, OBJ, Parasolid, DWG, and more.
+                </p>
+
+                {/* Drop your file here */}
+                <p style={{
+                  fontSize: 'var(--text-base)',
+                  color: '#36415D',
+                  fontFamily: 'var(--font-family)',
+                  textAlign: 'center',
+                }}>
+                  Drop your file here or{' '}
+                  <span
+                    onClick={() => dtFileInputRef.current?.click()}
+                    style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    browse
+                  </span>
+                </p>
+              </>
+            ) : (
+              <>
+                {/* Files added - show pills */}
+                <div className="flex flex-wrap items-center justify-center gap-2 mb-6" style={{ maxHeight: 200, overflowY: 'auto', padding: '4px 0' }}>
+                  {dtImportFiles.map((file, i) => (
+                    <div
+                      key={`${file.name}-${i}`}
+                      className="flex items-center gap-2 px-3 py-1.5"
+                      style={{
+                        backgroundColor: '#C2C9DB',
+                        borderRadius: 25,
+                        fontSize: 'var(--text-sm)',
+                        fontFamily: 'var(--font-family)',
+                        color: '#36415D',
+                      }}
+                    >
+                      <span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                      <button
+                        onClick={() => setDtImportFiles(prev => prev.filter((_, idx) => idx !== i))}
+                        className="flex items-center justify-center hover:opacity-70"
+                        style={{ width: 16, height: 16 }}
+                      >
+                        <X size={12} style={{ color: '#36415D' }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add more files link */}
+                <p style={{
+                  fontSize: 'var(--text-sm)',
+                  color: '#36415D',
+                  fontFamily: 'var(--font-family)',
+                  textAlign: 'center',
+                }}>
+                  Drop more files or{' '}
+                  <span
+                    onClick={() => dtFileInputRef.current?.click()}
+                    style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    browse
+                  </span>
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* Bottom buttons */}
+          <div className="absolute bottom-8 flex items-center gap-3">
+            <button
+              onClick={() => {
+                setShowDigitalTwinModal(false);
+                setDtImportFiles([]);
+              }}
+              className="px-6 py-2.5 transition-colors"
+              style={{
+                fontSize: 'var(--text-sm)',
+                fontWeight: 700,
+                fontFamily: 'var(--font-family)',
+                color: '#FF1F1F',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                borderRadius: 'var(--radius)',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#FF7979')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#FF1F1F')}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                if (dtImportFiles.length === 0) return;
+                const fileName = dtImportFiles[0].name.replace(/\.[^/.]+$/, '');
+                const dtId = `dt-${Date.now()}`;
+                const kbId = `kb-dt-${Date.now()}`;
+                const now = new Date().toISOString();
+                const newItem: KnowledgeBaseItem = {
+                  id: kbId,
+                  name: fileName,
+                  type: 'digital-twin',
+                  digitalTwinId: dtId,
+                  createdBy: 'Me',
+                  createdDate: now,
+                  lastEditedBy: 'Me',
+                  lastEdited: now,
+                  description: `Imported from ${dtImportFiles.map(f => f.name).join(', ')}`,
+                };
+                addKnowledgeBaseItem(newItem);
+                setShowDigitalTwinModal(false);
+                setDtImportFiles([]);
+                openDigitalTwinModal(newItem);
+                showToast(`Digital twin "${fileName}" created successfully`, 'success');
+              }}
+              className="px-6 py-2.5 transition-colors"
+              style={{
+                fontSize: 'var(--text-sm)',
+                fontWeight: 700,
+                fontFamily: 'var(--font-family)',
+                color: '#FFFFFF',
+                backgroundColor: dtImportFiles.length > 0 ? '#2F80ED' : '#7F7F7F',
+                border: 'none',
+                cursor: dtImportFiles.length > 0 ? 'pointer' : 'default',
+                borderRadius: 'var(--radius)',
+              }}
+              onMouseEnter={(e) => { if (dtImportFiles.length > 0) e.currentTarget.style.backgroundColor = '#82B3F4'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = dtImportFiles.length > 0 ? '#2F80ED' : '#7F7F7F'; }}
+            >
+              Create
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Media / Document Preview Modal */}
+      {previewMedia && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-8"
+          onClick={() => openMediaPreview(null)}
+        >
+          <div
+            className="bg-card border border-border rounded-[var(--radius)] w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
             style={{ boxShadow: 'var(--elevation-lg)' }}
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-foreground" style={{
-                fontSize: 'var(--text-lg)',
-                fontWeight: 'var(--font-weight-bold)',
-                fontFamily: 'var(--font-family)'
-              }}>
-                Create Digital Twin
-              </h2>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+              <div className="flex items-center gap-3">
+                <div className={`p-1.5 rounded ${getItemTypeColor(previewMedia)}`}>
+                  {getItemIcon(previewMedia)}
+                </div>
+                <div>
+                  <h3 className="text-foreground" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-bold)', fontFamily: 'var(--font-family)' }}>
+                    {previewMedia.name}
+                  </h3>
+                  <span className="text-muted" style={{ fontSize: 'var(--text-xs)' }}>
+                    {getItemTypeLabel(previewMedia)} · Last edited {previewMedia.lastEdited}
+                  </span>
+                </div>
+              </div>
               <button
-                onClick={() => setShowDigitalTwinModal(false)}
-                className="p-1.5 hover:bg-secondary rounded-[var(--radius)] transition-colors"
+                onClick={() => openMediaPreview(null)}
+                className="p-2 rounded-[var(--radius)] hover:bg-secondary transition-colors"
               >
                 <X size={18} className="text-muted" />
               </button>
             </div>
-
             {/* Content */}
-            <div className="p-6">
-              {/* Graphic */}
-              <div className="flex justify-center mb-6">
-                <div className="w-32 h-32 rounded-full bg-[#8404b3]/10 flex items-center justify-center">
-                  <Box size={64} className="text-[#8404b3]" />
+            <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-secondary/30">
+              {previewMedia.mediaType === 'video' ? (
+                <div className="w-full max-w-2xl rounded-lg overflow-hidden bg-black relative" style={{ aspectRatio: '16/9' }}>
+                  {previewMedia.thumbnail ? (
+                    <>
+                      <img src={previewMedia.thumbnail} alt={previewMedia.name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/30" />
+                    </>
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800" />
+                  )}
+                  {/* Video player mockup overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 cursor-pointer hover:bg-white/30 transition-colors">
+                      <Play size={28} className="text-white ml-1" fill="white" />
+                    </div>
+                  </div>
+                  {/* Video progress bar mockup */}
+                  <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 pt-8 bg-gradient-to-t from-black/70 to-transparent">
+                    <div className="flex items-center gap-3">
+                      <span className="text-white/80 text-xs">0:00</span>
+                      <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+                        <div className="h-full w-0 bg-white/80 rounded-full" />
+                      </div>
+                      <span className="text-white/80 text-xs">3:45</span>
+                    </div>
+                    <p className="text-white/60 text-xs mt-2 truncate">{previewMedia.name}</p>
+                  </div>
                 </div>
-              </div>
-
-              {/* Message */}
-              <div className="text-center mb-6">
-                <h3 className="text-foreground mb-2" style={{
-                  fontSize: 'var(--text-base)',
-                  fontWeight: 'var(--font-weight-bold)',
-                  fontFamily: 'var(--font-family)'
-                }}>
-                  Digital Twins are Created in the App
-                </h3>
-                <p className="text-muted" style={{
-                  fontSize: 'var(--text-sm)',
-                  fontFamily: 'var(--font-family)'
-                }}>
-                  To create and configure digital twins, you'll need to use our desktop or mobile application. This ensures all 3D models and configurations are properly synced.
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowDigitalTwinModal(false)}
-                  className="flex-1 px-4 py-2.5 bg-secondary text-foreground hover:bg-secondary/80 rounded-[var(--radius)] transition-colors"
-                  style={{
-                    fontSize: 'var(--text-sm)',
-                    fontWeight: 'var(--font-weight-bold)',
-                    fontFamily: 'var(--font-family)'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    setShowDigitalTwinModal(false);
-                    showToast('Opening app...', 'info');
-                  }}
-                  className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-[var(--radius)] transition-colors"
-                  style={{
-                    fontSize: 'var(--text-sm)',
-                    fontWeight: 'var(--font-weight-bold)',
-                    fontFamily: 'var(--font-family)'
-                  }}
-                >
-                  Open App
-                </button>
-              </div>
+              ) : previewMedia.mediaType === 'image' ? (
+                previewMedia.thumbnail ? (
+                  <img src={previewMedia.thumbnail} alt={previewMedia.name} className="max-w-full max-h-[60vh] object-contain rounded-lg" />
+                ) : (
+                  <div className="w-full max-w-md rounded-lg bg-secondary flex items-center justify-center" style={{ aspectRatio: '4/3' }}>
+                    <div className="text-center text-muted">
+                      <ImageIcon size={48} className="mx-auto mb-3 opacity-50" />
+                      <p style={{ fontSize: 'var(--text-sm)' }}>Image preview</p>
+                      <p className="opacity-60 mt-1" style={{ fontSize: 'var(--text-xs)' }}>{previewMedia.name}</p>
+                    </div>
+                  </div>
+                )
+              ) : (
+                <div className="w-full max-w-lg bg-card border border-border rounded-[var(--radius)] overflow-hidden">
+                  {previewMedia.thumbnail && (
+                    <div className="w-full bg-secondary/30 overflow-hidden" style={{ maxHeight: '280px' }}>
+                      <img src={previewMedia.thumbnail} alt={previewMedia.name} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="p-8">
+                    <div className="text-center text-muted mb-6">
+                      <File size={48} className="mx-auto mb-3 opacity-50" />
+                      <h4 className="text-foreground" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-bold)' }}>{previewMedia.name}</h4>
+                    </div>
+                    {previewMedia.description && (
+                      <p className="text-muted mb-4" style={{ fontSize: 'var(--text-sm)', lineHeight: '1.6' }}>{previewMedia.description}</p>
+                    )}
+                    <div className="flex flex-col gap-2 text-muted" style={{ fontSize: 'var(--text-xs)' }}>
+                      <div className="flex justify-between"><span>Created by</span><span className="text-foreground">{previewMedia.createdBy}</span></div>
+                      <div className="flex justify-between"><span>Created</span><span className="text-foreground">{previewMedia.createdDate}</span></div>
+                      <div className="flex justify-between"><span>Last edited by</span><span className="text-foreground">{previewMedia.lastEditedBy}</span></div>
+                      <div className="flex justify-between"><span>Last edited</span><span className="text-foreground">{previewMedia.lastEdited}</span></div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

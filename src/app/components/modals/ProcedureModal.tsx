@@ -16,6 +16,8 @@ import {
   Star,
   Clapperboard,
   Link2,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useProject, KnowledgeBaseItem } from '../../contexts/ProjectContext';
@@ -35,6 +37,7 @@ interface ProcedureModalProps {
     name: string;
     description?: string;
     connectedDigitalTwinIds?: string[];
+    digitalTwinId?: string;
     thumbnail?: string;
     isPublished: boolean;
     hasUnpublishedChanges: boolean;
@@ -49,9 +52,10 @@ interface ProcedureModalProps {
   onSave?: (updatedProcedure: any) => void;
   startEditingTitle?: boolean;
   onOpenCanvas?: () => void;
+  onOpenProcedure?: (procedureItem: any) => void;
 }
 
-export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, onClose, onSave, startEditingTitle = false, onOpenCanvas }: ProcedureModalProps) {
+export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, onClose, onSave, startEditingTitle = false, onOpenCanvas, onOpenProcedure }: ProcedureModalProps) {
   const { digitalTwins, getDigitalTwinById, knowledgeBaseItems, currentProject } = useProject();
   const { currentRole } = useRole();
   const { favorites, addFavorite, removeFavorite } = useFavorites();
@@ -64,9 +68,17 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
   const canEdit = hasAccess(currentRole, 'projects-edit');
 
   // For DT mode: find procedures connected to this digital twin
+  // The DT KB item's id is a KB id (e.g. 'generator-kb-1'), but procedures reference the
+  // actual digitalTwinId (e.g. 'generator-dt-1'). Use digitalTwinId when available.
+  const dtMatchId = isDT ? (procedure.digitalTwinId || procedure.id) : procedure.id;
+  const flattenKBItems = (items: typeof knowledgeBaseItems): typeof knowledgeBaseItems => {
+    let result: typeof knowledgeBaseItems = [];
+    items.forEach(i => { result.push(i); if (i.children) result = result.concat(flattenKBItems(i.children)); });
+    return result;
+  };
   const connectedProcedures = isDT
-    ? knowledgeBaseItems.filter(
-        i => i.type === 'procedure' && i.connectedDigitalTwinIds?.includes(procedure.id)
+    ? flattenKBItems(knowledgeBaseItems).filter(
+        i => i.type === 'procedure' && i.connectedDigitalTwinIds?.includes(dtMatchId)
       )
     : [];
   const [connectedProceduresExpanded, setConnectedProceduresExpanded] = useState(true);
@@ -215,7 +227,7 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
         <circle cx="8" cy="8" r="7" stroke="white" stroke-width="2"/>
         <path d="M5 8l2 2 4-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <span>Procedure ${actionText} successfully to v${newVersion}</span>
+      <span>Flow ${actionText} successfully to v${newVersion}</span>
     `;
     document.body.appendChild(toast);
     setTimeout(() => {
@@ -375,10 +387,10 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                     style={{ boxShadow: 'var(--elevation-sm)' }}
                   >
                     <p className="text-sm text-foreground mb-2" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                      Share this {isDT ? 'digital twin' : 'procedure'}
+                      Share this {isDT ? 'digital twin' : 'flow'}
                     </p>
                     <p className="text-xs text-muted mb-3">
-                      Anyone with the link can view this {isDT ? 'digital twin' : 'procedure'}
+                      Anyone with the link can view this {isDT ? 'digital twin' : 'flow'}
                     </p>
                     <div className="flex gap-2">
                       <input
@@ -653,6 +665,7 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                         <Simple3DViewer
                           digitalTwinName={isDT ? procedureName : (selectedDigitalTwins.length === 1 ? selectedDigitalTwins[0]!.name : `${selectedDigitalTwins.length} digital twins`)}
                           onClose={() => setShow3DViewer(false)}
+                          procedureId={!isDT ? procedure.id : undefined}
                         />
                       )}
                     </>
@@ -670,6 +683,7 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                     {isDT ? (
                       <>
                         <button
+                          onClick={() => window.open(`${import.meta.env.BASE_URL}app/3d-viewer?mode=editor`, '_blank')}
                           className="flex-1 flex items-center justify-center gap-2 h-10 px-4 bg-primary text-primary-foreground rounded-[var(--radius)] hover:bg-primary/90 transition-colors"
                         >
                           <span className="text-sm">Edit Digital Twin</span>
@@ -686,7 +700,7 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                       <>
                         <button
                           disabled={selectedDigitalTwinIds.length === 0}
-                          onClick={() => navigate(`/web/procedure-editor/${procedure.id}`)}
+                          onClick={() => window.open(`${import.meta.env.BASE_URL}app/procedure-editor/${procedure.id}?mode=edit`, '_blank')}
                           className="flex-1 flex items-center justify-center gap-2 h-10 px-4 bg-primary text-primary-foreground rounded-[var(--radius)] hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <span className="text-sm">Edit in app</span>
@@ -713,7 +727,7 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                     {procedure.thumbnail ? (
                       <img 
                         src={procedure.thumbnail} 
-                        alt="Procedure thumbnail"
+                        alt="Flow thumbnail"
                         className="w-full h-full object-cover rounded-[var(--radius)]"
                       />
                     ) : isDT ? (
@@ -751,7 +765,7 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                       <div className="flex items-center gap-2">
                         <Link2 size={16} className="text-primary" />
                         <span className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-semibold)' }}>
-                          Connected Procedures
+                          Connected Flows
                         </span>
                         <span className="text-xs text-muted bg-secondary rounded-full px-2 py-0.5">{connectedProcedures.length}</span>
                       </div>
@@ -761,12 +775,13 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
                     {connectedProceduresExpanded && (
                       <div className="px-4 pb-3 border-t border-border">
                         {connectedProcedures.length === 0 ? (
-                          <p className="text-sm text-muted py-3 text-center">No procedures connected to this digital twin</p>
+                          <p className="text-sm text-muted py-3 text-center">No flows connected to this digital twin</p>
                         ) : (
                           <div className="flex flex-col gap-1 pt-2">
                             {connectedProcedures.map(proc => (
                               <div
                                 key={proc.id}
+                                onClick={() => onOpenProcedure?.(proc)}
                                 className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-secondary/50 transition-colors cursor-pointer"
                               >
                                 <FileText size={14} className="text-muted shrink-0" />
@@ -807,147 +822,61 @@ export function ProcedureModal({ isOpen = true, mode = 'procedure', procedure, o
       </div>
 
       {/* Close Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={showCloseConfirm}
-        title="Unsaved Changes"
-        message="You have unsaved changes. Are you sure you want to close without saving?"
-        confirmText="Close Anyway"
-        cancelText="Keep Editing"
-        onConfirm={handleConfirmClose}
-        onCancel={() => setShowCloseConfirm(false)}
-        variant="danger"
-      />
+      <div onClick={(e) => e.stopPropagation()}>
+        <ConfirmDialog
+          isOpen={showCloseConfirm}
+          title="Unsaved Changes"
+          message="You have unsaved changes. Are you sure you want to close without saving?"
+          confirmText="Close Anyway"
+          cancelText="Keep Editing"
+          onConfirm={handleConfirmClose}
+          onCancel={() => setShowCloseConfirm(false)}
+          variant="danger"
+        />
+      </div>
     </div>
   );
 }
 
-// Simple 3D Viewer Component
+// Embedded 3D Viewer — renders the actual digital-twin-scene or procedure editor in an iframe
 interface Simple3DViewerProps {
   digitalTwinName: string;
   onClose: () => void;
+  procedureId?: string; // If provided, shows the procedure 3D view instead of the DT scene
 }
 
-function Simple3DViewer({ digitalTwinName, onClose }: Simple3DViewerProps) {
-  const [rotation, setRotation] = useState({ x: 20, y: 45 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setDragStart({ x: e.clientX, y: e.clientY });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    const deltaX = e.clientX - dragStart.x;
-    const deltaY = e.clientY - dragStart.y;
-    setRotation(prev => ({
-      x: prev.x + deltaY * 0.5,
-      y: prev.y + deltaX * 0.5
-    }));
-    setDragStart({ x: e.clientX, y: e.clientY });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+function Simple3DViewer({ digitalTwinName, onClose, procedureId }: Simple3DViewerProps) {
+  const baseUrl = import.meta.env.BASE_URL;
+  const iframeSrc = procedureId
+    ? `${baseUrl}app/procedure-editor/${procedureId}?mode=view&preview=true`
+    : `${baseUrl}app/digital-twin-scene.html?embedded=true`;
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   return (
-    <div 
-      className="absolute inset-0 bg-gradient-to-b from-[#5b19b4] to-[#004fff] flex items-center justify-center"
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
-    >
-      {/* Close Button */}
-      <button
-        onClick={onClose}
-        className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/50 transition-colors"
-      >
-        <X size={16} className="text-white" />
-      </button>
-
-      {/* 3D Object */}
-      <div 
-        className="relative"
-        style={{
-          transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
-          transformStyle: 'preserve-3d',
-          transition: isDragging ? 'none' : 'transform 0.1s ease-out'
-        }}
-      >
-        {/* Simple 3D Cube representing the digital twin */}
-        <div
-          className="relative"
-          style={{
-            width: '200px',
-            height: '200px',
-            transformStyle: 'preserve-3d',
-          }}
+    <div className={isFullscreen ? "fixed inset-0 z-[100] bg-black flex items-center justify-center" : "absolute inset-0 bg-black flex items-center justify-center"}>
+      {/* Top-right buttons */}
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+        <button
+          onClick={() => setIsFullscreen(!isFullscreen)}
+          className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/50 transition-colors"
         >
-          {/* Front face */}
-          <div
-            className="absolute inset-0 bg-white/20 border-2 border-white/40 backdrop-blur-sm flex items-center justify-center"
-            style={{
-              transform: 'translateZ(100px)',
-            }}
-          >
-            <Box size={48} className="text-white/60" />
-          </div>
-          
-          {/* Back face */}
-          <div
-            className="absolute inset-0 bg-white/15 border-2 border-white/30 backdrop-blur-sm"
-            style={{
-              transform: 'translateZ(-100px) rotateY(180deg)',
-            }}
-          />
-          
-          {/* Right face */}
-          <div
-            className="absolute inset-0 bg-white/15 border-2 border-white/30 backdrop-blur-sm"
-            style={{
-              transform: 'rotateY(90deg) translateZ(100px)',
-            }}
-          />
-          
-          {/* Left face */}
-          <div
-            className="absolute inset-0 bg-white/15 border-2 border-white/30 backdrop-blur-sm"
-            style={{
-              transform: 'rotateY(-90deg) translateZ(100px)',
-            }}
-          />
-          
-          {/* Top face */}
-          <div
-            className="absolute inset-0 bg-white/20 border-2 border-white/40 backdrop-blur-sm"
-            style={{
-              transform: 'rotateX(90deg) translateZ(100px)',
-            }}
-          />
-          
-          {/* Bottom face */}
-          <div
-            className="absolute inset-0 bg-white/15 border-2 border-white/30 backdrop-blur-sm"
-            style={{
-              transform: 'rotateX(-90deg) translateZ(100px)',
-            }}
-          />
-        </div>
+          {isFullscreen ? <Minimize2 size={14} className="text-white" /> : <Maximize2 size={14} className="text-white" />}
+        </button>
+        <button
+          onClick={() => { setIsFullscreen(false); onClose(); }}
+          className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/50 transition-colors"
+        >
+          <X size={16} className="text-white" />
+        </button>
       </div>
 
-      {/* Digital Twin Name */}
-      <p className="absolute bottom-4 left-4 text-white text-sm" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-        {digitalTwinName}
-      </p>
-
-      {/* Instructions */}
-      <p className="absolute bottom-4 right-4 text-white/80 text-xs">
-        Drag to rotate
-      </p>
+      {/* Iframe */}
+      <iframe
+        src={iframeSrc}
+        className="w-full h-full border-0"
+        title={digitalTwinName}
+        allow="autoplay"
+      />
     </div>
   );
 }
