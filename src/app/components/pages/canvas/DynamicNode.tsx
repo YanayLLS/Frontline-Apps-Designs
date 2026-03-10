@@ -208,7 +208,7 @@ export function DynamicNode({ data, selected, id }: NodeProps<DynamicNodeData>) 
         <div 
           className="h-2 rounded-t-[calc(var(--radius)-2px)]" 
           style={{ 
-            backgroundColor: (data.options && data.options.length > 0) ? 'var(--primary)' : (data.isColorized ? data.color : 'var(--muted)')
+            backgroundColor: data.isColorized ? (data.color || '#f59e0b') : ((data.options && data.options.length > 1) ? 'var(--primary)' : 'var(--muted)')
           }} 
         />
 
@@ -274,13 +274,13 @@ export function DynamicNode({ data, selected, id }: NodeProps<DynamicNodeData>) 
               {data.isInput && <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--primary)' }} />}
             </button>
 
-            <button 
+            <button
               onClick={() => handleToggleMenu('branching')}
-              className={`p-1.5 rounded transition-all relative ${data.options && data.options.length > 0 ? 'bg-indigo-100' : 'hover:bg-secondary'}`}
+              className={`p-1.5 rounded transition-all relative ${data.options && data.options.length > 1 ? 'bg-indigo-100' : 'hover:bg-secondary'}`}
               title="Branching Config"
             >
-              <GitFork size={14} style={{ color: data.options && data.options.length > 0 ? 'var(--primary)' : 'var(--muted)' }} />
-              {data.options && data.options.length > 0 && <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--primary)' }} />}
+              <GitFork size={14} style={{ color: data.options && data.options.length > 1 ? 'var(--primary)' : 'var(--muted)' }} />
+              {data.options && data.options.length > 1 && <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--primary)' }} />}
             </button>
 
             <button 
@@ -386,9 +386,9 @@ export function DynamicNode({ data, selected, id }: NodeProps<DynamicNodeData>) 
                             : ''
                         }`}
                         style={{
-                          backgroundColor: data.inputType === type.id ? 'var(--primary)/10' : 'transparent',
+                          backgroundColor: data.inputType === type.id ? 'rgba(47, 128, 237, 0.1)' : 'transparent',
                           color: data.inputType === type.id ? 'var(--primary)' : 'var(--foreground)',
-                          borderColor: data.inputType === type.id ? 'var(--primary)/20' : 'transparent'
+                          borderColor: data.inputType === type.id ? 'rgba(47, 128, 237, 0.2)' : 'transparent'
                         }}
                         onMouseEnter={(e) => {
                           if (data.inputType !== type.id) {
@@ -446,18 +446,18 @@ export function DynamicNode({ data, selected, id }: NodeProps<DynamicNodeData>) 
                     onClick={() => data.onAddOption?.()}
                     className="flex items-center justify-center gap-1.5 text-xs font-medium py-2.5 rounded transition-all border border-dashed mt-1 cursor-pointer"
                     style={{
-                      backgroundColor: 'var(--primary)/10',
+                      backgroundColor: 'rgba(47, 128, 237, 0.1)',
                       color: 'var(--primary)',
-                      borderColor: 'var(--primary)/30'
+                      borderColor: 'rgba(47, 128, 237, 0.3)'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--primary)/20';
-                      e.currentTarget.style.borderColor = 'var(--primary)/50';
+                      e.currentTarget.style.backgroundColor = 'rgba(47, 128, 237, 0.2)';
+                      e.currentTarget.style.borderColor = 'rgba(47, 128, 237, 0.5)';
                       e.currentTarget.style.transform = 'scale(1.02)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--primary)/10';
-                      e.currentTarget.style.borderColor = 'var(--primary)/30';
+                      e.currentTarget.style.backgroundColor = 'rgba(47, 128, 237, 0.1)';
+                      e.currentTarget.style.borderColor = 'rgba(47, 128, 237, 0.3)';
                       e.currentTarget.style.transform = 'scale(1)';
                     }}
                   >
@@ -561,9 +561,9 @@ export function DynamicNode({ data, selected, id }: NodeProps<DynamicNodeData>) 
                         borderColor: 'var(--border)'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--primary)/10';
+                        e.currentTarget.style.backgroundColor = 'rgba(47, 128, 237, 0.1)';
                         e.currentTarget.style.color = 'var(--primary)';
-                        e.currentTarget.style.borderColor = 'var(--primary)/20';
+                        e.currentTarget.style.borderColor = 'rgba(47, 128, 237, 0.2)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = 'var(--secondary)';
@@ -595,7 +595,7 @@ export function DynamicNode({ data, selected, id }: NodeProps<DynamicNodeData>) 
                         className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${item.done ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white'}`}
                         style={{ borderColor: item.done ? '#10b981' : 'var(--border)' }}
                       >
-                        {item.done && <Plus size={9} className="rotate-45" />}
+                        {item.done && <Check size={9} />}
                       </button>
                       <input 
                         value={item.text}
@@ -770,15 +770,15 @@ export function DynamicNode({ data, selected, id }: NodeProps<DynamicNodeData>) 
                     }}
                     className="flex items-center gap-2 px-3 py-2.5 rounded text-xs font-medium transition-colors border"
                     style={{
-                      backgroundColor: 'var(--primary)/10',
+                      backgroundColor: 'rgba(47, 128, 237, 0.1)',
                       color: 'var(--primary)',
-                      borderColor: 'var(--primary)/20'
+                      borderColor: 'rgba(47, 128, 237, 0.2)'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--primary)/20';
+                      e.currentTarget.style.backgroundColor = 'rgba(47, 128, 237, 0.2)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--primary)/10';
+                      e.currentTarget.style.backgroundColor = 'rgba(47, 128, 237, 0.1)';
                     }}
                   >
                     <ImageIcon size={14} />
@@ -815,7 +815,7 @@ export function DynamicNode({ data, selected, id }: NodeProps<DynamicNodeData>) 
                   <div className="absolute top-5 left-1/2 -translate-x-1/2 border text-[9px] font-bold uppercase px-1.5 py-0.5 rounded shadow-sm opacity-100 transition-opacity text-center whitespace-nowrap z-20"
                     style={{
                       backgroundColor: 'var(--card)',
-                      borderColor: 'var(--primary)/20',
+                      borderColor: 'rgba(47, 128, 237, 0.2)',
                       color: 'var(--primary)'
                     }}
                   >
@@ -854,41 +854,43 @@ export function DynamicNode({ data, selected, id }: NodeProps<DynamicNodeData>) 
           </div>
         ) : (
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-10">
-            <Handle 
-              type="source" 
+            <Handle
+              type="source"
               position={Position.Bottom}
               id="default"
               className="!w-4 !h-4 !border-2 transition-all hover:!w-5 hover:!h-5 hover:!shadow-lg !cursor-crosshair"
-              style={{ 
+              style={{
                 backgroundColor: 'var(--muted)',
                 borderColor: 'var(--card)'
               }}
             />
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                data.onAddConnectedStep?.();
-              }}
-              className="absolute top-6 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all hover:scale-125 nodrag opacity-40 hover:opacity-100 shadow-md hover:shadow-lg"
-              style={{
-                backgroundColor: 'var(--card)',
-                borderColor: 'var(--border)',
-                color: 'var(--muted)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--primary)';
-                e.currentTarget.style.borderColor = 'var(--primary)';
-                e.currentTarget.style.color = 'white';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--card)';
-                e.currentTarget.style.borderColor = 'var(--border)';
-                e.currentTarget.style.color = 'var(--muted)';
-              }}
-              title="Add connected step"
-            >
-              <Plus size={18} />
-            </button>
+            {!data.connectedHandles?.has('default') && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  data.onAddConnectedStep?.();
+                }}
+                className="absolute top-6 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all hover:scale-125 nodrag opacity-40 hover:opacity-100 shadow-md hover:shadow-lg"
+                style={{
+                  backgroundColor: 'var(--card)',
+                  borderColor: 'var(--border)',
+                  color: 'var(--muted)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--primary)';
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.color = 'white';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--card)';
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.color = 'var(--muted)';
+                }}
+                title="Add connected step"
+              >
+                <Plus size={18} />
+              </button>
+            )}
           </div>
         )}
 
@@ -910,7 +912,7 @@ export function DynamicNode({ data, selected, id }: NodeProps<DynamicNodeData>) 
             style={{ color: 'var(--muted)' }}
             onMouseEnter={(e) => {
               e.currentTarget.style.color = 'var(--destructive)';
-              e.currentTarget.style.backgroundColor = 'var(--destructive)/10';
+              e.currentTarget.style.backgroundColor = 'rgba(255, 31, 31, 0.1)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.color = 'var(--muted)';

@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, Menu, MoreVertical, Mic, Send, ThumbsUp, ThumbsDown, X, MessageSquare, Plus, Wrench } from 'lucide-react';
+import { getSmartAIResponse, streamResponse } from '../../../utils/aiResponses';
 
 interface ChatMessage {
   id: string;
@@ -22,12 +23,52 @@ const suggestions = [
   'Which machines are supported?',
 ];
 
+/** Render simple markdown: **bold**, bullet points, headings, checkboxes, table rows */
+function renderMarkdown(text: string) {
+  const lines = text.split('\n');
+  return lines.map((line, i) => {
+    // Process inline bold
+    const processInline = (str: string) => {
+      const parts = str.split(/(\*\*[^*]+\*\*)/g);
+      return parts.map((part, j) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={j} style={{ fontWeight: 'var(--font-weight-bold)' }}>{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+    };
+
+    // Checkbox lines
+    if (line.match(/^☐ /)) {
+      return <div key={i} style={{ paddingLeft: '4px' }}>{'☐ '}{processInline(line.slice(2))}</div>;
+    }
+    // Bullet points
+    if (line.match(/^[•\-] /)) {
+      return <div key={i} style={{ paddingLeft: '12px', textIndent: '-12px' }}>{processInline(line)}</div>;
+    }
+    // Numbered list
+    if (line.match(/^\d+\.\s/)) {
+      return <div key={i} style={{ paddingLeft: '8px' }}>{processInline(line)}</div>;
+    }
+    // Table-like rows
+    if (line.startsWith('|') && line.endsWith('|')) {
+      if (line.match(/^\|[\s-|]+\|$/)) return null; // separator row
+      return <div key={i} style={{ fontFamily: 'monospace', fontSize: '0.85em' }}>{processInline(line)}</div>;
+    }
+    // Empty line
+    if (line.trim() === '') return <div key={i} style={{ height: '8px' }} />;
+    // Regular line
+    return <div key={i}>{processInline(line)}</div>;
+  });
+}
+
 export function AppAIChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarSearch, setSidebarSearch] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [thinkingStage, setThinkingStage] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
@@ -37,9 +78,23 @@ export function AppAIChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = (text?: string) => {
+  // Cycle through thinking stages
+  useEffect(() => {
+    if (!isTyping) { setThinkingStage(0); return; }
+    const timer = setInterval(() => {
+      setThinkingStage(prev => (prev + 1) % 3);
+    }, 1200);
+    return () => clearInterval(timer);
+  }, [isTyping]);
+
+  const cancelStreamRef = useRef<(() => void) | null>(null);
+
+  const handleSend = useCallback((text?: string) => {
     const messageText = text || input.trim();
     if (!messageText) return;
+
+    // Cancel any in-progress stream
+    cancelStreamRef.current?.();
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -47,6 +102,7 @@ export function AppAIChatPage() {
       content: messageText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
+    const aiMsgId = (Date.now() + 1).toString();
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
@@ -54,19 +110,34 @@ export function AppAIChatPage() {
     setFeedbackSubmitted(false);
     setFeedbackText('');
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `Hi! I'm Iris, your assistant.\nWhat issue can I help you with today?\n\nBased on your query about "${messageText}", I'd recommend checking the relevant procedure in the knowledge base. Would you like me to guide you through the troubleshooting steps?`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages(prev => [...prev, aiMsg]);
+    const fullResponse = getSmartAIResponse(messageText);
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Start streaming after a brief "thinking" pause
+    const thinkTimer = setTimeout(() => {
       setIsTyping(false);
-      setShowFeedback(true);
-    }, 1500);
-  };
+      // Add empty assistant message that will be streamed into
+      setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: '', timestamp }]);
+
+      cancelStreamRef.current = streamResponse(
+        fullResponse,
+        (partial) => {
+          setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: partial } : m));
+        },
+        () => {
+          cancelStreamRef.current = null;
+          setShowFeedback(true);
+        },
+      );
+    }, 600 + Math.random() * 600);
+
+    // Also allow cancelling the think timer
+    const originalCancel = cancelStreamRef.current;
+    cancelStreamRef.current = () => {
+      clearTimeout(thinkTimer);
+      originalCancel?.();
+    };
+  }, [input]);
 
   const handleFeedbackSubmit = () => {
     setFeedbackSubmitted(true);
@@ -183,13 +254,13 @@ export function AppAIChatPage() {
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] sm:max-w-[70%] px-4 py-3 rounded-2xl text-sm whitespace-pre-line
+                    className={`max-w-[85%] sm:max-w-[70%] px-4 py-3 rounded-2xl text-sm
                       ${msg.role === 'user'
                         ? 'bg-primary text-white rounded-br-md'
                         : 'bg-card text-foreground rounded-bl-md border border-border'
                       }`}
                   >
-                    {msg.content}
+                    {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
                     <div className={`text-xs mt-1 ${msg.role === 'user' ? 'text-white/60' : 'text-muted'}`}>
                       {msg.timestamp}
                     </div>
@@ -199,10 +270,11 @@ export function AppAIChatPage() {
               {isTyping && (
                 <div className="flex justify-start">
                   <div className="bg-card border border-border rounded-2xl rounded-bl-md px-4 py-3">
-                    <div className="flex gap-1">
-                      <div className="size-2 rounded-full bg-muted animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="size-2 rounded-full bg-muted animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="size-2 rounded-full bg-muted animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="flex items-center gap-2">
+                      <div className="size-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      <span className="text-xs text-muted" style={{ fontWeight: 'var(--font-weight-medium)' }}>
+                        {['Thinking...', 'Searching knowledge base...', 'Generating response...'][thinkingStage]}
+                      </span>
                     </div>
                   </div>
                 </div>

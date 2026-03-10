@@ -40,7 +40,9 @@ import { AvatarProvider, useAvatar } from './contexts/AvatarContext';
 import { RoleProvider, useRole, hasAccess } from './contexts/RoleContext';
 import { FavoritesProvider, useFavorites } from './contexts/FavoritesContext';
 import { ActiveCallProvider } from './contexts/ActiveCallContext';
+import { ProcedureStepsProvider } from './contexts/ProcedureStepsContext';
 import { FloatingMinimizedCall } from './components/FloatingMinimizedCall';
+import { getUrlParam, setUrlParam } from './utils/urlParams';
 import { LoginScreen } from './components/LoginScreen';
 import { SignUpScreen } from './components/SignUpScreen';
 import { WorkspaceSelector } from './components/WorkspaceSelector';
@@ -153,6 +155,22 @@ function MainApp({ isMobile }: { isMobile: boolean }) {
   const [isWorkspaceManagement, setIsWorkspaceManagement] = useState(false);
   const [shouldShowScheduleModal, setShouldShowScheduleModal] = useState(false);
   const [openFavoriteItem, setOpenFavoriteItem] = useState<any | null>(null);
+
+  // Wrappers that keep URL params in sync with modal state
+  const openSettingsModal = (open: boolean) => {
+    setIsSettingsModalOpen(open);
+    setUrlParam('settings', open ? '1' : null);
+  };
+  const openMediaLibraryModal = (open: boolean) => {
+    setIsMediaLibraryOpen(open);
+    setUrlParam('medialib', open ? '1' : null);
+  };
+
+  // Auto-open modals from URL params on mount
+  useEffect(() => {
+    if (getUrlParam('settings') === '1') setIsSettingsModalOpen(true);
+    if (getUrlParam('medialib') === '1') setIsMediaLibraryOpen(true);
+  }, []);
 
   // Sync selected project with current project from context
   useEffect(() => {
@@ -339,7 +357,7 @@ function MainApp({ isMobile }: { isMobile: boolean }) {
           title: 'Home',
           content: <HomePage 
             onNavigateToKnowledgeBase={() => {
-              navigate('/web/project/project-phoenix/knowledgebase');
+              navigate('/web/project/915-i-series/knowledgebase');
             }}
             onNavigateToRemoteSupport={() => {
               navigate('/web/remote-support');
@@ -612,9 +630,9 @@ function MainApp({ isMobile }: { isMobile: boolean }) {
               activeTab={selectedProjectTab}
               onTabChange={(tabId) => {
                 if (tabId === 'settings') {
-                  setIsSettingsModalOpen(true);
+                  openSettingsModal(true);
                 } else if (tabId === 'media') {
-                  setIsMediaLibraryOpen(true);
+                  openMediaLibraryModal(true);
                 } else {
                   const routeMap: { [key: string]: string } = {
                     'overview': 'knowledgebase',
@@ -674,7 +692,7 @@ function MainApp({ isMobile }: { isMobile: boolean }) {
       {currentProject && (
         <ProjectSettingsModal 
           isOpen={isSettingsModalOpen} 
-          onClose={() => setIsSettingsModalOpen(false)}
+          onClose={() => openSettingsModal(false)}
           onSave={(projectData) => {
             updateProject(currentProject.id, {
               name: projectData.name,
@@ -711,7 +729,7 @@ function MainApp({ isMobile }: { isMobile: boolean }) {
       {/* Media Library Modal */}
       <MediaLibraryModal 
         isOpen={isMediaLibraryOpen} 
-        onClose={() => setIsMediaLibraryOpen(false)} 
+        onClose={() => openMediaLibraryModal(false)}
       />
 
       {/* Favorited Item Modal - Procedure */}
@@ -787,6 +805,7 @@ function usePageTitle() {
 function AppRouter() {
   usePageTitle();
   return (
+    <ProcedureStepsProvider>
     <RoleProvider>
       <Routes>
         <Route path="/" element={<ProductSelector />} />
@@ -808,7 +827,7 @@ function AppRouter() {
               </ProjectProvider>
           </AvatarProvider>
         } />
-        <Route path="/app/*" element={<AppLayout />} />
+        <Route path="/app/*" element={<ProjectProvider><AppLayout /></ProjectProvider>} />
         <Route path="/xr/*" element={
           <div className="w-screen h-screen bg-black">
             <iframe
@@ -821,6 +840,7 @@ function AppRouter() {
       </Routes>
       <DebugMenu />
     </RoleProvider>
+    </ProcedureStepsProvider>
   );
 }
 

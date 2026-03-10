@@ -8,6 +8,7 @@ interface MediaViewerProps {
   onAddMediaFiles: (files: MediaFile[]) => void;
   onRemoveMediaFile: (id: string) => void;
   onReorderMedia?: (fromIndex: number, toIndex: number) => void;
+  editingEnabled?: boolean;
 }
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -15,7 +16,7 @@ const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
 const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES];
 
-export function MediaViewer({ mediaFiles, onAddMediaFiles, onRemoveMediaFile, onReorderMedia }: MediaViewerProps) {
+export function MediaViewer({ mediaFiles, onAddMediaFiles, onRemoveMediaFile, onReorderMedia, editingEnabled = true }: MediaViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -126,10 +127,15 @@ export function MediaViewer({ mediaFiles, onAddMediaFiles, onRemoveMediaFile, on
     setIsFullscreen(false);
   };
 
+  // In view mode, hide entirely when there are no media files
+  if (!editingEnabled && mediaFiles.length === 0) {
+    return null;
+  }
+
   return (
     <>
       {/* Media Holder - Always visible, matches Figma design */}
-      <div 
+      <div
         data-tutorial="media-viewer"
         className="content-stretch flex flex-col items-start relative"
         style={{
@@ -166,43 +172,45 @@ export function MediaViewer({ mediaFiles, onAddMediaFiles, onRemoveMediaFile, on
                 paddingBottom: '40px'
               }}
               onClick={() => {
-                if (mediaFiles.length === 0) {
+                if (mediaFiles.length === 0 && editingEnabled) {
                   fileInputRef.current?.click();
                 }
               }}
             >
               {/* Empty State or Media */}
               {mediaFiles.length === 0 ? (
-                <div 
-                  className={`flex-[1_0_0] min-h-px min-w-px relative w-full flex flex-col items-center justify-center transition-all ${
-                    dragActive ? 'bg-accent/20' : ''
-                  }`}
-                >
-                  <Upload 
-                    className="size-12 mb-3" 
-                    style={{ color: dragActive ? 'var(--accent)' : 'var(--muted-foreground)' }} 
-                  />
-                  <p 
-                    className="text-sm text-center"
-                    style={{ 
-                      color: dragActive ? 'var(--accent)' : 'var(--muted-foreground)',
-                      fontFamily: 'var(--font-family)',
-                      fontWeight: 'var(--font-weight-normal)'
-                    }}
+                editingEnabled ? (
+                  <div
+                    className={`flex-[1_0_0] min-h-px min-w-px relative w-full flex flex-col items-center justify-center transition-all ${
+                      dragActive ? 'bg-accent/20' : ''
+                    }`}
                   >
-                    {dragActive ? 'Drop files here' : 'Drop files or click to upload'}
-                  </p>
-                  <p 
-                    className="text-xs mt-1"
-                    style={{ 
-                      color: 'var(--muted-foreground)',
-                      fontFamily: 'var(--font-family)',
-                      fontWeight: 'var(--font-weight-normal)'
-                    }}
-                  >
-                    Images and videos up to 50MB
-                  </p>
-                </div>
+                    <Upload
+                      className="size-12 mb-3"
+                      style={{ color: dragActive ? 'var(--accent)' : 'var(--muted-foreground)' }}
+                    />
+                    <p
+                      className="text-sm text-center"
+                      style={{
+                        color: dragActive ? 'var(--accent)' : 'var(--muted-foreground)',
+                        fontFamily: 'var(--font-family)',
+                        fontWeight: 'var(--font-weight-normal)'
+                      }}
+                    >
+                      {dragActive ? 'Drop files here' : 'Drop files or click to upload'}
+                    </p>
+                    <p
+                      className="text-xs mt-1"
+                      style={{
+                        color: 'var(--muted-foreground)',
+                        fontFamily: 'var(--font-family)',
+                        fontWeight: 'var(--font-weight-normal)'
+                      }}
+                    >
+                      Images and videos up to 50MB
+                    </p>
+                  </div>
+                ) : null
               ) : (
                 <div className="flex-[1_0_0] min-h-px min-w-px overflow-clip relative w-full">
                   {currentMedia.type.startsWith('image/') ? (
@@ -372,43 +380,47 @@ export function MediaViewer({ mediaFiles, onAddMediaFiles, onRemoveMediaFile, on
                   />
                 )}
                 
-                {/* Delete Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveMediaFile(file.id);
-                    // Adjust current index if needed
-                    if (index === currentIndex && index > 0) {
-                      setCurrentIndex(index - 1);
-                    } else if (index < currentIndex) {
-                      setCurrentIndex(currentIndex - 1);
-                    }
-                  }}
-                  className="absolute -top-1 -right-1 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-20"
-                  style={{
-                    background: 'var(--destructive, #ef4444)'
-                  }}
-                  aria-label={`Remove ${file.name}`}
-                >
-                  <Trash2 className="size-3 text-white" />
-                </button>
+                {/* Delete Button - Only in edit mode */}
+                {editingEnabled && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveMediaFile(file.id);
+                      // Adjust current index if needed
+                      if (index === currentIndex && index > 0) {
+                        setCurrentIndex(index - 1);
+                      } else if (index < currentIndex) {
+                        setCurrentIndex(currentIndex - 1);
+                      }
+                    }}
+                    className="absolute -top-1 -right-1 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                    style={{
+                      background: 'var(--destructive, #ef4444)'
+                    }}
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    <Trash2 className="size-3 text-white" />
+                  </button>
+                )}
               </div>
             ))}
             
-            {/* Add More Button */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="relative flex-shrink-0 rounded overflow-hidden opacity-60 hover:opacity-100 transition-all flex items-center justify-center border-2 border-dashed"
-              style={{
-                width: '60px',
-                height: '60px',
-                borderColor: 'var(--border)',
-                background: 'rgba(0, 0, 0, 0.3)'
-              }}
-              aria-label="Add more files"
-            >
-              <Upload className="size-5" style={{ color: 'var(--muted-foreground)' }} />
-            </button>
+            {/* Add More Button - Only in edit mode */}
+            {editingEnabled && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="relative flex-shrink-0 rounded overflow-hidden opacity-60 hover:opacity-100 transition-all flex items-center justify-center border-2 border-dashed"
+                style={{
+                  width: '60px',
+                  height: '60px',
+                  borderColor: 'var(--border)',
+                  background: 'rgba(0, 0, 0, 0.3)'
+                }}
+                aria-label="Add more files"
+              >
+                <Upload className="size-5" style={{ color: 'var(--muted-foreground)' }} />
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -1,10 +1,12 @@
+export const webNotifications = [
+  { id: 1, title: 'New comment on your document', time: '5 minutes ago', unread: true },
+  { id: 2, title: 'Project Phoenix milestone completed', time: '1 hour ago', unread: true },
+  { id: 3, title: 'You were added to Quantum Leap Initiative', time: '3 hours ago', unread: false },
+  { id: 4, title: 'Meeting reminder: Team sync in 30 minutes', time: '5 hours ago', unread: false },
+];
+
 export function NotificationsPage() {
-  const notifications = [
-    { id: 1, title: 'New comment on your document', time: '5 minutes ago', unread: true },
-    { id: 2, title: 'Project Phoenix milestone completed', time: '1 hour ago', unread: true },
-    { id: 3, title: 'You were added to Quantum Leap Initiative', time: '3 hours ago', unread: false },
-    { id: 4, title: 'Meeting reminder: Team sync in 30 minutes', time: '5 hours ago', unread: false },
-  ];
+  const notifications = webNotifications;
 
   return (
     <div className="p-4">

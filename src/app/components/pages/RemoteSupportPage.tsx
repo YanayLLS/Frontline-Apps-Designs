@@ -15,6 +15,7 @@ import { ScheduleMeetingModal, type Person, type Meeting } from '../ScheduleMeet
 import { Paperclip, FileText, Folder, Phone, Video, Calendar, Clock } from 'lucide-react';
 import { useProject } from '../../contexts/ProjectContext';
 import { useActiveCall } from '../../contexts/ActiveCallContext';
+import { getUrlParam, setUrlParam } from '../../utils/urlParams';
 
 function IconPeopleList() {
   return (
@@ -703,6 +704,8 @@ export function RemoteSupportPage({
   const [showPreJoin, setShowPreJoin] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(initialShowScheduleModal);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+
+  const openScheduleModal = (open: boolean) => { setShowScheduleModal(open); setUrlParam('schedule', open ? '1' : null); };
   const [meetingTitle, setMeetingTitle] = useState('Meeting with Host Name');
   const [callId] = useState(() => Math.random().toString(36).substring(2, 11).toUpperCase());
   const [callPassword] = useState(() => Math.random().toString(36).substring(2, 8));
@@ -1050,9 +1053,12 @@ export function RemoteSupportPage({
     }
   }, [showCaptionsMenu]);
 
-  // Handle initial schedule modal opening from external navigation (e.g., HomePage)
+  // Handle initial schedule modal opening from external navigation (e.g., HomePage) or URL param
   useEffect(() => {
     if (initialShowScheduleModal && !showScheduleModal) {
+      openScheduleModal(true);
+    }
+    if (getUrlParam('schedule') === '1' && !showScheduleModal) {
       setShowScheduleModal(true);
     }
   }, [initialShowScheduleModal]);
@@ -1169,20 +1175,20 @@ export function RemoteSupportPage({
       hostId: '1'
     };
     setMeetings([...meetings, newMeeting]);
-    setShowScheduleModal(false);
+    openScheduleModal(false);
     toast.success('Meeting scheduled successfully');
   };
 
   const handleUpdateMeeting = (updatedMeeting: Meeting) => {
     setMeetings(meetings.map(m => m.id === updatedMeeting.id ? updatedMeeting : m));
-    setShowScheduleModal(false);
+    openScheduleModal(false);
     setEditingMeeting(null);
     toast.success('Meeting updated successfully');
   };
 
   const handleEditMeeting = (meeting: Meeting) => {
     setEditingMeeting(meeting);
-    setShowScheduleModal(true);
+    openScheduleModal(true);
   };
 
   const handleDeleteMeeting = (meetingId: string) => {
@@ -4709,7 +4715,7 @@ export function RemoteSupportPage({
                   onClose={() => setShowCreateMenu(false)}
                   onScheduleForLater={() => {
                     setShowCreateMenu(false);
-                    setShowScheduleModal(true);
+                    openScheduleModal(true);
                   }}
                   onStartNow={handleStartMeetingNow}
                   buttonRef={createButtonRef}
@@ -4780,7 +4786,7 @@ export function RemoteSupportPage({
         <ScheduleMeetingModal
           isOpen={showScheduleModal}
           onClose={() => {
-            setShowScheduleModal(false);
+            openScheduleModal(false);
             setEditingMeeting(null);
           }}
           onSchedule={handleScheduleMeeting}
@@ -5513,8 +5519,8 @@ export function RemoteSupportPage({
               <div className="flex flex-col items-center justify-center h-full bg-card">
                 <p className="text-sm text-foreground mb-1">
                   Your scheduled meetings will show here.{' '}
-                  <button 
-                    onClick={() => setShowScheduleModal(true)}
+                  <button
+                    onClick={() => openScheduleModal(true)}
                     className="text-primary hover:underline"
                     style={{ fontWeight: 'var(--font-weight-bold)' }}
                   >
@@ -5522,7 +5528,7 @@ export function RemoteSupportPage({
                   </button>
                 </p>
                 <button
-                  onClick={() => setShowScheduleModal(true)}
+                  onClick={() => openScheduleModal(true)}
                   className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-[var(--radius)] hover:opacity-90 transition-opacity"
                   style={{ fontWeight: 'var(--font-weight-bold)' }}
                 >

@@ -38,7 +38,7 @@ export function AppProcedureInfoModal({ procedure, onClose, isContentCreator = t
   };
 
   const handleSettings = () => {
-    window.open(`/web/project/project-phoenix/knowledgebase?open=${procedure.id}`, '_blank');
+    window.open(`/web/project/915-i-series/knowledgebase?open=${procedure.id}`, '_blank');
   };
 
   const handleEdit = () => {

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Viewer3D } from './Viewer3D';
 import { ProcedurePanel } from './ProcedurePanel';
 import { Header } from './Header';
-import { SideButtons } from './SideButtons';
 import { MediaViewer } from './MediaViewer';
 import { SettingsModal } from './SettingsModal';
 import { PublishModal } from './PublishModal';
@@ -17,9 +16,10 @@ import { Tutorial } from './Tutorial';
 import { SaveIndicator } from './SaveIndicator';
 import { ARPlacementFlow, type ObjectTarget, type PlacementMethod } from './ARPlacementFlow';
 import { ContextMenu } from './ContextMenu';
-import { GraduationCap, Undo, AlertCircle } from 'lucide-react';
+import { GraduationCap, Undo, AlertCircle, X, MoreVertical, Keyboard, Glasses, Video, RotateCcw, ExternalLink } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useProcedureSteps } from '../../contexts/ProcedureStepsContext';
 
 // Extend window type for validation callback
 declare global {
@@ -123,7 +123,13 @@ const initialStep: Step = {
   mediaFiles: []
 };
 
-// Pre-built sample procedure with rich step data
+// Extract procedure ID from URL path
+function getProcedureIdFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const match = window.location.pathname.match(/procedure-editor\/([^/?]+)/);
+  return match ? match[1] : null;
+}
+
 const sampleStepIds = {
   s1: 'sample-step-1',
   s2: 'sample-step-2',
@@ -612,16 +618,44 @@ export function ProcedureEditor() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const urlMode = searchParams.get('mode'); // 'view' | 'edit' | null
+  const isPreviewMode = searchParams.get('preview') === 'true';
   const hasProcedureId = typeof window !== 'undefined' && window.location.pathname.includes('/procedure-editor/');
+  const procedureIdFromUrl = getProcedureIdFromUrl();
 
-  // Use sample steps when opening from KB (has procedure ID), empty for new procedures
+  // Shared procedure steps context — single source of truth
+  const { getSteps, setSteps: setContextSteps, getTitle, setTitle: setContextTitle } = useProcedureSteps();
+
+  // Load steps from context, falling back to sampleSteps for known IDs, or empty for new procedures
   const useSampleData = hasProcedureId && urlMode !== null;
+  const contextSteps = procedureIdFromUrl ? getSteps(procedureIdFromUrl) : [];
+  const contextTitle = procedureIdFromUrl ? getTitle(procedureIdFromUrl) : '';
+  const resolvedInitialSteps = contextSteps.length > 0 ? contextSteps : (useSampleData ? sampleSteps : [initialStep]);
+  const resolvedInitialTitle = contextTitle || (useSampleData ? 'Generator Preventive Maintenance Procedure' : 'Elitebook 840 G9');
 
-  const [steps, setSteps] = useState<Step[]>(useSampleData ? sampleSteps : [initialStep]);
+  const [steps, setStepsLocal] = useState<Step[]>(resolvedInitialSteps);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [selectedActionPath, setSelectedActionPath] = useState<Map<string, number>>(new Map());
   const [isTtsEnabled, setIsTtsEnabled] = useState(false);
-  const [procedureTitle, setProcedureTitle] = useState(useSampleData ? 'Generator Preventive Maintenance Procedure' : 'Elitebook 840 G9');
+  const [procedureTitle, setProcedureTitleLocal] = useState(resolvedInitialTitle);
+
+  // Wrap setSteps to also sync back to the shared context
+  const setSteps = useCallback((stepsOrUpdater: Step[] | ((prev: Step[]) => Step[])) => {
+    setStepsLocal(prev => {
+      const next = typeof stepsOrUpdater === 'function' ? stepsOrUpdater(prev) : stepsOrUpdater;
+      if (procedureIdFromUrl) {
+        setContextSteps(procedureIdFromUrl, next);
+      }
+      return next;
+    });
+  }, [procedureIdFromUrl, setContextSteps]);
+
+  // Wrap setProcedureTitle to also sync to context
+  const setProcedureTitle = useCallback((title: string) => {
+    setProcedureTitleLocal(title);
+    if (procedureIdFromUrl) {
+      setContextTitle(procedureIdFromUrl, title);
+    }
+  }, [procedureIdFromUrl, setContextTitle]);
   const [showSettings, setShowSettings] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
   const [editingEnabled, setEditingEnabled] = useState(urlMode !== 'view');
@@ -656,6 +690,10 @@ export function ProcedureEditor() {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   
+  // Scene more menu state
+  const [showSceneMoreMenu, setShowSceneMoreMenu] = useState(false);
+  const sceneMoreMenuRef = useRef<HTMLDivElement>(null);
+
   // Mobile view debug state
   const [isMobileView, setIsMobileView] = useState(false);
   
@@ -669,7 +707,19 @@ export function ProcedureEditor() {
       setEditingEnabled(false);
     }
   }, [isMobilePath]);
-  
+
+  // Close scene more menu on click outside
+  useEffect(() => {
+    if (!showSceneMoreMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (sceneMoreMenuRef.current && !sceneMoreMenuRef.current.contains(e.target as Node)) {
+        setShowSceneMoreMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showSceneMoreMenu]);
+
   // Save indicator state
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | undefined>(undefined);
@@ -1561,13 +1611,12 @@ export function ProcedureEditor() {
     }
   }, [navigate]);
 
-  // Handle open flow editor - open procedure editor page in a new tab
+  // Handle open flow editor - open KB page with canvas param in a new tab
   const handleOpenFlowEditor = useCallback(() => {
     const currentPath = window.location.pathname;
-    // Try to extract procedureId from current URL
     const match = currentPath.match(/procedure-editor\/([^/]+)/);
     const procedureId = match ? match[1] : 'default';
-    window.open(`/web/procedure-editor/${procedureId}`, '_blank');
+    window.open(`/web/project/915-i-series/knowledgebase?canvas=${procedureId}`, '_blank');
   }, []);
 
   const handleDeleteStepByIndex = useCallback((index: number) => {
@@ -2250,24 +2299,86 @@ export function ProcedureEditor() {
                   }}
                 >
                   <div className="pointer-events-auto max-h-full flex flex-col">
-                    <MediaViewer 
+                    <MediaViewer
                       mediaFiles={currentStep.mediaFiles}
                       onAddMediaFiles={handleAddMediaFiles}
                       onRemoveMediaFile={handleRemoveMediaFile}
                       onReorderMedia={handleReorderMedia}
+                      editingEnabled={editingEnabled}
                     />
                   </div>
                 </div>
             </div>
           )}
 
-          {/* Side Buttons */}
-          <SideButtons 
-            onEnterAR={handleEnterAR}
-            onOpenPlacement={handleEnterAR}
-            isARMode={isARMode}
-            isMobileView={isMobileView}
-          />
+          {/* Top-right scene buttons: close & more (hidden in preview mode) */}
+          <div className="absolute top-3 right-3 flex flex-col gap-2 z-10" style={{ display: isPreviewMode ? 'none' : undefined }}>
+            <button
+              onClick={handleBack}
+              className="size-8 rounded-lg flex items-center justify-center cursor-pointer hover:bg-white/20 transition-colors"
+              style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid #36415d' }}
+              title="Close procedure"
+            >
+              <X className="size-4 text-white/80" />
+            </button>
+            <div className="relative" ref={sceneMoreMenuRef}>
+              <button
+                onClick={() => setShowSceneMoreMenu(!showSceneMoreMenu)}
+                className="size-8 rounded-lg flex items-center justify-center cursor-pointer hover:bg-white/20 transition-colors"
+                style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid #36415d' }}
+                title="More options"
+              >
+                <MoreVertical className="size-4 text-white/80" />
+              </button>
+              {showSceneMoreMenu && (
+                <div
+                  className="absolute right-0 top-full mt-1 w-56 rounded-lg overflow-hidden z-50"
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.85)',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
+                  }}
+                >
+                  <div className="py-1">
+                    <button
+                      onClick={() => setShowSceneMoreMenu(false)}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors cursor-pointer"
+                      style={{ fontFamily: 'var(--font-family)' }}
+                    >
+                      <Keyboard className="size-4 text-white/60" />
+                      Hotkeys
+                    </button>
+                    <button
+                      onClick={() => setShowSceneMoreMenu(false)}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors cursor-pointer"
+                      style={{ fontFamily: 'var(--font-family)' }}
+                    >
+                      <Glasses className="size-4 text-white/60" />
+                      Activate VR
+                    </button>
+                    <div className="h-px bg-white/10 mx-2 my-1" />
+                    <button
+                      onClick={() => { handleRestart(); setShowSceneMoreMenu(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors cursor-pointer"
+                      style={{ fontFamily: 'var(--font-family)' }}
+                    >
+                      <RotateCcw className="size-4 text-white/60" />
+                      Restart procedure
+                    </button>
+                    <button
+                      onClick={() => { handleOpenFlowEditor(); setShowSceneMoreMenu(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors cursor-pointer"
+                      style={{ fontFamily: 'var(--font-family)' }}
+                    >
+                      <ExternalLink className="size-4 text-white/60" />
+                      Open procedure flow editor
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Settings Modal */}
           {showSettings && (

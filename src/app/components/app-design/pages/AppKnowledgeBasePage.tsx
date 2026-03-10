@@ -1,8 +1,16 @@
 import { useNavigate } from 'react-router-dom';
 import { Search, LayoutGrid, List, ChevronRight, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
+import { useProject } from '../../../contexts/ProjectContext';
 
 const projects = [
+  {
+    id: 'generator',
+    name: 'Generator',
+    items: 6,
+    image: 'https://images.unsplash.com/photo-1656797654768-f3b5883a0fbf?w=400&h=300&fit=crop',
+    lastUpdated: '1 day ago',
+  },
   {
     id: '915-i-series',
     name: '915 i Series',
@@ -51,8 +59,13 @@ export function AppKnowledgeBasePage() {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+  const { dtThumbnail } = useProject();
 
-  const filteredProjects = projects.filter(p =>
+  const displayProjects = projects.map(p =>
+    p.id === 'generator' && dtThumbnail ? { ...p, image: dtThumbnail } : p
+  );
+
+  const filteredProjects = displayProjects.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 

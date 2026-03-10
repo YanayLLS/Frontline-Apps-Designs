@@ -1,0 +1,167 @@
+// Shared AI response engine for both web and app AI chats
+// Provides contextual, keyword-matched responses with streaming simulation
+
+interface ResponseMatch {
+  keywords: string[];
+  /** If true, ALL keywords must be present. If false (default), ANY keyword matches. */
+  matchAll?: boolean;
+  response: string;
+}
+
+const responses: ResponseMatch[] = [
+  // Greetings
+  {
+    keywords: ['hello', 'hi', 'hey', 'good morning', 'good afternoon'],
+    response: `Hello! I'm Iris, your AI assistant. I can help you with:\n\n• **Troubleshooting** equipment issues\n• **Finding procedures** in your knowledge base\n• **Step-by-step guidance** for maintenance tasks\n• **Answering questions** about your machines and workflows\n\nWhat can I help you with today?`,
+  },
+
+  // Generator-specific
+  {
+    keywords: ['generator', 'start'],
+    matchAll: true,
+    response: `To start the generator, follow these steps:\n\n1. **Pre-start checks** — Verify oil level is between MIN and MAX marks on the dipstick\n2. **Fuel valve** — Open the fuel shutoff valve (turn counterclockwise)\n3. **Circuit breaker** — Make sure the main breaker is in the OFF position\n4. **Choke** — Set choke to FULL if cold starting\n5. **Start switch** — Turn the key to START and hold until engine fires (max 10 seconds)\n6. **Warm up** — Let the engine idle for 2-3 minutes before applying load\n7. **Choke** — Gradually move choke to RUN position\n8. **Load** — Turn the circuit breaker ON\n\n⚠️ Never run the generator indoors or in enclosed spaces.\n\nWould you like me to walk you through any of these steps in detail?`,
+  },
+  {
+    keywords: ['generator', 'shut', 'down'],
+    response: `To safely shut down the generator:\n\n1. **Remove load** — Turn off all connected equipment\n2. **Breaker** — Switch the circuit breaker to OFF\n3. **Cool down** — Let the engine run at idle for 3-5 minutes\n4. **Stop** — Turn the key/switch to OFF\n5. **Fuel valve** — Close the fuel shutoff valve\n\n⏱ The cool-down period is important — it prevents thermal shock and extends engine life.\n\nAnything else you need help with?`,
+  },
+  {
+    keywords: ['generator', 'not starting', 'won\'t start', 'doesn\'t start'],
+    response: `Let's troubleshoot why the generator won't start:\n\n**Check these common causes:**\n\n1. ⛽ **Fuel** — Is the tank full? Is the fuel valve open?\n2. 🔋 **Battery** — Check battery voltage (should be 12.4V+). Clean terminals if corroded.\n3. 🛢️ **Oil level** — Low oil triggers the safety shutoff. Check dipstick.\n4. 🔌 **Spark plug** — Remove and inspect. Clean or replace if fouled.\n5. 🎛 **Choke** — Make sure choke is set to FULL for cold starts.\n6. 🔧 **Air filter** — A clogged filter restricts airflow. Remove and inspect.\n\n**If it cranks but won't fire:**\n• Fuel may be stale (replace if >30 days old)\n• Check fuel filter for blockage\n\n**If it doesn't crank at all:**\n• Battery is likely dead or disconnected\n• Check the emergency stop button isn't engaged\n\nWhich of these would you like to investigate first?`,
+  },
+  {
+    keywords: ['oil', 'change', 'replace'],
+    response: `Here's the oil change procedure:\n\n**What you'll need:**\n• New oil (SAE 10W-30, ~1.1 quarts for most generators)\n• Oil drain pan\n• Funnel\n• Socket wrench (typically 17mm)\n\n**Steps:**\n1. Run the engine for 2-3 minutes to warm the oil\n2. Turn off the engine and disconnect the spark plug wire\n3. Place the drain pan under the drain plug\n4. Remove the drain plug and let oil flow completely (about 5 min)\n5. Replace the drain plug and tighten to spec (18-20 Nm)\n6. Remove the oil fill cap and add new oil slowly\n7. Check dipstick — oil should be at the FULL mark\n8. Reconnect spark plug wire\n9. Run engine for 1 minute, then recheck level\n\n♻️ Dispose of used oil at a recycling center.\n\nNeed help with the oil filter replacement too?`,
+  },
+  {
+    keywords: ['air filter', 'filter replacement', 'filter change'],
+    response: `**Air Filter Replacement Guide:**\n\n1. **Turn off** the engine and let it cool\n2. **Locate** the air filter housing (usually on the side of the engine)\n3. **Remove** the housing cover — unclip or unscrew the retaining clips\n4. **Remove** the old filter element\n5. **Inspect** the housing — wipe out any dirt or debris\n6. **Install** the new filter — make sure it seats properly\n7. **Replace** the cover and secure all clips\n8. **Reset** the restriction indicator if equipped\n\n**Tips:**\n• Check the filter every 50 hours of operation\n• Replace immediately if torn, wet, or heavily soiled\n• Never run the engine without the air filter installed\n\nWould you like me to show you the related procedure in your knowledge base?`,
+  },
+  {
+    keywords: ['coolant', 'cooling', 'overheat', 'temperature'],
+    response: `**Cooling System Guidance:**\n\n**If the engine is overheating:**\n1. Reduce load immediately\n2. Check coolant level in the overflow tank (engine must be cool!)\n3. Inspect for leaks around hoses, radiator, and water pump\n4. Check if the radiator fins are blocked with debris\n5. Verify the cooling fan is operating\n\n**Coolant Flush & Refill:**\n1. Let engine cool completely\n2. Place a drain pan below the radiator drain valve\n3. Open the drain and let coolant flow out\n4. Close drain, fill with flush solution + water, run 10 min\n5. Drain again, then refill with 50/50 coolant mix\n6. Run engine and check for leaks\n\n⚠️ Never open the radiator cap on a hot engine!\n\nWant me to pull up the full coolant system flush procedure?`,
+  },
+  {
+    keywords: ['belt', 'serpentine', 'alternator belt'],
+    response: `**Belt Inspection & Replacement:**\n\n**Signs of a worn belt:**\n• Squealing noise on startup\n• Visible cracks, fraying, or glazing\n• Belt feels loose or has excess play\n\n**Replacement steps:**\n1. Disconnect the battery negative terminal\n2. Note the belt routing (take a photo for reference)\n3. Release the auto-tensioner using a breaker bar\n4. Slide the old belt off the pulleys\n5. Inspect all pulleys for wear or damage\n6. Route the new belt following the diagram\n7. Release the tensioner slowly onto the belt\n8. Verify belt is seated in all pulley grooves\n9. Reconnect the battery\n10. Start the engine and verify tracking for 30 seconds\n\n**Torque spec:** Tensioner bolt — 45 Nm\n\nShall I open the alternator belt procedure for more detail?`,
+  },
+  {
+    keywords: ['battery', 'charge', 'voltage'],
+    response: `**Battery Diagnostics:**\n\n**Quick checks:**\n• Voltage should read **12.4V or higher** (12.6V = fully charged)\n• Below 12.0V = battery needs charging or replacement\n• Check terminals for corrosion (white/green buildup)\n\n**Charging:**\n1. Disconnect negative terminal first, then positive\n2. Connect charger — red to positive, black to negative\n3. Set to 2A (slow charge) for 8-12 hours\n4. Monitor — disconnect when fully charged\n5. Reconnect positive first, then negative\n\n**Terminal cleaning:**\n1. Disconnect terminals\n2. Use baking soda + water paste and a wire brush\n3. Rinse with clean water\n4. Apply terminal protector spray\n5. Reconnect and tighten\n\nThe battery should be load-tested every 6 months. Would you like more details?`,
+  },
+  {
+    keywords: ['fuel', 'filter', 'water separator'],
+    response: `**Fuel Filter & Water Separator Service:**\n\n**When to service:**\n• Every 200 hours or annually\n• If engine sputters or loses power\n• If water is visible in the separator bowl\n\n**Steps:**\n1. Close the fuel shutoff valve\n2. Place a drain pan under the filter assembly\n3. Drain the water separator bowl\n4. Remove the old fuel filter (note the flow direction arrow)\n5. Lightly oil the gasket on the new filter\n6. Install the new filter hand-tight, then ¾ turn more\n7. Open the fuel shutoff valve\n8. Bleed the fuel system — use the primer pump until firm\n9. Start the engine and check for leaks\n\n⚠️ Use only the specified filter part number for your model.\n\nWant me to guide you through the fuel system bleeding procedure?`,
+  },
+  {
+    keywords: ['maintenance', 'schedule', 'when', 'interval'],
+    response: `**Recommended Maintenance Schedule:**\n\n| Interval | Task |\n|----------|------|\n| **Daily** | Check oil level, check for leaks, visual inspection |\n| **50 hours** | Clean/replace air filter, check battery |\n| **100 hours** | Change oil & filter, inspect spark plug |\n| **200 hours** | Replace fuel filter, flush coolant, inspect belts |\n| **500 hours** | Full service — all of the above plus valve adjustment |\n| **Annually** | Load test, battery replacement, full inspection |\n\n📋 Always log maintenance in the equipment record.\n\nWant me to show you the preventive maintenance procedure?`,
+  },
+  {
+    keywords: ['safety', 'lockout', 'tagout', 'loto'],
+    response: `**Lockout/Tagout (LOTO) Procedure:**\n\n**Before any maintenance:**\n1. **Notify** all affected personnel\n2. **Shut down** the equipment using normal procedures\n3. **Isolate** all energy sources:\n   • Disconnect electrical power\n   • Close fuel valves\n   • Release stored energy (capacitors, springs, pressure)\n4. **Apply** your personal lock and tag to each energy isolation device\n5. **Verify** zero energy state — try to start the equipment\n\n**After maintenance:**\n1. Inspect the work area — tools removed, guards replaced\n2. Verify all personnel are clear\n3. Remove your lock and tag\n4. Restore energy and test\n\n⚠️ **Never remove someone else's lock!**\n\nNeed the full LOTO procedure document?`,
+  },
+  {
+    keywords: ['procedure', 'create', 'new'],
+    response: `I can help you create a new procedure! Here's how:\n\n1. Go to your **Knowledge Base**\n2. Click **"+ New"** and select **"Flow"**\n3. Give it a name and description\n4. Use the **Flow Editor** to add steps:\n   • Add text instructions for each step\n   • Attach photos or videos as visual references\n   • Connect to a Digital Twin for 3D guidance\n   • Add validation checkpoints\n5. **Preview** the procedure in viewer mode\n6. **Publish** when ready\n\nWould you like me to suggest a structure for your procedure?`,
+  },
+  {
+    keywords: ['digital twin', '3d', 'model'],
+    response: `**Digital Twins** are interactive 3D models of your equipment. You can:\n\n• **View & navigate** — Orbit, zoom, and inspect parts\n• **Add hotspots** — Mark specific locations with information, media, or links\n• **Connect to procedures** — Link 3D views to procedure steps for spatial guidance\n• **Annotate** — Add notes and callouts to specific components\n• **Bookmark views** — Save camera angles for quick reference\n\nTo open a Digital Twin:\n1. Go to your project's Knowledge Base\n2. Click on any item with the 🟪 Digital Twin badge\n3. Use mouse/touch to rotate, scroll to zoom\n\nWant me to open the Generator Digital Twin for you?`,
+  },
+  {
+    keywords: ['remote', 'support', 'call', 'video'],
+    response: `**Remote Support** lets you connect with experts in real-time:\n\n**Starting a call:**\n1. Go to the **Remote Support** page\n2. Tap **"Start Call"** or select a contact\n3. Choose **Video** or **Audio only**\n\n**During a call you can:**\n• Share your camera view\n• Draw annotations on the live feed\n• Share your screen\n• Send files and images\n• Use text chat alongside video\n\n**AR features (XR headset):**\n• Expert can place 3D arrows and markers in your view\n• Frozen frame annotation\n• Shared pointer\n\nWould you like to start a remote support session?`,
+  },
+  {
+    keywords: ['guide', 'walk', 'through', 'how to', 'help me'],
+    response: `I'd be happy to guide you! Here are the most common tasks I can help with:\n\n🔧 **Maintenance & Repair**\n• "How do I change the oil?"\n• "Walk me through belt replacement"\n• "Troubleshoot engine overheating"\n\n📋 **Procedures & Knowledge Base**\n• "Find the startup procedure"\n• "Create a new maintenance checklist"\n• "Show me safety protocols"\n\n🎯 **Digital Twins & 3D**\n• "Open the generator model"\n• "Show me where the fuel filter is"\n\n📞 **Support**\n• "Connect me with an expert"\n• "Start a remote support call"\n\nJust describe what you need in plain language and I'll help you step by step!`,
+  },
+  {
+    keywords: ['what', 'machine', 'supported', 'equipment'],
+    response: `Currently, your workspace has the following equipment:\n\n**Active Projects:**\n• 🔴 **Generator** — Diesel generator assembly with full 3D model and maintenance procedures\n• ⚙️ **915 i Series** — Industrial equipment with comprehensive KB\n• 🏭 **Manufacturing Facility Alpha** — CNC machines and robotic arms\n• 💻 **Elitebook 840 G9** — Laptop hardware documentation\n• 💻 **ProBook 450 G10** — Laptop service procedures\n• 💻 **ZBook Studio G9** — Workstation documentation\n• 🖨 **High-Volume Printing Equipment** — Industrial printers\n\nEach project contains procedures, digital twins, and supporting documents.\n\nWhich equipment would you like to explore?`,
+  },
+  {
+    keywords: ['thank', 'thanks'],
+    response: `You're welcome! I'm always here if you need help. Here are some things you can ask me anytime:\n\n• Troubleshooting questions about your equipment\n• Finding specific procedures or documents\n• Step-by-step guidance for maintenance tasks\n• Information about your digital twins\n\nHave a great day! 👋`,
+  },
+  {
+    keywords: ['inspect', 'inspection', 'check'],
+    response: `**Equipment Inspection Checklist:**\n\n**Visual inspection:**\n☐ Check for oil leaks, coolant leaks, or fuel leaks\n☐ Inspect belts for cracks or fraying\n☐ Check hoses for bulges, soft spots, or cracks\n☐ Look for loose or missing bolts/fasteners\n☐ Inspect wiring for damage or corrosion\n\n**Fluid levels:**\n☐ Engine oil — between MIN and MAX on dipstick\n☐ Coolant — at the FULL mark when cold\n☐ Fuel — adequate for planned operation\n\n**Operational check:**\n☐ Start the engine and listen for unusual sounds\n☐ Check all gauges — oil pressure, temperature, voltage\n☐ Test the emergency stop function\n☐ Verify all safety guards are in place\n\nWould you like me to create a custom inspection checklist for your equipment?`,
+  },
+  {
+    keywords: ['error', 'warning', 'fault', 'code', 'alarm'],
+    response: `To help diagnose the error, I'll need a bit more info:\n\n1. **What error code or message** are you seeing?\n2. **Which equipment** is showing the error?\n3. **When did it start** — during operation, on startup, or at shutdown?\n\n**Common error codes:**\n• **E01** — Low oil pressure → Check oil level, inspect oil pump\n• **E02** — High temperature → Check coolant level, inspect radiator\n• **E03** — Overspeed → Check governor, inspect fuel system\n• **E04** — Low battery → Check battery voltage, inspect charging system\n• **E05** — Fuel pressure → Check fuel filter, inspect fuel pump\n\nDescribe the error and I'll walk you through the resolution!`,
+  },
+];
+
+/**
+ * Get an AI response based on the user's message.
+ * Matches keywords and returns a contextual response.
+ */
+export function getSmartAIResponse(userMessage: string): string {
+  const lower = userMessage.toLowerCase();
+
+  for (const entry of responses) {
+    if (entry.matchAll) {
+      if (entry.keywords.every(kw => lower.includes(kw))) {
+        return entry.response;
+      }
+    } else {
+      if (entry.keywords.some(kw => lower.includes(kw))) {
+        return entry.response;
+      }
+    }
+  }
+
+  // Default response
+  return `That's a great question! Based on what you're asking about, here's what I can suggest:\n\nI searched your knowledge base but didn't find an exact match for "${userMessage}". Here are some things I can help with:\n\n• **Troubleshooting** — Describe the issue and I'll help diagnose it\n• **Procedures** — Ask about specific maintenance tasks\n• **Equipment info** — Ask about your machines and digital twins\n• **Navigation** — I can help you find things in the app\n\nCould you rephrase or give me more details about what you need?`;
+}
+
+/**
+ * Simulates word-by-word streaming of an AI response.
+ * Calls onUpdate with progressively longer content and onDone when complete.
+ */
+export function streamResponse(
+  fullText: string,
+  onUpdate: (partialText: string) => void,
+  onDone: () => void,
+): () => void {
+  const words = fullText.split(/(\s+)/); // keep whitespace
+  let index = 0;
+  let accumulated = '';
+  // Start with a small delay to feel like "thinking"
+  const initialDelay = 300 + Math.random() * 400;
+
+  let cancelled = false;
+  let timer: ReturnType<typeof setTimeout>;
+
+  const tick = () => {
+    if (cancelled) return;
+    // Add 1-3 words per tick for a natural feel
+    const wordsPerTick = Math.floor(1 + Math.random() * 2);
+    for (let i = 0; i < wordsPerTick && index < words.length; i++) {
+      accumulated += words[index];
+      index++;
+    }
+    onUpdate(accumulated);
+
+    if (index < words.length) {
+      // Variable speed — slow near punctuation, faster in middle
+      const lastChar = accumulated.trimEnd().slice(-1);
+      const isPunctuation = ['.', '!', '?', ':', '\n'].includes(lastChar);
+      const delay = isPunctuation ? 80 + Math.random() * 120 : 20 + Math.random() * 40;
+      timer = setTimeout(tick, delay);
+    } else {
+      onDone();
+    }
+  };
+
+  timer = setTimeout(tick, initialDelay);
+
+  // Return cancel function
+  return () => {
+    cancelled = true;
+    clearTimeout(timer);
+  };
+}

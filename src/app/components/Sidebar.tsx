@@ -5,6 +5,7 @@ import { useRole, hasAccess } from '../contexts/RoleContext';
 import { ProjectSettingsModal } from './modals/ProjectSettingsModal';
 import { toast } from 'sonner';
 import { useProject } from '../contexts/ProjectContext';
+import { webNotifications } from './pages/NotificationsPage';
 // Secondary sidebar that pushes content, resizable, with sidebar-like design v4
 
 interface SidebarProps {
@@ -23,7 +24,7 @@ interface SidebarProps {
 
 const mainMenuItems = [
   { id: 'home', label: 'Home', icon: 'home' },
-  { id: 'notifications', label: 'Notifications', icon: 'notifications', badge: '99' },
+  { id: 'notifications', label: 'Notifications', icon: 'notifications', badge: webNotifications.filter(n => n.unread).length > 0 ? String(webNotifications.filter(n => n.unread).length) : undefined },
   { id: 'remote-support', label: 'Remote Support', icon: 'remote-support' },
   { id: 'ai-studio', label: 'AI Studio', icon: 'ai' },
   { id: 'archive', label: 'Archive', icon: 'archive' },

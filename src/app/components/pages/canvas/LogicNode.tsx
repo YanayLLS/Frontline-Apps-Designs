@@ -494,41 +494,43 @@ export function LogicNode({ data, selected, id }: NodeProps<LogicNodeData>) {
         ) : (
           // Single output for procedure-link and object-target
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-10">
-            <Handle 
-              type="source" 
+            <Handle
+              type="source"
               position={Position.Bottom}
               id="default"
               className="!w-4 !h-4 !border-2 transition-all hover:!w-5 hover:!h-5 hover:!shadow-lg !cursor-crosshair"
-              style={{ 
+              style={{
                 backgroundColor: colors.bg,
                 borderColor: 'var(--card)'
               }}
             />
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                data.onAddConnectedStep?.();
-              }}
-              className="absolute top-6 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all hover:scale-125 nodrag opacity-40 hover:opacity-100 shadow-md hover:shadow-lg"
-              style={{
-                backgroundColor: 'var(--card)',
-                borderColor: 'var(--border)',
-                color: 'var(--muted)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.bg;
-                e.currentTarget.style.borderColor = colors.bg;
-                e.currentTarget.style.color = 'white';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--card)';
-                e.currentTarget.style.borderColor = 'var(--border)';
-                e.currentTarget.style.color = 'var(--muted)';
-              }}
-              title="Add connected step"
-            >
-              <Plus size={18} />
-            </button>
+            {!data.connectedHandles?.has('default') && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  data.onAddConnectedStep?.();
+                }}
+                className="absolute top-6 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all hover:scale-125 nodrag opacity-40 hover:opacity-100 shadow-md hover:shadow-lg"
+                style={{
+                  backgroundColor: 'var(--card)',
+                  borderColor: 'var(--border)',
+                  color: 'var(--muted)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = colors.bg;
+                  e.currentTarget.style.borderColor = colors.bg;
+                  e.currentTarget.style.color = 'white';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--card)';
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.color = 'var(--muted)';
+                }}
+                title="Add connected step"
+              >
+                <Plus size={18} />
+              </button>
+            )}
           </div>
         )}
       </div>

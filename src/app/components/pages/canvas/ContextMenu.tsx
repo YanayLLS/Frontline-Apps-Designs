@@ -14,13 +14,26 @@ interface ContextMenuProps {
 }
 
 export function ContextMenu({ x, y, type, onClose, onAction, nodeData }: ContextMenuProps) {
+  // Clamp position to keep menu within viewport
+  const menuWidth = 320;
+  const menuHeight = 300; // Approximate max height
+  const clampedX = Math.min(x, window.innerWidth - menuWidth - 8);
+  const clampedY = Math.min(y, window.innerHeight - menuHeight - 8);
+
   if (type === ContextMenuType.NODE && nodeData) {
+    // Determine display title based on node type
+    const displayTitle = nodeData.title || nodeData.label || (
+      nodeData.nodeType === 'note' ? 'Note' :
+      nodeData.nodeType === 'logic' ? (nodeData.logicType === 'platform-switch' ? 'Platform Switch' : nodeData.logicType === 'procedure-link' ? 'Procedure Link' : 'Object Target') :
+      'Node Details'
+    );
+
     return (
-      <div 
+      <div
         className="fixed z-[100] rounded-lg border shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-w-[320px]"
         style={{
-          left: `${x}px`,
-          top: `${y}px`,
+          left: `${Math.max(8, clampedX)}px`,
+          top: `${Math.max(8, clampedY)}px`,
           backgroundColor: 'var(--card)',
           borderColor: 'var(--border)',
           boxShadow: 'var(--elevation-lg)',
@@ -30,7 +43,7 @@ export function ContextMenu({ x, y, type, onClose, onAction, nodeData }: Context
         <div className="py-2">
           <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--border)' }}>
             <div className="font-bold text-sm" style={{ color: 'var(--foreground)' }}>
-              {nodeData.title || 'Node Details'}
+              {displayTitle}
             </div>
             {nodeData.description && (
               <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
@@ -87,8 +100,8 @@ export function ContextMenu({ x, y, type, onClose, onAction, nodeData }: Context
             </div>
           )}
 
-          {/* Options Section */}
-          {nodeData.options && nodeData.options.length > 0 && (
+          {/* Options Section - only show when there are actual branches (>1 option) */}
+          {nodeData.options && nodeData.options.length > 1 && (
             <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--border)' }}>
               <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: 'var(--muted)' }}>
                 Options ({nodeData.options.length})
@@ -104,37 +117,39 @@ export function ContextMenu({ x, y, type, onClose, onAction, nodeData }: Context
           )}
 
           {/* Actions */}
-          <div className="py-1">
-            <button
-              onClick={() => onAction('delete')}
-              className="w-full text-left px-4 py-2 text-sm transition-colors"
-              style={{ color: 'var(--destructive)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--secondary)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            >
-              Delete Node
-            </button>
-            <button
-              onClick={() => onAction('duplicate')}
-              className="w-full text-left px-4 py-2 text-sm transition-colors"
-              style={{ color: 'var(--foreground)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--secondary)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            >
-              Duplicate Node
-            </button>
-          </div>
+          {nodeData.nodeType !== 'start' && (
+            <div className="py-1">
+              <button
+                onClick={() => onAction('duplicate')}
+                className="w-full text-left px-4 py-2 text-sm transition-colors"
+                style={{ color: 'var(--foreground)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--secondary)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                Duplicate Node
+              </button>
+              <button
+                onClick={() => onAction('delete')}
+                className="w-full text-left px-4 py-2 text-sm transition-colors"
+                style={{ color: 'var(--destructive)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--secondary)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                Delete Node
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div 
+    <div
       className="fixed z-[100] rounded-lg border shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200"
       style={{
-        left: `${x}px`,
-        top: `${y}px`,
+        left: `${Math.max(8, clampedX)}px`,
+        top: `${Math.max(8, clampedY)}px`,
         backgroundColor: 'var(--card)',
         borderColor: 'var(--border)',
         boxShadow: 'var(--elevation-lg)',

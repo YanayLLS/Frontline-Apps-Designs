@@ -5,6 +5,7 @@ import { XRLoginModal } from './XRLoginModal';
 import { UserAvatar } from './UserAvatar';
 import { useAvatar } from '../contexts/AvatarContext';
 import { useRole, ROLES, UserRole, hasAccess } from '../contexts/RoleContext';
+import { getUrlParam, setUrlParam } from '../utils/urlParams';
 import { ChevronDown, Search, Settings as SettingsIcon } from 'lucide-react';
 
 interface TopBarProps {
@@ -129,6 +130,14 @@ export function TopBar({ isChatOpen, onToggleChat, onMenuClick, isMobile, isWork
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showXRLogin, setShowXRLogin] = useState(false);
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
+
+  const openAccountSettings = (open: boolean) => { setShowAccountSettings(open); setUrlParam('account', open ? '1' : null); };
+  const openXRLogin = (open: boolean) => { setShowXRLogin(open); setUrlParam('xrlogin', open ? '1' : null); };
+
+  useEffect(() => {
+    if (getUrlParam('account') === '1') setShowAccountSettings(true);
+    if (getUrlParam('xrlogin') === '1') setShowXRLogin(true);
+  }, []);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const [workspaceSearchQuery, setWorkspaceSearchQuery] = useState('');
   const [currentWorkspace, setCurrentWorkspace] = useState({ id: 'frontline', name: 'Frontline360', initials: 'F', color: 'primary' });
@@ -200,12 +209,12 @@ export function TopBar({ isChatOpen, onToggleChat, onMenuClick, isMobile, isWork
 
   const handleAccountSettings = () => {
     setIsUserMenuOpen(false);
-    setShowAccountSettings(true);
+    openAccountSettings(true);
   };
 
   const handleXRLogin = () => {
     setIsUserMenuOpen(false);
-    setShowXRLogin(true);
+    openXRLogin(true);
   };
 
   const handleRoleSwitcher = () => {
@@ -525,13 +534,13 @@ export function TopBar({ isChatOpen, onToggleChat, onMenuClick, isMobile, isWork
       {/* User Settings Modal */}
       <UserSettingsModal 
         isOpen={showAccountSettings} 
-        onClose={() => setShowAccountSettings(false)} 
+        onClose={() => openAccountSettings(false)}
       />
 
       {/* XR Login Modal */}
-      <XRLoginModal 
-        isOpen={showXRLogin} 
-        onClose={() => setShowXRLogin(false)} 
+      <XRLoginModal
+        isOpen={showXRLogin}
+        onClose={() => openXRLogin(false)} 
       />
 
       {/* Role Switcher Modal */}

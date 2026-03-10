@@ -1,8 +1,9 @@
 import { Search, Phone, Video, MessageSquare, Plus, ChevronDown, Users, PhoneCall, Calendar, MoreVertical, Clock, X, Copy, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppCallDeviceModal } from './AppCallDevicePage';
 import { AppMeetingJoinModal } from './AppMeetingJoinPage';
 import { AppScheduleMeetingModal } from './AppScheduleMeetingPage';
+import { getUrlParam, setUrlParam } from '../../../utils/urlParams';
 
 const contacts = [
   { id: '1', name: 'Luy Robin', role: 'Field Engineer', initials: 'LR', online: true, color: '#2F80ED' },
@@ -53,6 +54,16 @@ export function AppRemoteSupportPage() {
   const [showJoinMeetingModal, setShowJoinMeetingModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const openCallDevice = (open: boolean) => { setShowCallDeviceModal(open); setUrlParam('calldevice', open ? '1' : null); };
+  const openJoinMeeting = (open: boolean) => { setShowJoinMeetingModal(open); setUrlParam('joinmeeting', open ? '1' : null); };
+  const openSchedule = (open: boolean) => { setShowScheduleModal(open); setUrlParam('schedule', open ? '1' : null); };
+
+  useEffect(() => {
+    if (getUrlParam('calldevice') === '1') setShowCallDeviceModal(true);
+    if (getUrlParam('joinmeeting') === '1') setShowJoinMeetingModal(true);
+    if (getUrlParam('schedule') === '1') setShowScheduleModal(true);
+  }, []);
 
   const filteredContacts = contacts.filter(c =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -107,9 +118,9 @@ export function AppRemoteSupportPage() {
                   key={action.id}
                   onClick={() => {
                     if (action.action === 'start') handleStartMeeting();
-                    else if (action.action === 'join') setShowJoinMeetingModal(true);
-                    else if (action.action === 'call-device') setShowCallDeviceModal(true);
-                    else if (action.action === 'schedule') setShowScheduleModal(true);
+                    else if (action.action === 'join') openJoinMeeting(true);
+                    else if (action.action === 'call-device') openCallDevice(true);
+                    else if (action.action === 'schedule') openSchedule(true);
                   }}
                   className="flex flex-col items-center gap-3"
                 >
@@ -168,7 +179,7 @@ export function AppRemoteSupportPage() {
               </div>
               <div className="w-px h-6 bg-border" />
               <button
-                onClick={() => setShowCallDeviceModal(true)}
+                onClick={() => openCallDevice(true)}
                 className="px-3 py-2 bg-card border border-border text-foreground rounded-[var(--radius)] hover:bg-secondary transition-colors flex items-center gap-2 text-sm"
                 style={{ fontWeight: 'var(--font-weight-bold)' }}
               >
@@ -176,7 +187,7 @@ export function AppRemoteSupportPage() {
                 Call Device
               </button>
               <button
-                onClick={() => setShowJoinMeetingModal(true)}
+                onClick={() => openJoinMeeting(true)}
                 className="px-3 py-2 bg-card border border-border text-foreground rounded-[var(--radius)] hover:bg-secondary transition-colors flex items-center gap-2 text-sm"
                 style={{ fontWeight: 'var(--font-weight-bold)' }}
               >
@@ -201,7 +212,7 @@ export function AppRemoteSupportPage() {
                       <PhoneCall className="size-4" /> Start instant meeting
                     </button>
                     <button
-                      onClick={() => { setShowScheduleModal(true); setShowNewSessionMenu(false); }}
+                      onClick={() => { openSchedule(true); setShowNewSessionMenu(false); }}
                       className="w-full px-4 py-2.5 text-left text-sm text-foreground hover:bg-secondary flex items-center gap-2"
                     >
                       <Calendar className="size-4" /> Schedule for later
@@ -223,7 +234,7 @@ export function AppRemoteSupportPage() {
                   <Calendar className="size-12 mb-4 opacity-30" />
                   <p className="text-sm">No upcoming meetings</p>
                   <button
-                    onClick={() => setShowScheduleModal(true)}
+                    onClick={() => openSchedule(true)}
                     className="mt-3 text-sm text-primary hover:underline"
                   >
                     Schedule a meeting
@@ -326,9 +337,9 @@ export function AppRemoteSupportPage() {
       </div>
 
       {/* ===== MODALS ===== */}
-      <AppCallDeviceModal isOpen={showCallDeviceModal} onClose={() => setShowCallDeviceModal(false)} />
-      <AppMeetingJoinModal isOpen={showJoinMeetingModal} onClose={() => setShowJoinMeetingModal(false)} />
-      <AppScheduleMeetingModal isOpen={showScheduleModal} onClose={() => setShowScheduleModal(false)} />
+      <AppCallDeviceModal isOpen={showCallDeviceModal} onClose={() => openCallDevice(false)} />
+      <AppMeetingJoinModal isOpen={showJoinMeetingModal} onClose={() => openJoinMeeting(false)} />
+      <AppScheduleMeetingModal isOpen={showScheduleModal} onClose={() => openSchedule(false)} />
     </div>
   );
 }

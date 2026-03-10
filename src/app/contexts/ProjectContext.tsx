@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 // Multi-project management context with isolated data per project
 
 export type ItemType = 'digital-twin' | 'procedure' | 'media' | 'folder';
@@ -129,6 +129,7 @@ interface ProjectContextType {
   updateKnowledgeBaseItem: (id: string, updates: Partial<KnowledgeBaseItem>) => void;
   deleteKnowledgeBaseItem: (id: string) => void;
   addActivityLog: (log: Omit<ActivityLog, 'id' | 'timestamp'>) => void;
+  dtThumbnail: string | null;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -375,6 +376,307 @@ function generateDefaultProjectData(projectName: string, projectId: string): Pro
         },
       ],
     },
+    {
+      name: '915 i Series',
+      digitalTwins: [
+        {
+          id: `${projectId}-dt-1`,
+          name: 'Main Engine Assembly',
+          description: 'Complete 3D model of the main engine',
+          createdBy: 'Alex Johnson',
+          createdDate: '2024-01-10',
+          lastEditedBy: 'Alex Johnson',
+          lastEdited: '2024-02-10',
+        },
+        {
+          id: `${projectId}-dt-2`,
+          name: 'Hydraulic System',
+          description: 'Hydraulic pump and valve assembly',
+          createdBy: 'Maria Smith',
+          createdDate: '2024-01-12',
+          lastEditedBy: 'Maria Smith',
+          lastEdited: '2024-02-05',
+        },
+      ],
+      knowledgeBase: [
+        {
+          id: `${projectId}-kb-1`,
+          name: 'Maintenance Procedures',
+          type: 'folder' as ItemType,
+          createdBy: 'Alex Johnson',
+          createdDate: '2024-01-10',
+          lastEditedBy: 'Alex Johnson',
+          lastEdited: '2024-02-10',
+          isExpanded: true,
+          children: [
+            {
+              id: `${projectId}-kb-1-1`,
+              name: 'Routine Maintenance for High-Volume Printing Equipment',
+              type: 'procedure' as ItemType,
+              connectedDigitalTwinIds: [`${projectId}-dt-1`],
+              createdBy: 'Alex Johnson',
+              createdDate: '2024-01-10',
+              lastEditedBy: 'Alex Johnson',
+              lastEdited: '2024-02-10',
+              description: 'Complete routine maintenance procedure covering safety prep, belt inspection, bearing lubrication, fluid checks, and final verification.',
+              isPublished: true,
+              publishedVersion: '1.5',
+              publishedDate: '2024-02-10',
+              parentId: `${projectId}-kb-1`,
+              thumbnail: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=400',
+            },
+            {
+              id: `${projectId}-kb-1-2`,
+              name: 'Engine Calibration Procedure',
+              type: 'procedure' as ItemType,
+              connectedDigitalTwinIds: [`${projectId}-dt-1`],
+              createdBy: 'David Brown',
+              createdDate: '2024-01-15',
+              lastEditedBy: 'David Brown',
+              lastEdited: '2024-02-08',
+              description: 'Step-by-step calibration procedure for engine timing, fuel mixture, and governor settings.',
+              isPublished: true,
+              publishedVersion: '2.1',
+              publishedDate: '2024-02-08',
+              parentId: `${projectId}-kb-1`,
+            },
+            {
+              id: `${projectId}-kb-1-3`,
+              name: 'Belt Replacement Guide',
+              type: 'procedure' as ItemType,
+              connectedDigitalTwinIds: [`${projectId}-dt-1`],
+              createdBy: 'Emily Carter',
+              createdDate: '2024-01-18',
+              lastEditedBy: 'Emily Carter',
+              lastEdited: '2024-02-06',
+              description: 'Guide for inspecting and replacing drive belts including tensioner adjustment and torque specifications.',
+              isPublished: true,
+              publishedVersion: '1.0',
+              publishedDate: '2024-02-06',
+              parentId: `${projectId}-kb-1`,
+            },
+          ],
+        },
+        {
+          id: `${projectId}-kb-2`,
+          name: 'Safety Protocols',
+          type: 'folder' as ItemType,
+          createdBy: 'David Brown',
+          createdDate: '2024-01-12',
+          lastEditedBy: 'David Brown',
+          lastEdited: '2024-02-08',
+        },
+        {
+          id: `${projectId}-kb-3`,
+          name: 'Training Materials',
+          type: 'folder' as ItemType,
+          createdBy: 'Emily Carter',
+          createdDate: '2024-01-14',
+          lastEditedBy: 'Emily Carter',
+          lastEdited: '2024-02-06',
+        },
+        {
+          id: `${projectId}-kb-4`,
+          name: 'Main Engine Assembly',
+          type: 'digital-twin' as ItemType,
+          digitalTwinId: `${projectId}-dt-1`,
+          createdBy: 'Alex Johnson',
+          createdDate: '2024-01-10',
+          lastEditedBy: 'Alex Johnson',
+          lastEdited: '2024-02-10',
+          description: 'Complete 3D model of the main engine',
+        },
+        {
+          id: `${projectId}-kb-5`,
+          name: 'Hydraulic System',
+          type: 'digital-twin' as ItemType,
+          digitalTwinId: `${projectId}-dt-2`,
+          createdBy: 'Maria Smith',
+          createdDate: '2024-01-12',
+          lastEditedBy: 'Maria Smith',
+          lastEdited: '2024-02-05',
+          description: 'Hydraulic pump and valve assembly',
+        },
+        {
+          id: `${projectId}-kb-6`,
+          name: 'Installation Tutorial Video',
+          type: 'media' as ItemType,
+          mediaType: 'video' as MediaType,
+          createdBy: 'Alex Johnson',
+          createdDate: '2024-01-16',
+          lastEditedBy: 'Alex Johnson',
+          lastEdited: '2024-02-09',
+          description: 'Step-by-step video guide',
+          thumbnail: 'https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYWN0b3J5JTIwd29ya2VyJTIwaW5zdGFsbGF0aW9uJTIwdHV0b3JpYWx8ZW58MXx8fHwxNzcwNzEzNjUwfDA&ixlib=rb-4.1.0&q=80&w=1080',
+        },
+        {
+          id: `${projectId}-kb-7`,
+          name: 'Wiring Diagram',
+          type: 'media' as ItemType,
+          mediaType: 'document' as MediaType,
+          createdBy: 'David Brown',
+          createdDate: '2024-01-11',
+          lastEditedBy: 'David Brown',
+          lastEdited: '2024-02-04',
+          description: 'Complete wiring schematic',
+          thumbnail: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVjdHJpY2FsJTIwd2lyaW5nJTIwZGlhZ3JhbSUyMGJsdWVwcmludHxlbnwxfHx8fDE3NzA3MTM2NTB8MA&ixlib=rb-4.1.0&q=80&w=1080',
+        },
+      ],
+    },
+    {
+      name: 'High-Volume Printing Equipment',
+      digitalTwins: [
+        {
+          id: `${projectId}-dt-1`,
+          name: 'Printing Press Assembly',
+          description: 'Full 3D model of the high-volume printing press',
+          createdBy: 'Mark Stevens',
+          createdDate: '2024-01-08',
+          lastEditedBy: 'Mark Stevens',
+          lastEdited: '2024-02-12',
+        },
+      ],
+      knowledgeBase: [
+        {
+          id: `${projectId}-kb-1`,
+          name: 'Operating Procedures',
+          type: 'folder' as ItemType,
+          createdBy: 'Mark Stevens',
+          createdDate: '2024-01-08',
+          lastEditedBy: 'Mark Stevens',
+          lastEdited: '2024-02-12',
+          isExpanded: true,
+          children: [
+            {
+              id: `${projectId}-kb-1-1`,
+              name: 'Daily Startup & Shutdown',
+              type: 'procedure' as ItemType,
+              connectedDigitalTwinIds: [`${projectId}-dt-1`],
+              createdBy: 'Mark Stevens',
+              createdDate: '2024-01-08',
+              lastEditedBy: 'Mark Stevens',
+              lastEdited: '2024-02-12',
+              description: 'Standard operating procedure for daily startup and shutdown sequence.',
+              isPublished: true,
+              publishedVersion: '2.0',
+              publishedDate: '2024-02-12',
+              parentId: `${projectId}-kb-1`,
+            },
+          ],
+        },
+        {
+          id: `${projectId}-kb-2`,
+          name: 'Printing Press Assembly',
+          type: 'digital-twin' as ItemType,
+          digitalTwinId: `${projectId}-dt-1`,
+          createdBy: 'Mark Stevens',
+          createdDate: '2024-01-08',
+          lastEditedBy: 'Mark Stevens',
+          lastEdited: '2024-02-12',
+          description: 'Full 3D model of the high-volume printing press',
+        },
+      ],
+    },
+    {
+      name: 'Generator',
+      digitalTwins: [
+        {
+          id: `${projectId}-dt-1`,
+          name: 'Generator Digital Twin',
+          description: 'Full 3D model of the diesel generator assembly with engine, alternator, control panel, and enclosure',
+          createdBy: 'James Mitchell',
+          createdDate: '2024-02-01',
+          lastEditedBy: 'James Mitchell',
+          lastEdited: '2024-02-14',
+        },
+      ],
+      knowledgeBase: [
+        {
+          id: `${projectId}-kb-1`,
+          name: 'Generator Digital Twin',
+          type: 'digital-twin' as ItemType,
+          digitalTwinId: `${projectId}-dt-1`,
+          createdBy: 'James Mitchell',
+          createdDate: '2024-02-01',
+          lastEditedBy: 'James Mitchell',
+          lastEdited: '2024-02-14',
+          description: 'Full 3D model of the diesel generator assembly with engine, alternator, control panel, and enclosure',
+          thumbnail: 'https://images.unsplash.com/photo-1656797654768-f3b5883a0fbf?w=400',
+        },
+        {
+          id: `${projectId}-kb-2`,
+          name: 'Preventive Maintenance Procedure',
+          type: 'procedure' as ItemType,
+          connectedDigitalTwinIds: [`${projectId}-dt-1`],
+          createdBy: 'James Mitchell',
+          createdDate: '2024-02-01',
+          lastEditedBy: 'James Mitchell',
+          lastEdited: '2024-02-14',
+          description: 'Complete 10-step preventive maintenance procedure covering safety lockout, oil and coolant checks, air and fuel filter inspection, battery testing, belt and hose inspection, and load testing.',
+          isPublished: true,
+          publishedVersion: '2.3',
+          publishedDate: '2024-02-14',
+          thumbnail: 'https://images.unsplash.com/photo-1656797654768-f3b5883a0fbf?w=400',
+        },
+        {
+          id: `${projectId}-kb-3`,
+          name: 'Air Filter Replacement',
+          type: 'procedure' as ItemType,
+          connectedDigitalTwinIds: [`${projectId}-dt-1`],
+          createdBy: 'James Mitchell',
+          createdDate: '2024-02-03',
+          lastEditedBy: 'James Mitchell',
+          lastEdited: '2024-02-12',
+          description: 'Step-by-step guide for removing, inspecting, and replacing the engine air filter element including housing cleaning and restriction indicator reset.',
+          isPublished: true,
+          publishedVersion: '1.1',
+          publishedDate: '2024-02-12',
+        },
+        {
+          id: `${projectId}-kb-4`,
+          name: 'Coolant System Flush & Refill',
+          type: 'procedure' as ItemType,
+          connectedDigitalTwinIds: [`${projectId}-dt-1`],
+          createdBy: 'James Mitchell',
+          createdDate: '2024-02-04',
+          lastEditedBy: 'James Mitchell',
+          lastEdited: '2024-02-10',
+          description: 'Procedure for draining the cooling system, flushing with cleaning solution, inspecting hoses and thermostat, and refilling with the correct coolant mixture.',
+          isPublished: true,
+          publishedVersion: '1.0',
+          publishedDate: '2024-02-10',
+        },
+        {
+          id: `${projectId}-kb-5`,
+          name: 'Fuel Filter & Water Separator Service',
+          type: 'procedure' as ItemType,
+          connectedDigitalTwinIds: [`${projectId}-dt-1`],
+          createdBy: 'James Mitchell',
+          createdDate: '2024-02-05',
+          lastEditedBy: 'James Mitchell',
+          lastEdited: '2024-02-13',
+          description: 'Replacement of the primary fuel filter and draining of the fuel/water separator bowl, including fuel system bleeding and leak check.',
+          isPublished: true,
+          publishedVersion: '1.4',
+          publishedDate: '2024-02-13',
+        },
+        {
+          id: `${projectId}-kb-6`,
+          name: 'Alternator Belt Removal & Installation',
+          type: 'procedure' as ItemType,
+          connectedDigitalTwinIds: [`${projectId}-dt-1`],
+          createdBy: 'James Mitchell',
+          createdDate: '2024-02-06',
+          lastEditedBy: 'James Mitchell',
+          lastEdited: '2024-02-11',
+          description: 'Removal of the worn serpentine belt, inspection of pulleys and auto-tensioner, installation of the new belt with correct routing, and tension verification.',
+          isPublished: true,
+          publishedVersion: '2.0',
+          publishedDate: '2024-02-11',
+          thumbnail: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=400',
+        },
+      ],
+    },
   ];
 
   // Find matching project type or use default
@@ -403,17 +705,45 @@ function generateDefaultProjectData(projectName: string, projectId: string): Pro
   };
 }
 
-// Create 4 default projects
+// Create default projects — IDs match the app project pages
 const DEFAULT_PROJECTS: ProjectData[] = [
-  generateDefaultProjectData('Elitebook 840 G9', 'project-1'),
-  generateDefaultProjectData('Manufacturing Facility Alpha', 'project-2'),
-  generateDefaultProjectData('ProBook 450 G10', 'project-3'),
-  generateDefaultProjectData('ZBook Studio G9', 'project-4'),
+  generateDefaultProjectData('Generator', 'generator'),
+  generateDefaultProjectData('915 i Series', '915-i-series'),
+  generateDefaultProjectData('Manufacturing Facility Alpha', 'manufacturing-alpha'),
+  generateDefaultProjectData('Elitebook 840 G9', 'elitebook-840'),
+  generateDefaultProjectData('ProBook 450 G10', 'probook-450'),
+  generateDefaultProjectData('ZBook Studio G9', 'zbook-studio'),
+  generateDefaultProjectData('High-Volume Printing Equipment', 'printing-equip'),
 ];
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<ProjectData[]>(DEFAULT_PROJECTS);
   const [currentProjectId, setCurrentProjectId] = useState<string>(DEFAULT_PROJECTS[0].id);
+  const [dtThumbnail, setDtThumbnail] = useState<string | null>(null);
+
+  // Listen for thumbnail from the 3D scene iframe
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'dt-thumbnail' && e.data.dataUrl) {
+        const dataUrl = e.data.dataUrl;
+        setDtThumbnail(dataUrl);
+        // Update generator project KB items with the captured thumbnail
+        setProjects(prev => prev.map(project => {
+          if (project.id !== 'generator') return project;
+          const updateThumbs = (items: KnowledgeBaseItem[]): KnowledgeBaseItem[] =>
+            items.map(item => {
+              const updated = (item.type === 'digital-twin' || (item.type === 'procedure' && item.thumbnail))
+                ? { ...item, thumbnail: dataUrl }
+                : item;
+              return updated.children ? { ...updated, children: updateThumbs(updated.children) } : updated;
+            });
+          return { ...project, knowledgeBaseItems: updateThumbs(project.knowledgeBaseItems) };
+        }));
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
 
   const currentProject = projects.find(p => p.id === currentProjectId) || null;
 
@@ -687,6 +1017,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         updateKnowledgeBaseItem,
         deleteKnowledgeBaseItem,
         addActivityLog,
+        dtThumbnail,
       }}
     >
       {children}
