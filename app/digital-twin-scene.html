@@ -2097,24 +2097,32 @@ html.embedded .right-panel { top:12px !important; }
   </div>
   <!-- ==================== 1. GENERAL SETTINGS ==================== -->
   <div class="panel-content" id="tabSettings">
-    <!-- Publish Status -->
-    <div class="field-group">
-      <label class="field-label">Status</label>
-      <div><span class="publish-badge unpublished"><span class="badge-dot"></span> Unpublished</span></div>
+    <!-- Visibility Warning -->
+    <div class="info-banner" id="visibilityWarning">
+      <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+      <span>This digital twin is unpublished. Changes won't be visible to other users until you publish it.</span>
     </div>
-
     <div class="field-group"><label class="field-label">Item Name</label><input class="field-input" type="text" value="Generator" id="dtTitle"></div>
     <div class="field-group"><label class="field-label">Item Description</label><textarea class="field-textarea" id="dtDescription" placeholder="Enter description..."></textarea></div>
+
+    <!-- Background Color -->
+    <div class="settings-section">
+      <div class="section-title">Background</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="color-pick-btn" id="bgColorBtn" onclick="document.getElementById('bgColorInput').click()"><div class="color-swatch-preview" id="bgColorSwatch" style="background:#1d4593;"></div> Change Color</button>
+        <input type="color" id="bgColorInput" value="#1d4593" style="position:absolute;opacity:0;pointer-events:none;">
+      </div>
+    </div>
 
     <!-- Thumbnail -->
     <div class="settings-section">
       <div class="section-title">Thumbnail</div>
       <div class="thumbnail-area" id="thumbnailArea"></div>
       <div class="thumb-btn-row">
-        <button class="btn-primary" id="captureThumbnailBtn" style="flex:1"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff"><path d="M12 15.2c1.77 0 3.2-1.43 3.2-3.2S13.77 8.8 12 8.8 8.8 10.23 8.8 12s1.43 3.2 3.2 3.2zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/></svg> Change</button>
-        <button class="btn-secondary" style="flex:1"><svg viewBox="0 0 24 24" width="14" height="14" fill="#36415d"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Remove</button>
+        <button class="btn-primary" id="captureThumbnailBtn" style="flex:1"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff"><path d="M12 15.2c1.77 0 3.2-1.43 3.2-3.2S13.77 8.8 12 8.8 8.8 10.23 8.8 12s1.43 3.2 3.2 3.2zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/></svg> Capture</button>
+        <button class="btn-secondary" id="uploadThumbnailBtn" style="flex:1"><svg viewBox="0 0 24 24" width="14" height="14" fill="#36415d"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg> Upload</button>
+        <input type="file" id="uploadThumbnailInput" accept="image/*" style="display:none">
       </div>
-      <button class="btn-secondary" style="width:100%"><svg viewBox="0 0 24 24" width="14" height="14" fill="#36415d"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg> Upload custom thumbnail</button>
     </div>
 
     <!-- Camera -->
@@ -2131,20 +2139,6 @@ html.embedded .right-panel { top:12px !important; }
       <div class="feature-row"><input type="checkbox" class="feature-checkbox" id="chkTooltips" checked onchange="state.tooltipsEnabled=this.checked"><span class="feature-label">Show Parts Names</span><button class="info-btn" data-tip="Display part name labels when hovering over parts"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></button></div>
     </div>
 
-    <!-- Background Color -->
-    <div class="settings-section">
-      <div class="section-title">Background</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <button class="color-pick-btn" id="bgColorBtn" onclick="document.getElementById('bgColorInput').click()"><div class="color-swatch-preview" id="bgColorSwatch" style="background:#1d4593;"></div> Change Color</button>
-        <input type="color" id="bgColorInput" value="#1d4593" style="position:absolute;opacity:0;pointer-events:none;">
-      </div>
-    </div>
-
-    <!-- Visibility Warning -->
-    <div class="info-banner" id="visibilityWarning">
-      <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-      <span>This digital twin is unpublished. Changes won't be visible to other users until you publish it.</span>
-    </div>
   </div>
 
   <!-- ==================== 2. PART PROPERTIES ==================== -->
@@ -5038,25 +5032,29 @@ function applyMaterialToSelection(def) {
 function selectPartsByMaterial(matDef) {
   deselectAll();
   const col = matDef.color, met = matDef.metalness, rou = matDef.roughness;
+  // Collect leaf parts only (skip parents whose meshes are shared with children)
   function walkParts(parts) {
     for (const p of parts) {
+      // If this part has children, prefer matching on children instead
+      if (p.children && p.children.length > 0) {
+        walkParts(p.children);
+        continue;
+      }
       const meshes = state.partMeshMap.get(p.id);
-      if (meshes) {
-        for (const m of meshes) {
-          const mat = state.originalMaterials.get(m.uuid) || m.material;
-          const mats = Array.isArray(mat) ? mat : [mat];
-          for (const mt of mats) {
-            if (!mt || mt._isXray) continue;
-            const c = mt.color ? mt.color.getHex() : 0;
-            const me = mt.metalness !== undefined ? mt.metalness : 0;
-            const ro = mt.roughness !== undefined ? mt.roughness : 0.5;
-            if (c === col && Math.abs(me - met) < 0.02 && Math.abs(ro - rou) < 0.02) {
-              state.selectedParts.add(p.id);
-            }
+      if (!meshes) continue;
+      for (const m of meshes) {
+        const mat = state.originalMaterials.get(m.uuid) || m.material;
+        const mats = Array.isArray(mat) ? mat : [mat];
+        for (const mt of mats) {
+          if (!mt || mt._isXray) continue;
+          const c = mt.color ? mt.color.getHex() : 0;
+          const me = mt.metalness !== undefined ? mt.metalness : 0;
+          const ro = mt.roughness !== undefined ? mt.roughness : 0.5;
+          if (c === col && Math.abs(me - met) < 0.02 && Math.abs(ro - rou) < 0.02) {
+            state.selectedParts.add(p.id);
           }
         }
       }
-      if (p.children) walkParts(p.children);
     }
   }
   walkParts(state.parts);
@@ -5068,11 +5066,15 @@ function selectPartsByMaterial(matDef) {
 
 // Replace a material everywhere in the scene with a new one
 function replaceMatInScene(oldDef, newDef) {
+  const processedMeshes = new Set();
   function walkParts(parts) {
     for (const p of parts) {
+      if (p.children && p.children.length > 0) { walkParts(p.children); continue; }
       const meshes = state.partMeshMap.get(p.id);
       if (meshes) {
         for (const m of meshes) {
+          if (processedMeshes.has(m.uuid)) continue;
+          processedMeshes.add(m.uuid);
           if (state.xrayParts.has(p.id)) continue;
           const mat = m.material;
           const mats = Array.isArray(mat) ? mat : [mat];
@@ -5248,23 +5250,21 @@ function renderMatLocalGrid() {
     inner += '<div class="swatch-label">' + sm.name + '</div>';
     if (sm.count > 0) inner += '<div class="swatch-count">' + sm.count + '</div>';
     // Hover action buttons
-    let actions = '';
+    let actions = '<button class="mat-edit-btn">Edit</button>';
     if (hasSel) actions += '<button class="mat-assign-btn">Assign</button>';
     if (sm.count > 0) actions += '<button class="mat-select-all-btn">Select All</button>';
-    if (sm.count === 0 && sm.imported) actions += '<button class="mat-remove-btn" style="background:rgba(255,31,31,0.9);color:#fff;">Remove</button>';
-    if (actions) inner += '<div class="mat-hover-action">' + actions + '</div>';
+    // (no remove button — imported materials stay in scene)
+    inner += '<div class="mat-hover-action">' + actions + '</div>';
     swatch.innerHTML = inner;
 
-    // Click → open edit popover with live scene-wide replace
-    const smRef = sm; // closure ref
-    swatch.addEventListener('click', (e) => {
-      if (e.target.closest('.mat-hover-action')) return; // don't open on button clicks
+    // Edit button → open edit popover with live scene-wide replace
+    const smRef = sm;
+    swatch.querySelector('.mat-edit-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
       const oldDef = { color: smRef.color, metalness: smRef.metalness, roughness: smRef.roughness };
       showMatEditPopover(swatch, { ...oldDef, name: smRef.name }, (nd) => {
         replaceMatInScene(oldDef, nd);
-        // Update oldDef to track the new values for subsequent edits
         oldDef.color = nd.color; oldDef.metalness = nd.metalness; oldDef.roughness = nd.roughness;
-        // Update sphere in swatch
         const sph = swatch.querySelector('.mat-sphere');
         if (sph) sph.setAttribute('style', 'width:48px;height:48px;' + matSphereStyle(nd));
         const lbl = swatch.querySelector('.swatch-label');
@@ -5286,14 +5286,6 @@ function renderMatLocalGrid() {
       selectAllBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         selectPartsByMaterial({ color: sm.color, metalness: sm.metalness, roughness: sm.roughness });
-      });
-    }
-    // Remove unused imported
-    const removeBtn = swatch.querySelector('.mat-remove-btn');
-    if (removeBtn) {
-      removeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        removeUnusedImportedMat({ color: sm.color, metalness: sm.metalness, roughness: sm.roughness });
       });
     }
     grid.appendChild(swatch);
@@ -5554,27 +5546,55 @@ const slicer = {
     }
   `,
 
-  // Face fragment shader
+  // Face fragment shader — magical glowing edges
   _fragSrc: `
     uniform vec3 uColor;
     uniform float uHovered;
     uniform float uDragging;
+    uniform float uTime;
     varying vec3 vViewDir;
     varying vec3 vNormal;
     varying vec2 vUv;
     void main() {
       float fresnel = 1.0 - abs(dot(vViewDir, vNormal));
-      fresnel = pow(fresnel, 1.5);
+      fresnel = pow(fresnel, 1.2);
+
+      // Edge distance with multi-layer glow
       float edgeDist = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
-      float border = 1.0 - smoothstep(0.0, 0.06, edgeDist);
+      float borderSharp = 1.0 - smoothstep(0.0, 0.012, edgeDist);
+      float borderGlow  = 1.0 - smoothstep(0.0, 0.08, edgeDist);
+      float borderWide  = 1.0 - smoothstep(0.0, 0.18, edgeDist);
+
+      // Animated pulse along edges
+      float pulse = sin(uTime * 3.0 + edgeDist * 60.0) * 0.5 + 0.5;
+      float energyPulse = sin(uTime * 1.5) * 0.15 + 0.85;
+
       float hover = uHovered;
       float drag = uDragging;
       float active = max(hover, drag);
-      float alpha = mix(0.0, 0.25, hover) + mix(0.0, 0.35, drag);
-      alpha += fresnel * mix(0.04, 0.2, active);
-      alpha += border * mix(0.18, 0.6, active);
-      vec3 col = mix(uColor, vec3(1.0), fresnel * 0.3 + hover * 0.2 + drag * 0.3);
-      gl_FragColor = vec4(col, clamp(alpha, 0.0, 1.0));
+
+      // Core bright edge
+      float edgeIntensity = borderSharp * 1.0;
+      // Mid glow
+      edgeIntensity += borderGlow * 0.5 * energyPulse;
+      // Wide soft bloom
+      edgeIntensity += borderWide * 0.15 * (0.7 + pulse * 0.3);
+      // Fresnel rim glow
+      edgeIntensity += fresnel * 0.2;
+
+      // Face fill alpha (very subtle, more visible on hover/drag)
+      float faceAlpha = mix(0.0, 0.15, hover) + mix(0.0, 0.25, drag);
+      faceAlpha += fresnel * mix(0.02, 0.12, active);
+
+      float alpha = faceAlpha + edgeIntensity * mix(0.7, 1.0, active);
+
+      // Color: white-hot core blending to the axis color, with energy tint
+      vec3 hotWhite = vec3(1.0, 1.0, 1.0);
+      vec3 glowColor = mix(uColor, hotWhite, borderSharp * 0.8 + borderGlow * 0.3);
+      glowColor += uColor * borderWide * pulse * 0.3;
+      glowColor = mix(glowColor, hotWhite, hover * 0.15 + drag * 0.25);
+
+      gl_FragColor = vec4(glowColor, clamp(alpha, 0.0, 1.0));
     }
   `,
 
@@ -5677,6 +5697,7 @@ const slicer = {
           uColor: { value: this._axisColors[colorIdx].clone() },
           uHovered: { value: 0.0 },
           uDragging: { value: 0.0 },
+          uTime: { value: 0.0 },
         },
         vertexShader: this._vertSrc,
         fragmentShader: this._fragSrc,
@@ -5698,7 +5719,7 @@ const slicer = {
     const wireGeo = new THREE.BufferGeometry();
     wireGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(72), 3));
     this.wireframe = new THREE.LineSegments(wireGeo, new THREE.LineBasicMaterial({
-      color: 0xc0d0ee, opacity: 0.8, transparent: true, depthTest: true, depthWrite: false,
+      color: 0xe0eeff, opacity: 0.9, transparent: true, depthTest: true, depthWrite: false, linewidth: 2,
     }));
     this.wireframe.renderOrder = 999;
     this.group.add(this.wireframe);
@@ -5882,7 +5903,44 @@ document.getElementById('viewerMoreBtn').onclick=(e)=>{e.stopPropagation();docum
 document.getElementById('editDTBtn').onclick=()=>{state.mode='editor';state.viewerFromEditor=false;document.getElementById('viewerMoreMenu').classList.remove('visible');updateUI();};
 document.getElementById('manageAnimBtn').onclick=()=>{document.getElementById('viewerMoreMenu').classList.remove('visible');flShow('animManager');renderAnimList();};
 document.addEventListener('click',()=>{document.getElementById('viewerMoreMenu').classList.remove('visible');document.getElementById('editorMoreMenu').classList.remove('visible');document.getElementById('animContextMenu').classList.remove('visible');document.getElementById('animFilterMenu').classList.remove('visible');});
-document.getElementById('btSave').onclick=()=>{const b=document.getElementById('btSave');b.textContent='Saving...';b.style.background='#11e874';setTimeout(()=>b.textContent='Saved!',800);setTimeout(()=>{b.textContent='Save';b.style.background='#2f80ed';},2000);};
+document.getElementById('btSave').onclick=()=>{
+  const b=document.getElementById('btSave');
+  b.textContent='Saving...';b.style.background='#11e874';
+  setTimeout(()=>{
+    b.textContent='Saved!';
+    // Show publish prompt after saving
+    setTimeout(()=>{
+      b.textContent='Save';b.style.background='#2f80ed';
+      showPublishPrompt();
+    },800);
+  },800);
+};
+function showPublishPrompt() {
+  // Create overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;animation:matPopIn 0.15s ease-out;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:12px;padding:24px;max-width:360px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);font-family:var(--font-family,Inter,sans-serif);';
+  box.innerHTML =
+    '<div style="font-size:15px;font-weight:700;color:#36415d;margin-bottom:6px;">Publish new version?</div>' +
+    '<div style="font-size:12px;color:#868d9e;margin-bottom:16px;">Your changes have been saved. Would you like to publish a new version so other users can see the updates?</div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+      '<button id="publishNo" style="padding:8px 16px;border:1px solid #c2c9db;border-radius:8px;background:#fff;color:#36415d;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Not now</button>' +
+      '<button id="publishYes" style="padding:8px 16px;border:none;border-radius:8px;background:#2f80ed;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Publish</button>' +
+    '</div>';
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  box.querySelector('#publishNo').onclick = () => overlay.remove();
+  box.querySelector('#publishYes').onclick = () => {
+    const btn = box.querySelector('#publishYes');
+    btn.textContent = 'Publishing...'; btn.style.background = '#11e874';
+    setTimeout(() => {
+      btn.textContent = 'Published!';
+      setTimeout(() => overlay.remove(), 600);
+    }, 800);
+  };
+}
 document.getElementById('deselectBtn').onclick=deselectAll;
 
 // ==================== ANIMATION MANAGER ====================
@@ -6247,7 +6305,6 @@ function captureSceneThumbnail() {
   // Hide grid for a clean thumbnail
   var gridWasVisible = infiniteGrid.mesh.visible;
   infiniteGrid.mesh.visible = false;
-  // Use the composer for proper post-processing (lighting, tone mapping, etc.)
   composer.render();
   infiniteGrid.mesh.visible = gridWasVisible;
   var src = renderer.domElement;
@@ -6257,33 +6314,65 @@ function captureSceneThumbnail() {
   var tw = 320, th = 200;
   c.width = tw; c.height = th;
   var ctx = c.getContext('2d');
-  // Crop-to-fill: pick the largest centered region that matches 16:10 aspect
+  // Fill with scene background color/gradient
+  var bgInput = document.getElementById('bgColorInput');
+  var bgColor = bgInput ? bgInput.value : '#1d4593';
+  var bgDark = darkenColor(bgColor, 0.4);
+  var grad = ctx.createLinearGradient(0, 0, 0, th);
+  grad.addColorStop(0, bgColor);
+  grad.addColorStop(1, bgDark);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, tw, th);
+  // Crop-to-fill from renderer
   var srcAspect = sw / sh, tgtAspect = tw / th;
   var sx, sy, sWidth, sHeight;
   if (srcAspect > tgtAspect) {
-    // Source is wider — crop sides
-    sHeight = sh;
-    sWidth = Math.round(sh * tgtAspect);
-    sx = Math.round((sw - sWidth) / 2);
-    sy = 0;
+    sHeight = sh; sWidth = Math.round(sh * tgtAspect);
+    sx = Math.round((sw - sWidth) / 2); sy = 0;
   } else {
-    // Source is taller — crop top/bottom
-    sWidth = sw;
-    sHeight = Math.round(sw / tgtAspect);
-    sx = 0;
-    sy = Math.round((sh - sHeight) / 2);
+    sWidth = sw; sHeight = Math.round(sw / tgtAspect);
+    sx = 0; sy = Math.round((sh - sHeight) / 2);
   }
   ctx.drawImage(src, sx, sy, sWidth, sHeight, 0, 0, tw, th);
-  ta.innerHTML = ''; ta.appendChild(c);
-  // Send thumbnail to parent React app
+  setThumbnail(c);
+}
+function setThumbnail(canvas) {
+  var ta = document.getElementById('thumbnailArea');
+  ta.innerHTML = ''; ta.appendChild(canvas);
   try {
-    var dataUrl = c.toDataURL('image/jpeg', 0.85);
+    var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     if (window.parent !== window) {
       window.parent.postMessage({ type: 'dt-thumbnail', dataUrl: dataUrl }, '*');
     }
   } catch(e) {}
 }
 document.getElementById('captureThumbnailBtn').onclick = captureSceneThumbnail;
+document.getElementById('uploadThumbnailBtn').onclick = () => document.getElementById('uploadThumbnailInput').click();
+document.getElementById('uploadThumbnailInput').addEventListener('change', (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = 320; c.height = 200;
+    const ctx = c.getContext('2d');
+    // Crop-to-fill 16:10
+    const srcAspect = img.width / img.height, tgtAspect = 320 / 200;
+    let sx, sy, sw, sh;
+    if (srcAspect > tgtAspect) {
+      sh = img.height; sw = Math.round(sh * tgtAspect);
+      sx = Math.round((img.width - sw) / 2); sy = 0;
+    } else {
+      sw = img.width; sh = Math.round(sw / tgtAspect);
+      sx = 0; sy = Math.round((img.height - sh) / 2);
+    }
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 320, 200);
+    setThumbnail(c);
+    URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(file);
+  e.target.value = '';
+});
 document.getElementById('setDefaultViewBtn').onclick=()=>{
   const b=document.getElementById('setDefaultViewBtn'),o=b.innerHTML;
   b.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="#36415d"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> View saved!';
@@ -8599,6 +8688,11 @@ function animate() {
   orbitControls.update();
   infiniteGrid.update(camera);
   if (state.hotspotMode) updateHotspotProjections();
+  // Update slicer time uniform for animated edges
+  if (slicer.active && slicer.faces.length) {
+    const t = now * 0.001;
+    for (const f of slicer.faces) f.material.uniforms.uTime.value = t;
+  }
   // Run occlusion culling before main render
   occlusionCulling.update();
   composer.render();
