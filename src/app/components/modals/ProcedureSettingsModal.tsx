@@ -37,10 +37,10 @@ export function ProcedureSettingsModal({ isOpen, onClose, procedureName }: Proce
         <div className="flex items-start justify-between p-6 border-b sticky top-0 z-10" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card)' }}>
           <div>
             <h2 className="text-base uppercase mb-1.5" style={{ fontWeight: 'var(--font-weight-bold)', color: 'var(--foreground)' }}>
-              Procedure Settings
+              Flow Settings
             </h2>
             <p className="text-xs" style={{ color: 'var(--muted)' }}>
-              Configure settings for this procedure
+              Configure settings for this flow
             </p>
           </div>
           <button
@@ -59,7 +59,7 @@ export function ProcedureSettingsModal({ isOpen, onClose, procedureName }: Proce
           {/* Procedure Name */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wide mb-2" style={{ color: 'var(--muted)' }}>
-              Procedure Name
+              Flow Name
             </label>
             <input
               type="text"
@@ -86,7 +86,7 @@ export function ProcedureSettingsModal({ isOpen, onClose, procedureName }: Proce
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               className="w-full px-3 py-2 text-sm rounded border focus:outline-none transition-colors resize-none"
-              placeholder="Add a description for this procedure..."
+              placeholder="Add a description for this flow..."
               style={{
                 backgroundColor: 'var(--card)',
                 borderColor: 'var(--border)',

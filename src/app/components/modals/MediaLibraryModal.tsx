@@ -143,7 +143,7 @@ function ProcedureListModal({ isOpen, onClose, itemName, procedures }: Procedure
         <div className="border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 style={{ fontWeight: 'var(--font-weight-bold)' }}>Used In Procedures</h3>
+              <h3 style={{ fontWeight: 'var(--font-weight-bold)' }}>Used In Flows</h3>
               <p className="text-sm text-muted mt-1">{itemName}</p>
             </div>
             <button
@@ -157,7 +157,7 @@ function ProcedureListModal({ isOpen, onClose, itemName, procedures }: Procedure
 
         <div className="p-6">
           {procedures.length === 0 ? (
-            <p className="text-sm text-muted text-center py-4">Not used in any procedures</p>
+            <p className="text-sm text-muted text-center py-4">Not used in any flows</p>
           ) : (
             <div className="space-y-2">
               {procedures.map((proc, index) => (
@@ -362,7 +362,7 @@ function DeleteConfirmModal({ isOpen, onClose, itemName, usedInProcedures, onCon
           {usedInProcedures.length > 0 && (
             <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-[var(--radius)]">
               <p className="text-sm mb-2" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                ⚠️ This item is used in {usedInProcedures.length} procedure{usedInProcedures.length !== 1 ? 's' : ''}:
+                ⚠️ This item is used in {usedInProcedures.length} flow{usedInProcedures.length !== 1 ? 's' : ''}:
               </p>
               <ul className="text-sm text-muted space-y-1">
                 {usedInProcedures.map((proc) => (
@@ -481,7 +481,7 @@ function ReplaceModal({ isOpen, onClose, currentItem, usedInProcedures, allItems
           {usedInProcedures.length > 0 && (
             <div className="p-4 bg-primary/5 border border-primary/20 rounded-[var(--radius)] mb-4">
               <p className="text-sm mb-2" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                ℹ️ This item is used in {usedInProcedures.length} procedure{usedInProcedures.length !== 1 ? 's' : ''}:
+                ℹ️ This item is used in {usedInProcedures.length} flow{usedInProcedures.length !== 1 ? 's' : ''}:
               </p>
               <ul className="text-sm text-muted space-y-1">
                 {usedInProcedures.map((proc) => (
@@ -1956,10 +1956,10 @@ function MediaLibraryContent({ isOpen, onClose, selectionMode = false, onSelectI
                         onClick={() => setProcedureModal(selectedItemForDetails)}
                         className="text-sm text-primary hover:underline"
                       >
-                        {selectedItemForDetails.usedInProcedures.length} Procedure{selectedItemForDetails.usedInProcedures.length !== 1 ? 's' : ''}
+                        {selectedItemForDetails.usedInProcedures.length} Flow{selectedItemForDetails.usedInProcedures.length !== 1 ? 's' : ''}
                       </button>
                     ) : (
-                      <p className="text-sm text-muted">Not used in any procedures</p>
+                      <p className="text-sm text-muted">Not used in any flows</p>
                     )}
                   </div>
 

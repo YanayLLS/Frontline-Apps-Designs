@@ -208,8 +208,8 @@ export function Header({
         <button 
           onClick={onOpenSettings}
           className="content-stretch flex gap-2 items-center p-2 relative rounded-lg shrink-0 w-8 h-8 hover:bg-secondary/50 transition-colors"
-          title="Procedure settings"
-          aria-label="Procedure settings"
+          title="Flow settings"
+          aria-label="Flow settings"
         >
           <Settings className="size-4 text-foreground" />
         </button>

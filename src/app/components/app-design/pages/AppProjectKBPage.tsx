@@ -2,6 +2,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { FolderOpen, FileText, Film, ChevronRight, Plus, ChevronDown, X, Eye, RefreshCw, Cuboid } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { AppProcedureInfoModal } from '../components/AppProcedureInfoModal';
+import { getUrlParam, setUrlParam } from '../../../utils/urlParams';
+import { useProject } from '../../../contexts/ProjectContext';
 
 type KBItemType = 'folder' | 'procedure' | 'digital-twin' | 'media';
 
@@ -31,6 +33,17 @@ const projectData: Record<string, { name: string; items: KBItem[] }> = {
       { id: 'dt2', name: 'Hydraulic System', type: 'digital-twin', description: 'Hydraulic pump and valve assembly', lastUpdated: '5 days ago' },
       { id: 'm1', name: 'Installation Tutorial Video', type: 'media', description: 'Step-by-step video guide', lastUpdated: '2 days ago' },
       { id: 'm2', name: 'Wiring Diagram', type: 'media', description: 'Complete wiring schematic', lastUpdated: '1 week ago' },
+    ],
+  },
+  'generator': {
+    name: 'Generator',
+    items: [
+      { id: 'gen-dt1', name: 'Generator Digital Twin', type: 'digital-twin', description: 'Full 3D model of the diesel generator assembly with engine, alternator, control panel, and enclosure', lastUpdated: '1 day ago' },
+      { id: 'gen-p1', name: 'Preventive Maintenance Procedure', type: 'procedure', steps: 10, lastUpdated: '1 day ago', version: '2.3', image: 'https://images.unsplash.com/photo-1656797654768-f3b5883a0fbf?w=200&h=150&fit=crop', description: 'Complete 10-step preventive maintenance procedure covering safety lockout, oil and coolant checks, air and fuel filter inspection, battery testing, belt and hose inspection, and load testing.' },
+      { id: 'gen-p2', name: 'Air Filter Replacement', type: 'procedure', steps: 6, lastUpdated: '3 days ago', version: '1.1', description: 'Step-by-step guide for removing, inspecting, and replacing the engine air filter element including housing cleaning and restriction indicator reset.' },
+      { id: 'gen-p3', name: 'Coolant System Flush & Refill', type: 'procedure', steps: 8, lastUpdated: '5 days ago', version: '1.0', description: 'Procedure for draining the cooling system, flushing with cleaning solution, inspecting hoses and thermostat, and refilling with the correct coolant mixture.' },
+      { id: 'gen-p4', name: 'Fuel Filter & Water Separator Service', type: 'procedure', steps: 5, lastUpdated: '2 days ago', version: '1.4', description: 'Replacement of the primary fuel filter and draining of the fuel/water separator bowl, including fuel system bleeding and leak check.' },
+      { id: 'gen-p5', name: 'Alternator Belt Removal & Installation', type: 'procedure', steps: 7, lastUpdated: '4 days ago', version: '2.0', image: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=200&h=150&fit=crop', description: 'Removal of the worn serpentine belt, inspection of pulleys and auto-tensioner, installation of the new belt with correct routing, and tension verification.' },
     ],
   },
   'manufacturing-alpha': {
@@ -64,8 +77,31 @@ export function AppProjectKBPage() {
   const [selectedItem, setSelectedItem] = useState<KBItem | null>(null);
   const [loadingDT, setLoadingDT] = useState<KBItem | null>(null);
   const [loadProgress, setLoadProgress] = useState(0);
+  const { dtThumbnail } = useProject();
 
-  const project = projectData[projectId || ''] || defaultProject;
+  const selectItem = (item: KBItem | null) => {
+    setSelectedItem(item);
+    setUrlParam('open', item?.id ?? null);
+  };
+
+  const rawProject = projectData[projectId || ''] || defaultProject;
+  // Use captured DT thumbnail for generator project items
+  const project = projectId === 'generator' && dtThumbnail
+    ? { ...rawProject, items: rawProject.items.map(item =>
+        item.type === 'digital-twin' || (item.type === 'procedure' && item.image)
+          ? { ...item, image: dtThumbnail }
+          : item
+      )}
+    : rawProject;
+
+  // Auto-open procedure from URL ?open= param
+  useEffect(() => {
+    const openId = getUrlParam('open');
+    if (openId && !selectedItem) {
+      const item = project.items.find(i => i.id === openId);
+      if (item) setSelectedItem(item);
+    }
+  }, []);
 
   // Digital twin loading animation
   useEffect(() => {
@@ -170,7 +206,7 @@ export function AppProjectKBPage() {
         {procedures.map((item) => (
           <div
             key={item.id}
-            onClick={() => setSelectedItem(item)}
+            onClick={() => selectItem(item)}
             className="cursor-pointer overflow-hidden hover:shadow-elevation-md transition-all"
             style={{
               width: '249px',
@@ -192,7 +228,7 @@ export function AppProjectKBPage() {
               style={{ top: '8px', left: '8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'var(--font-weight-bold)', color: 'white', border: '1px solid #6DC20D', backgroundColor: 'rgba(109,194,13,0.5)' }}
             >
               <FileText style={{ width: '12px', height: '12px' }} />
-              Procedure
+              Flow
             </div>
             <div className="absolute bottom-0 left-0 right-0 px-3 pb-2 truncate" style={{ fontSize: '14px', fontWeight: 'var(--font-weight-bold)', color: 'white' }}>
               {item.name}
@@ -268,7 +304,7 @@ export function AppProjectKBPage() {
             description: selectedItem.description,
             thumbnail: selectedItem.image,
           }}
-          onClose={() => setSelectedItem(null)}
+          onClose={() => selectItem(null)}
         />
       )}
 
@@ -343,7 +379,7 @@ export function AppProjectKBPage() {
                 </span>
                 <button
                   onClick={() => {
-                    window.open(`/web/project/project-phoenix/knowledgebase?open=${loadingDT.id}`, '_blank');
+                    window.open(`/web/project/915-i-series/knowledgebase?open=${loadingDT.id}`, '_blank');
                   }}
                   className="hover:underline"
                   style={{ fontSize: '12px', color: '#2F80ED' }}
@@ -392,18 +428,18 @@ export function AppProjectKBPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-foreground mb-4" style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-h4)' }}>
-                New Procedure
+                New Flow
               </h3>
 
               <div className="mb-4">
                 <label className="text-xs text-muted mb-1.5 block" style={{ fontWeight: 'var(--font-weight-medium)' }}>
-                  Name the procedure
+                  Name the flow
                 </label>
                 <input
                   type="text"
                   value={newProcName}
                   onChange={(e) => setNewProcName(e.target.value)}
-                  placeholder="Enter procedure name..."
+                  placeholder="Enter flow name..."
                   className="w-full px-3 py-2.5 bg-card rounded-[var(--radius)] text-sm text-foreground border border-border outline-none placeholder:text-muted focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>

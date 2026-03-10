@@ -11,10 +11,10 @@ interface Notification {
   type: 'knowledge-base' | 'remote-support' | 'system';
 }
 
-const notifications: Notification[] = [
-  { id: '3', title: 'Knowledge Base', description: 'Your procedure "Belt Replacement Guide" was approved.', time: '08:00 AM', date: 'Today', read: true, type: 'knowledge-base' },
-  { id: '4', title: 'System', description: 'System maintenance scheduled for tonight at 2:00 AM.', time: '4:30 PM', date: 'Aug 8', read: true, type: 'system' },
-  { id: '5', title: 'Knowledge Base', description: 'Carlos Oliveira updated "Routine Maintenance" procedure.', time: '2:15 PM', date: 'Aug 8', read: true, type: 'knowledge-base' },
+export const initialAppNotifications: Notification[] = [
+  { id: '3', title: 'Knowledge Base', description: 'Your flow "Belt Replacement Guide" was approved.', time: '08:00 AM', date: 'Today', read: false, type: 'knowledge-base' },
+  { id: '4', title: 'System', description: 'System maintenance scheduled for tonight at 2:00 AM.', time: '4:30 PM', date: 'Aug 8', read: false, type: 'system' },
+  { id: '5', title: 'Knowledge Base', description: 'Carlos Oliveira updated "Routine Maintenance" flow.', time: '2:15 PM', date: 'Aug 8', read: false, type: 'knowledge-base' },
   { id: '6', title: 'Remote Support', description: 'Missed call from Nika Jerrardo.', time: '11:00 AM', date: 'Aug 8', read: true, type: 'remote-support' },
   { id: '7', title: 'Knowledge Base', description: 'New digital twin "Hydraulic System" has been added.', time: '9:45 AM', date: 'Aug 6', read: true, type: 'knowledge-base' },
   { id: '8', title: 'System', description: 'Your account password will expire in 7 days.', time: '8:00 AM', date: 'Aug 6', read: true, type: 'system' },
@@ -34,7 +34,7 @@ interface SwipeState {
 
 export function AppNotificationsPage() {
   const [filter, setFilter] = useState<'all' | 'read' | 'unread'>('all');
-  const [notifs, setNotifs] = useState(notifications);
+  const [notifs, setNotifs] = useState(initialAppNotifications);
   const [showMenu, setShowMenu] = useState(false);
   const [showBottomSheet, setShowBottomSheet] = useState(false);
   const [swipeState, setSwipeState] = useState<SwipeState | null>(null);
@@ -208,28 +208,32 @@ export function AppNotificationsPage() {
                     key={notif.id}
                     className="relative overflow-hidden border-b border-border"
                   >
-                    {/* Swipe action backgrounds */}
+                    {/* Swipe action backgrounds — only visible during swipe or when revealed */}
                     {/* Left swipe - delete (red) */}
-                    <div className="absolute inset-y-0 right-0 w-20 bg-destructive flex items-center justify-center">
-                      <button
-                        onClick={() => deleteNotif(notif.id)}
-                        className="flex flex-col items-center gap-1 text-white"
-                      >
-                        <Trash2 className="size-5" />
-                        <span className="text-xs">Delete</span>
-                      </button>
-                    </div>
+                    {(offset < 0 || (isRevealed && revealedAction?.direction === 'left')) && (
+                      <div className="absolute inset-y-0 right-0 w-20 bg-destructive flex items-center justify-center">
+                        <button
+                          onClick={() => deleteNotif(notif.id)}
+                          className="flex flex-col items-center gap-1 text-white"
+                        >
+                          <Trash2 className="size-5" />
+                          <span className="text-xs">Delete</span>
+                        </button>
+                      </div>
+                    )}
 
                     {/* Right swipe - mark read/unread (gray) */}
-                    <div className="absolute inset-y-0 left-0 w-20 bg-muted/30 flex items-center justify-center">
-                      <button
-                        onClick={() => notif.read ? markAsUnread(notif.id) : markAsRead(notif.id)}
-                        className="flex flex-col items-center gap-1 text-foreground"
-                      >
-                        {notif.read ? <Mail className="size-5" /> : <MailOpen className="size-5" />}
-                        <span className="text-xs">{notif.read ? 'Unread' : 'Read'}</span>
-                      </button>
-                    </div>
+                    {(offset > 0 || (isRevealed && revealedAction?.direction === 'right')) && (
+                      <div className="absolute inset-y-0 left-0 w-20 bg-muted/30 flex items-center justify-center">
+                        <button
+                          onClick={() => notif.read ? markAsUnread(notif.id) : markAsRead(notif.id)}
+                          className="flex flex-col items-center gap-1 text-foreground"
+                        >
+                          {notif.read ? <Mail className="size-5" /> : <MailOpen className="size-5" />}
+                          <span className="text-xs">{notif.read ? 'Unread' : 'Read'}</span>
+                        </button>
+                      </div>
+                    )}
 
                     {/* Notification content (slides) */}
                     <div

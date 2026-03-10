@@ -2,6 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { FolderOpen, FileText, ChevronRight, Cuboid, Plus, Eye, RefreshCw, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { AppProcedureInfoModal } from '../components/AppProcedureInfoModal';
+import { getUrlParam, setUrlParam } from '../../../utils/urlParams';
 
 type TabType = 'flows-media' | 'digital-twins';
 
@@ -104,6 +105,11 @@ export function AppFolderBrowsePage() {
   const [loadingDT, setLoadingDT] = useState<FolderItem | null>(null);
   const [loadProgress, setLoadProgress] = useState(0);
 
+  const selectItem = (item: FolderItem | null) => {
+    setSelectedItem(item);
+    setUrlParam('open', item?.id ?? null);
+  };
+
   // Digital twin loading animation
   useEffect(() => {
     if (!loadingDT) return;
@@ -126,6 +132,15 @@ export function AppFolderBrowsePage() {
 
   const folder = foldersData[folderId || ''] || defaultFolder;
 
+  // Auto-open procedure from URL ?open= param
+  useEffect(() => {
+    const openId = getUrlParam('open');
+    if (openId && !selectedItem) {
+      const item = [...folder.flowsMedia, ...folder.digitalTwins].find(i => i.id === openId);
+      if (item) setSelectedItem(item);
+    }
+  }, []);
+
   const filteredFlowsMedia = folder.flowsMedia.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -142,7 +157,7 @@ export function AppFolderBrowsePage() {
       setLoadingDT(item);
     } else {
       // Procedures open the info modal
-      setSelectedItem(item);
+      selectItem(item);
     }
   };
 
@@ -268,7 +283,7 @@ export function AppFolderBrowsePage() {
                     ) : (
                       <FileText style={{ width: '12px', height: '12px' }} />
                     )}
-                    {item.badgeType === 'digital-twin' ? 'Digital Twin' : 'Procedure'}
+                    {item.badgeType === 'digital-twin' ? 'Digital Twin' : 'Flow'}
                   </div>
                 )}
                 {/* Name - bottom */}
@@ -330,7 +345,7 @@ export function AppFolderBrowsePage() {
             thumbnail: selectedItem.thumbnail,
             digitalTwinName: selectedItem.digitalTwinName,
           }}
-          onClose={() => setSelectedItem(null)}
+          onClose={() => selectItem(null)}
         />
       )}
 
@@ -380,7 +395,7 @@ export function AppFolderBrowsePage() {
               >
                 <span style={{ fontSize: '14px', fontWeight: 'var(--font-weight-bold)', color: '#36415D' }}>Content creator area</span>
                 <button
-                  onClick={() => window.open(`/web/project/project-phoenix/knowledgebase?open=${loadingDT.id}`, '_blank')}
+                  onClick={() => window.open(`/web/project/915-i-series/knowledgebase?open=${loadingDT.id}`, '_blank')}
                   className="hover:underline"
                   style={{ fontSize: '12px', color: '#2F80ED' }}
                 >

@@ -97,7 +97,7 @@ const projectBaseData: Record<string, {
   procedures: string[];
   avgDuration: string;
 }> = {
-  'project-phoenix': {
+  '915-i-series': {
     multiplier: 1,
     mainProcedure: 'Phoenix Main Assembly',
     procedures: ['Phoenix Main Assembly', 'Component Integration', 'Quality Control', 'System Calibration', 'Final Testing', 'Safety Inspection', 'Documentation'],
@@ -163,7 +163,7 @@ const generateDataForPeriod = (period: TimeRange, projectId?: string) => {
   };
   
   const mult = multipliers[period];
-  const projectData = projectId ? projectBaseData[projectId] : projectBaseData['project-phoenix'];
+  const projectData = projectId ? projectBaseData[projectId] : projectBaseData['915-i-series'];
   const projectMult = projectData?.multiplier || 1;
   const finalMult = mult * projectMult;
   
@@ -212,7 +212,7 @@ const generateDataForPeriod = (period: TimeRange, projectId?: string) => {
   };
   
   // Top procedures data - uses project-specific procedure names
-  const procedureNames = projectData?.procedures || projectBaseData['project-phoenix'].procedures;
+  const procedureNames = projectData?.procedures || projectBaseData['915-i-series'].procedures;
   const topProceduresData = procedureNames.map((name, index) => ({
     name,
     views: Math.round((342 - index * 30) * finalMult),
@@ -229,7 +229,7 @@ const generateDataForPeriod = (period: TimeRange, projectId?: string) => {
   
   // Session type data - varies by project
   const sessionTypeData = [
-    { name: 'Procedure', value: Math.round(456 * finalMult), color: '#8404b3' },
+    { name: 'Flow', value: Math.round(456 * finalMult), color: '#8404b3' },
     { name: 'Digital Twin', value: Math.round(280 * finalMult), color: 'var(--color-accent)' },
   ];
   
@@ -252,7 +252,7 @@ const createMockSteps = (totalSteps: number, completedSteps: number): ProcedureS
     steps.push({
       id: `step-${i}`,
       stepNumber,
-      title: `Step ${stepNumber}: ${['Initialize System', 'Check Components', 'Verify Connections', 'Run Diagnostics', 'Configure Settings', 'Test Functionality', 'Review Results', 'Complete Process', 'Safety Check', 'Final Verification', 'Documentation', 'Shutdown Procedure'][i % 12]}`,
+      title: `Step ${stepNumber}: ${['Initialize System', 'Check Components', 'Verify Connections', 'Run Diagnostics', 'Configure Settings', 'Test Functionality', 'Review Results', 'Complete Process', 'Safety Check', 'Final Verification', 'Documentation', 'Shutdown Flow'][i % 12]}`,
       description: `Detailed instructions for step ${stepNumber}. ${isCompleted ? 'This step was completed successfully.' : 'This step was not completed.'}`,
       startTime: `10:${String(i * 2).padStart(2, '0')}`,
       endTime: isCompleted ? `10:${String(i * 2 + 2).padStart(2, '0')}` : '—',
@@ -278,8 +278,8 @@ const createMockSteps = (totalSteps: number, completedSteps: number): ProcedureS
 
 // Generate mock sessions based on project
 const generateMockSessions = (projectId?: string): Session[] => {
-  const projectData = projectId ? projectBaseData[projectId] : projectBaseData['project-phoenix'];
-  const procedures = projectData?.procedures || projectBaseData['project-phoenix'].procedures;
+  const projectData = projectId ? projectBaseData[projectId] : projectBaseData['915-i-series'];
+  const procedures = projectData?.procedures || projectBaseData['915-i-series'].procedures;
   
   return [
     {
@@ -686,7 +686,7 @@ function SessionDetailsModal({
               <div className="border-r border-border bg-secondary/20 overflow-auto">
                 <div className="p-4">
                   <h3 className="text-xs text-muted uppercase tracking-wide mb-3" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                    Procedure Steps ({session.completedSteps}/{session.steps})
+                    Flow Steps ({session.completedSteps}/{session.steps})
                   </h3>
                   <div className="space-y-2">
                     {session.procedureSteps.map((step, index) => (
@@ -1033,7 +1033,7 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
     
     autoTable(doc, {
       startY: 90,
-      head: [['Procedure', 'Views', 'Avg Duration', 'Completion %']],
+      head: [['Flow', 'Views', 'Avg Duration', 'Completion %']],
       body: dynamicData.topProcedures.map(proc => [
         proc.name,
         proc.views.toString(),
@@ -1052,7 +1052,7 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
     
     autoTable(doc, {
       startY: finalY + 14,
-      head: [['Status', 'Procedure', 'User', 'Duration', 'Date', 'Score']],
+      head: [['Status', 'Flow', 'User', 'Duration', 'Date', 'Score']],
       body: filteredSessions.slice(0, 20).map(session => [
         getStatusLabel(session.status),
         session.procedureName,
@@ -1093,7 +1093,7 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
 
   const sessionTypeOptions = [
     { value: 'all', label: 'All Types' },
-    { value: 'Procedure', label: 'Procedure' },
+    { value: 'Flow', label: 'Flow' },
     { value: 'Digital Twin', label: 'Digital Twin' },
   ];
 
@@ -1294,7 +1294,7 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
           {/* Procedure Performance Table */}
           <div className="col-span-2 bg-card border border-border rounded-[var(--radius)] p-5">
             <h2 className="text-sm text-foreground mb-4" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-              Procedure Performance
+              Flow Performance
             </h2>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -1302,7 +1302,7 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
                   <tr className="border-b border-border">
                     <th className="text-left pb-3">
                       <span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                        Procedure
+                        Flow
                       </span>
                     </th>
                     <th className="text-left pb-3">
@@ -1515,7 +1515,7 @@ export function AnalyticsPage({ projectId }: AnalyticsPageProps = {}) {
                   </th>
                   <th className="px-4 py-3 text-left">
                     <span className="text-[10px] text-muted uppercase tracking-wide" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-                      Procedure
+                      Flow
                     </span>
                   </th>
                   <th className="px-4 py-3 text-left">

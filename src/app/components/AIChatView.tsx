@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import svgPaths from "../../imports/svg-albmkprcym";
 import { Paperclip, Send, Mic, X, Loader2, ChevronDown, Search, Plus, MessageSquare, Clock, Camera, FolderOpen, Upload, Menu, Copy, Check, ThumbsUp, ThumbsDown, RotateCcw, AlertCircle, ArrowDown, Bug, Trash2, MicOff, History, Settings2, Undo2, FileText, Folder, Wrench, Sparkles, MoreVertical, Edit2, Save } from 'lucide-react';
 import { useIsMobile } from './ui/use-mobile';
 import { MediaLibraryModal } from './MediaLibraryModal';
 import { ModelSelector } from './ModelSelector';
 import generatorImage from 'figma:asset/e07e13a2f3760fdde8be911bb7c14c56f85b7c2a.png';
+import { getSmartAIResponse, streamResponse } from '../utils/aiResponses';
 
 function IconClose() {
   return (
@@ -96,7 +97,7 @@ const getAIResponse = (userMessage: string, context: ContextSource, stage?: numb
   
   // Create procedure
   if (lowerMessage.includes('create') && (lowerMessage.includes('procedure') || lowerMessage.includes('workflow'))) {
-    return `I can help you create a new procedure${context.type === 'folder' ? ` in "${context.name}"` : ''}! To get started:\n\n1. Go to the Knowledge Base page\n2. Click "New Procedure" in the top right\n3. Enter a name and description\n4. Add steps using the procedure editor\n\nWould you like me to guide you through creating a specific type of procedure?`;
+    return `I can help you create a new flow${context.type === 'folder' ? ` in "${context.name}"` : ''}! To get started:\n\n1. Go to the Knowledge Base page\n2. Click "New Flow" in the top right\n3. Enter a name and description\n4. Add steps using the flow editor\n\nWould you like me to guide you through creating a specific type of flow?`;
   }
   
   // Modify procedure
@@ -134,31 +135,37 @@ const getAIResponse = (userMessage: string, context: ContextSource, stage?: numb
     return `I can assist you with:\n• Creating procedures and workflows\n• Finding and organizing content\n• Managing your knowledge base\n• Answering questions about your workspace${contextInfo}`;
   }
   
-  // Default response
-  return `I understand you're asking about "${userMessage}". ${context.type !== 'workspace' ? `In the context of "${context.name}", ` : ''}I can help you with:\n\n• Creating and managing procedures\n• Organizing your workspace\n• Finding information\n• Answering specific questions\n\nCould you provide more details about what you'd like to do?`;
+  // Fall through to shared smart response engine
+  return getSmartAIResponse(userMessage);
 };
 
-// Utility to make URLs clickable
-const linkifyText = (text: string) => {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = text.split(urlRegex);
-  
-  return parts.map((part, index) => {
-    if (part.match(urlRegex)) {
-      return (
-        <a
-          key={index}
-          href={part}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline hover:opacity-80"
-          style={{ color: 'var(--primary)' }}
-        >
-          {part}
-        </a>
-      );
+/** Render markdown: **bold**, URLs, bullets, numbered lists, checkboxes, table rows */
+const renderMessageContent = (text: string) => {
+  const processInline = (str: string, keyPrefix: string = '') => {
+    // Split by bold and URLs
+    const parts = str.split(/(\*\*[^*]+\*\*|https?:\/\/[^\s]+)/g);
+    return parts.map((part, j) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={`${keyPrefix}-${j}`} style={{ fontWeight: 'var(--font-weight-bold)' }}>{part.slice(2, -2)}</strong>;
+      }
+      if (part.match(/^https?:\/\//)) {
+        return <a key={`${keyPrefix}-${j}`} href={part} target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80" style={{ color: 'var(--primary)' }}>{part}</a>;
+      }
+      return part;
+    });
+  };
+
+  const lines = text.split('\n');
+  return lines.map((line, i) => {
+    if (line.match(/^☐ /)) return <div key={i} style={{ paddingLeft: '4px' }}>{'☐ '}{processInline(line.slice(2), String(i))}</div>;
+    if (line.match(/^[•\-] /)) return <div key={i} style={{ paddingLeft: '12px', textIndent: '-12px' }}>{processInline(line, String(i))}</div>;
+    if (line.match(/^\d+\.\s/)) return <div key={i} style={{ paddingLeft: '8px' }}>{processInline(line, String(i))}</div>;
+    if (line.startsWith('|') && line.endsWith('|')) {
+      if (line.match(/^\|[\s-|]+\|$/)) return null;
+      return <div key={i} style={{ fontFamily: 'monospace', fontSize: '0.85em' }}>{processInline(line, String(i))}</div>;
     }
-    return part;
+    if (line.trim() === '') return <div key={i} style={{ height: '6px' }} />;
+    return <div key={i}>{processInline(line, String(i))}</div>;
   });
 };
 
@@ -182,6 +189,7 @@ export function AIChatView({
   const [chatMessage, setChatMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [thinkingStage, setThinkingStage] = useState(0);
   const [attachedFiles, setAttachedFiles] = useState<Array<{name: string, size: number, preview?: string}>>([]);
   const [fileUploadError, setFileUploadError] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -223,6 +231,7 @@ export function AIChatView({
   const debugMenuRef = useRef<HTMLDivElement>(null);
   const headerMenuRef = useRef<HTMLDivElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const cancelStreamRef = useRef<(() => void) | null>(null);
   
   const MAX_CHAR_LIMIT = 4000;
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -234,6 +243,15 @@ export function AIChatView({
       setChatMessage(draft);
     }
   }, []);
+
+  // Cycle through thinking stages
+  useEffect(() => {
+    if (!isTyping) { setThinkingStage(0); return; }
+    const timer = setInterval(() => {
+      setThinkingStage(prev => (prev + 1) % 3);
+    }, 1200);
+    return () => clearInterval(timer);
+  }, [isTyping]);
 
   // Save draft message to localStorage
   useEffect(() => {
@@ -552,26 +570,40 @@ export function AIChatView({
         : chat
     ));
     
-    // Simulate AI thinking and response
-    const thinkingTime = 800 + Math.random() * 1200; // 0.8-2s
-    setTimeout(() => {
+    // Cancel any in-progress stream
+    cancelStreamRef.current?.();
+
+    // Simulate AI thinking, then stream response
+    const thinkingTime = 600 + Math.random() * 800;
+    const aiMsgId = `msg-${Date.now()}-ai`;
+    const fullResponse = getAIResponse(userMsg.content, selectedContext, machineInspectionStage);
+
+    const thinkTimer = setTimeout(() => {
       setIsTyping(false);
-      const aiResponse = getAIResponse(userMsg.content, selectedContext, machineInspectionStage);
+      // Add empty assistant message to stream into
       setChatMessages((prev) => [
         ...prev,
-        {
-          role: 'assistant',
-          content: aiResponse,
-          timestamp: new Date(),
-          id: `msg-${Date.now()}`,
-        },
+        { role: 'assistant', content: '', timestamp: new Date(), id: aiMsgId },
       ]);
-      
-      // Advance machine inspection stage if applicable
-      if (machineInspectionStage > 0 && machineInspectionStage < 4) {
-        setMachineInspectionStage(machineInspectionStage + 1);
-      }
+
+      cancelStreamRef.current = streamResponse(
+        fullResponse,
+        (partial) => {
+          setChatMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: partial } : m));
+        },
+        () => {
+          cancelStreamRef.current = null;
+          // Advance machine inspection stage if applicable
+          if (machineInspectionStage > 0 && machineInspectionStage < 4) {
+            setMachineInspectionStage(machineInspectionStage + 1);
+          }
+        },
+      );
     }, thinkingTime);
+
+    cancelStreamRef.current = () => {
+      clearTimeout(thinkTimer);
+    };
   };
 
   const handleRetryMessage = (messageId: string) => {
@@ -593,19 +625,17 @@ export function AIChatView({
       
       setChatMessages(prev => [...prev, retryMsg]);
       setIsTyping(true);
-      
+
+      const retryAiId = `msg-${Date.now()}-ai`;
+      const retryResponse = getAIResponse(retryMsg.content, selectedContext, machineInspectionStage);
       setTimeout(() => {
         setIsTyping(false);
-        const aiResponse = getAIResponse(retryMsg.content, selectedContext, machineInspectionStage);
-        setChatMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: aiResponse,
-            timestamp: new Date(),
-            id: `msg-${Date.now()}`,
-          },
-        ]);
+        setChatMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date(), id: retryAiId }]);
+        streamResponse(
+          retryResponse,
+          (partial) => { setChatMessages(prev => prev.map(m => m.id === retryAiId ? { ...m, content: partial } : m)); },
+          () => {},
+        );
       }, 1000);
     }, 300);
   };
@@ -1550,7 +1580,7 @@ export function AIChatView({
                               lineHeight: '1.5',
                             }}
                           >
-                            {linkifyText(msg.content)}
+                            {renderMessageContent(msg.content)}
                           </p>
                         )}
 
@@ -1827,7 +1857,7 @@ export function AIChatView({
                         color: 'var(--muted)',
                       }}
                     >
-                      Thinking...
+                      {['Thinking...', 'Searching knowledge base...', 'Generating response...'][thinkingStage]}
                     </span>
                   </div>
                 </div>

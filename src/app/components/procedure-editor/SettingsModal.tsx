@@ -196,7 +196,7 @@ export function SettingsModal({ onClose, procedureTitle, onProcedureTitleChange 
                     </svg>
                   </div>
                 </div>
-                <h3 id="settings-title" className="text-card-foreground" style={{ fontFamily: 'var(--font-family)' }}>Procedure Settings</h3>
+                <h3 id="settings-title" className="text-card-foreground" style={{ fontFamily: 'var(--font-family)' }}>Flow Settings</h3>
               </div>
               
               <div className="flex items-center gap-2">
@@ -228,7 +228,7 @@ export function SettingsModal({ onClose, procedureTitle, onProcedureTitleChange 
                 {/* Title */}
                 <div>
                   <label htmlFor="procedure-title" className="block text-card-foreground font-bold mb-1" style={{ fontFamily: 'var(--font-family)' }}>
-                    Procedure Title
+                    Flow Title
                   </label>
                   <input
                     id="procedure-title"
@@ -248,7 +248,7 @@ export function SettingsModal({ onClose, procedureTitle, onProcedureTitleChange 
                     maxLength={MAX_TITLE_LENGTH}
                     className="w-full bg-white border border-border rounded-lg text-card-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
                     style={{ padding: 'var(--spacing-xs, 6px) var(--spacing-sm, 8px)', fontFamily: 'var(--font-family)' }}
-                    placeholder="Enter procedure title"
+                    placeholder="Enter flow title"
                   />
                   <p className="text-muted text-xs mt-0.5" style={{ fontFamily: 'var(--font-family)' }}>
                     {title.length} / {MAX_TITLE_LENGTH} characters
@@ -319,10 +319,10 @@ export function SettingsModal({ onClose, procedureTitle, onProcedureTitleChange 
                         value={description}
                         onChange={(e) => setDescription(e.target.value.slice(0, MAX_DESCRIPTION_LENGTH))}
                         maxLength={MAX_DESCRIPTION_LENGTH}
-                        placeholder="Write a brief description of this procedure..."
+                        placeholder="Write a brief description of this flow..."
                         className="w-full h-full bg-white border border-border rounded-lg text-card-foreground outline-none focus:ring-2 focus:ring-ring resize-none transition-shadow min-h-[100px]"
                         style={{ padding: 'var(--spacing-xs, 6px) var(--spacing-sm, 8px)', fontFamily: 'var(--font-family)' }}
-                        aria-label="Procedure description"
+                        aria-label="Flow description"
                       />
                       <p className="text-muted text-xs mt-0.5" style={{ fontFamily: 'var(--font-family)' }}>
                         {description.length} / {MAX_DESCRIPTION_LENGTH} characters
@@ -341,7 +341,7 @@ export function SettingsModal({ onClose, procedureTitle, onProcedureTitleChange 
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
-                  <h4 className="text-card-foreground font-bold" style={{ fontFamily: 'var(--font-family)' }}>Procedure Settings</h4>
+                  <h4 className="text-card-foreground font-bold" style={{ fontFamily: 'var(--font-family)' }}>Flow Settings</h4>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

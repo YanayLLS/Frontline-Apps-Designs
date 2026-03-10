@@ -186,7 +186,7 @@ export function ConnectionPicker({ item, onClose, position }: ConnectionPickerPr
         <div className="px-4 py-3 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm text-foreground" style={{ fontWeight: 'var(--font-weight-bold)' }}>
-              Connected Procedures
+              Connected Flows
             </h3>
             <button
               onClick={onClose}
@@ -245,7 +245,7 @@ export function ConnectionPicker({ item, onClose, position }: ConnectionPickerPr
         {connectedProcedureIds.length > 0 && (
           <div className="px-4 py-2 border-t border-border bg-secondary/30">
             <p className="text-xs text-muted">
-              {connectedProcedureIds.length} {connectedProcedureIds.length === 1 ? 'procedure' : 'procedures'} connected
+              {connectedProcedureIds.length} {connectedProcedureIds.length === 1 ? 'flow' : 'flows'} connected
             </p>
           </div>
         )}

@@ -1057,7 +1057,7 @@ function TableOfContentsContent({
           fontWeight: 600,
           lineHeight: '1.2'
         }}>
-          {procedureTitle || 'Untitled Procedure'}
+          {procedureTitle || 'Untitled Flow'}
         </h4>
         <div className="flex items-center gap-2">
           <button

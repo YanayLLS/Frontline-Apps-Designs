@@ -142,7 +142,7 @@ export function HomePage({
   const quickActions = [
     {
       icon: <FileText size={24} />,
-      title: 'Create Procedure',
+      title: 'Create Flow',
       description: 'Build step-by-step guides with our visual editor',
       onClick: onNavigateToKnowledgeBase,
     },
@@ -155,7 +155,7 @@ export function HomePage({
     {
       icon: <MessageSquare size={24} />,
       title: 'Ask AI Assistant',
-      description: 'Get instant help with procedures and questions',
+      description: 'Get instant help with flows and questions',
       onClick: onOpenAIChat,
     },
     {
@@ -227,7 +227,7 @@ export function HomePage({
               <StatCard
                 icon={<FileText size={20} />}
                 value="142"
-                label="Total Procedures"
+                label="Total Flows"
                 trend="+12%"
                 trendUp={true}
               />
@@ -310,7 +310,7 @@ export function HomePage({
                         Team Training
                       </h4>
                       <p className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>
-                        New procedure walkthrough
+                        New flow walkthrough
                       </p>
                       <div className="flex items-center gap-2 mt-2 text-muted" style={{ fontSize: 'var(--text-sm)' }}>
                         <Clock size={14} />

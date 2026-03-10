@@ -6,7 +6,7 @@ import { AppProjectKBPage } from './pages/AppProjectKBPage';
 import { AppRemoteSupportPage } from './pages/AppRemoteSupportPage';
 import { AppAIChatPage } from './pages/AppAIChatPage';
 import { AppVirtualRoomPage } from './pages/AppVirtualRoomPage';
-import { AppNotificationsPage } from './pages/AppNotificationsPage';
+import { AppNotificationsPage, initialAppNotifications } from './pages/AppNotificationsPage';
 import { AppSearchModal } from './pages/AppSearchPage';
 import { AppLoginPage } from './pages/AppLoginPage';
 import { AppFolderBrowsePage } from './pages/AppFolderBrowsePage';
@@ -15,6 +15,7 @@ import { AppProcedureInfoModal } from './components/AppProcedureInfoModal';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ProcedureEditor } from '../procedure-editor/ProcedureEditor';
+import { getUrlParam, setUrlParam } from '../../utils/urlParams';
 
 const navItems = [
   { id: 'knowledgebase', icon: BookOpen, label: 'Projects', path: '/app/knowledgebase' },
@@ -25,7 +26,7 @@ const navItems = [
 
 const recentlyViewed = [
   { name: 'Cylinder pressure check', type: 'procedure', project: 'Workspace > Project > Folder' },
-  { name: 'Routine Maintenance Procedure', type: 'procedure', project: 'Workspace > Project A' },
+  { name: 'Routine Maintenance Flow', type: 'procedure', project: 'Workspace > Project A' },
   { name: 'Machine Assembly Guide', type: 'procedure', project: 'Workspace > Project B' },
   { name: 'Digital Twin Model', type: 'digital-twin', project: 'Workspace > Project C' },
 ];
@@ -61,13 +62,24 @@ function App3DViewer() {
   const location = useLocation();
   const [procedureModal, setProcedureModal] = useState<string | null>(null);
 
+  const openProcInfo = (id: string | null) => {
+    setProcedureModal(id);
+    setUrlParam('proc', id);
+  };
+
   const params = new URLSearchParams(location.search);
   const startMode = params.get('mode') === 'editor' ? '&startMode=editor' : '';
+
+  // Auto-open from URL param
+  useEffect(() => {
+    const procId = getUrlParam('proc');
+    if (procId && !procedureModal) setProcedureModal(procId);
+  }, []);
 
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       if (e.data?.type === 'openProcedureInfo' && e.data.procedureId) {
-        setProcedureModal(e.data.procedureId);
+        openProcInfo(e.data.procedureId);
       } else if (e.data?.type === 'openProcedure' && e.data.procedureId) {
         // "Run in 3D" from the 3D scene's built-in procedure modal
         navigate(`/app/procedure-editor/${e.data.procedureId}`);
@@ -94,7 +106,7 @@ function App3DViewer() {
       {proc && (
         <AppProcedureInfoModal
           procedure={proc}
-          onClose={() => setProcedureModal(null)}
+          onClose={() => openProcInfo(null)}
         />
       )}
     </>
@@ -113,6 +125,24 @@ export function AppLayout() {
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [showRecentPanel, setShowRecentPanel] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [favoritesOpen, setFavoritesOpen] = useState(true);
+  const [recentlyViewedOpen, setRecentlyViewedOpen] = useState(true);
+
+  // Wrappers that keep URL params in sync with modal state
+  const openSettings = (open: boolean) => {
+    setShowSettings(open);
+    setUrlParam('settings', open ? '1' : null);
+  };
+  const openSearchModal = (open: boolean) => {
+    setShowSearchModal(open);
+    setUrlParam('search', open ? '1' : null);
+  };
+
+  // Auto-open modals from URL params on mount
+  useEffect(() => {
+    if (getUrlParam('settings') === '1') setShowSettings(true);
+    if (getUrlParam('search') === '1') setShowSearchModal(true);
+  }, []);
 
   // Determine active nav item from URL
   const getActiveNav = () => {
@@ -145,7 +175,7 @@ export function AppLayout() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      setShowSearchModal(true);
+      openSearchModal(true);
     }
   };
 
@@ -153,6 +183,7 @@ export function AppLayout() {
   const isRemoteSupport = location.pathname.includes('/remote-support');
   const isProcedureEditor = location.pathname.includes('/procedure-editor');
   const is3DViewer = location.pathname.includes('/3d-viewer');
+  const isPreviewMode = new URLSearchParams(location.search).get('preview') === 'true';
   const isFullscreenEmbed = isProcedureEditor || is3DViewer;
   const isImmersive = location.pathname.includes('/immersive');
   const isDetailPage = location.pathname.includes('/procedure/') ||
@@ -163,7 +194,7 @@ export function AppLayout() {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden" style={{ fontFamily: 'var(--font-family)' }}>
       {/* ===== TOP HEADER BAR ===== */}
-      <header className="shrink-0 flex items-center px-4 lg:pl-0 lg:pr-0 gap-3" style={{ backgroundColor: '#FFFFFF', height: '55px', borderBottom: '1px solid #C2C9DB' }}>
+      <header className="shrink-0 flex items-center px-4 lg:pl-0 lg:pr-0 gap-3" style={{ backgroundColor: '#FFFFFF', height: isPreviewMode ? '0px' : '55px', borderBottom: isPreviewMode ? 'none' : '1px solid #C2C9DB', overflow: isPreviewMode ? 'hidden' : undefined }}>
         {/* Mobile menu toggle */}
         <button
           className="lg:hidden p-1.5 hover:bg-black/5 rounded-lg" style={{ color: '#36415D' }}
@@ -204,8 +235,8 @@ export function AppLayout() {
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setShowSearchModal(true)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setShowSearchModal(true); } }}
+              onFocus={() => openSearchModal(true)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); openSearchModal(true); } }}
               className="w-full pl-8 pr-3 text-xs border-none outline-none placeholder:text-[#7F7F7F]"
               style={{ backgroundColor: '#F5F5F5', borderRadius: '8px', height: '30px', color: '#36415D' }}
             />
@@ -231,18 +262,20 @@ export function AppLayout() {
             }}
           >
             <Bell className="size-5" />
-            <span
-              className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-destructive rounded-full flex items-center justify-center text-white"
-              style={{ fontSize: '10px', fontWeight: 'var(--font-weight-bold)', padding: '0 4px' }}
-            >
-              8
-            </span>
+            {initialAppNotifications.filter(n => !n.read).length > 0 && (
+              <span
+                className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-destructive rounded-full flex items-center justify-center text-white"
+                style={{ fontSize: '10px', fontWeight: 'var(--font-weight-bold)', padding: '0 4px' }}
+              >
+                {initialAppNotifications.filter(n => !n.read).length}
+              </span>
+            )}
           </button>
 
           {/* Settings / More menu */}
           <button
             className="p-1.5 hover:bg-black/5 rounded-lg hidden sm:flex" style={{ color: '#36415D' }}
-            onClick={(e) => { e.stopPropagation(); setShowSettings(true); }}
+            onClick={(e) => { e.stopPropagation(); openSettings(true); }}
           >
             <Settings className="size-5" />
           </button>
@@ -263,7 +296,7 @@ export function AppLayout() {
                 </button>
                 <button
                   className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary flex items-center gap-2"
-                  onClick={() => { setShowUserMenu(false); setShowSettings(true); }}
+                  onClick={() => { setShowUserMenu(false); openSettings(true); }}
                 >
                   <Settings className="size-4" /> Settings
                 </button>
@@ -484,6 +517,7 @@ export function AppLayout() {
                 {/* Favorites */}
                 <div style={{ borderBottom: '1px solid #C2C9DB' }}>
                   <button
+                    onClick={() => setFavoritesOpen(!favoritesOpen)}
                     className="flex items-center gap-2 w-full px-4 hover:bg-secondary/50 transition-colors"
                     style={{ height: '40px' }}
                   >
@@ -494,29 +528,32 @@ export function AppLayout() {
                     >
                       Favorites
                     </span>
-                    <ChevronDown className="size-4" style={{ color: '#7F7F7F' }} />
+                    <ChevronDown className="size-4 transition-transform" style={{ color: '#7F7F7F', transform: favoritesOpen ? undefined : 'rotate(-90deg)' }} />
                   </button>
-                  <div className="px-4 pb-2">
-                    {favorites.map((item, i) => (
-                      <div
-                        key={i}
-                        className="hover:bg-secondary rounded-lg cursor-pointer transition-colors px-2"
-                        style={{ paddingTop: '6px', paddingBottom: '6px' }}
-                      >
-                        <div className="truncate" style={{ fontSize: '14px', fontWeight: 'var(--font-weight-bold)', color: '#36415D' }}>
-                          {item.name}
+                  {favoritesOpen && (
+                    <div className="px-4 pb-2">
+                      {favorites.map((item, i) => (
+                        <div
+                          key={i}
+                          className="hover:bg-secondary rounded-lg cursor-pointer transition-colors px-2"
+                          style={{ paddingTop: '6px', paddingBottom: '6px' }}
+                        >
+                          <div className="truncate" style={{ fontSize: '14px', fontWeight: 'var(--font-weight-bold)', color: '#36415D' }}>
+                            {item.name}
+                          </div>
+                          <div className="truncate" style={{ fontSize: '12px', fontWeight: 'var(--font-weight-normal)', color: '#7F7F7F' }}>
+                            {item.project}
+                          </div>
                         </div>
-                        <div className="truncate" style={{ fontSize: '12px', fontWeight: 'var(--font-weight-normal)', color: '#7F7F7F' }}>
-                          {item.project}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Recently Viewed */}
                 <div>
                   <button
+                    onClick={() => setRecentlyViewedOpen(!recentlyViewedOpen)}
                     className="flex items-center gap-2 w-full px-4 hover:bg-secondary/50 transition-colors"
                     style={{ height: '40px' }}
                   >
@@ -527,24 +564,26 @@ export function AppLayout() {
                     >
                       Recently Viewed
                     </span>
-                    <ChevronDown className="size-4" style={{ color: '#7F7F7F' }} />
+                    <ChevronDown className="size-4 transition-transform" style={{ color: '#7F7F7F', transform: recentlyViewedOpen ? undefined : 'rotate(-90deg)' }} />
                   </button>
-                  <div className="px-4 pb-2">
-                    {recentlyViewed.map((item, i) => (
-                      <div
-                        key={i}
-                        className="hover:bg-secondary rounded-lg cursor-pointer transition-colors px-2"
-                        style={{ paddingTop: '6px', paddingBottom: '6px' }}
-                      >
-                        <div className="truncate" style={{ fontSize: '14px', fontWeight: 'var(--font-weight-bold)', color: '#36415D' }}>
-                          {item.name}
+                  {recentlyViewedOpen && (
+                    <div className="px-4 pb-2">
+                      {recentlyViewed.map((item, i) => (
+                        <div
+                          key={i}
+                          className="hover:bg-secondary rounded-lg cursor-pointer transition-colors px-2"
+                          style={{ paddingTop: '6px', paddingBottom: '6px' }}
+                        >
+                          <div className="truncate" style={{ fontSize: '14px', fontWeight: 'var(--font-weight-bold)', color: '#36415D' }}>
+                            {item.name}
+                          </div>
+                          <div className="truncate" style={{ fontSize: '12px', fontWeight: 'var(--font-weight-normal)', color: '#7F7F7F' }}>
+                            {item.project}
+                          </div>
                         </div>
-                        <div className="truncate" style={{ fontSize: '12px', fontWeight: 'var(--font-weight-normal)', color: '#7F7F7F' }}>
-                          {item.project}
-                        </div>
-                      </div>
                     ))}
                   </div>
+                  )}
                 </div>
               </>
             )}
@@ -666,12 +705,12 @@ export function AppLayout() {
       )}
 
       {/* Settings Modal */}
-      {showSettings && <AppSettingsModal onClose={() => setShowSettings(false)} />}
+      {showSettings && <AppSettingsModal onClose={() => openSettings(false)} />}
 
       {/* Search Modal */}
       <AppSearchModal
         isOpen={showSearchModal}
-        onClose={() => { setShowSearchModal(false); setSearchQuery(''); }}
+        onClose={() => { openSearchModal(false); setSearchQuery(''); }}
         initialQuery={searchQuery}
       />
     </div>

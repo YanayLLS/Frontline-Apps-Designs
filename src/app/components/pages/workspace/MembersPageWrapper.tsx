@@ -97,9 +97,9 @@ const initialGroups: Group[] = [
 const defaultAvailableRoles = [
   { name: 'Owner', description: 'Full access to workspace and settings' },
   { name: 'Admin', description: 'Manage members and workspace settings' },
-  { name: 'Operator', description: 'Execute procedures and complete tasks' },
+  { name: 'Operator', description: 'Execute flows and complete tasks' },
   { name: 'Support Agent', description: 'Handle support requests and remote assistance' },
-  { name: 'Content Creator', description: 'Create and manage procedures and content' },
+  { name: 'Content Creator', description: 'Create and manage flows and content' },
 ];
 
 export function MembersPageWrapper() {

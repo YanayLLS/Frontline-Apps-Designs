@@ -20,7 +20,7 @@ export const ROLES: Record<UserRole, RoleInfo> = {
   'operator': {
     id: 'operator',
     label: 'Operator',
-    description: 'Basic frontline worker with access to procedures and knowledge base'
+    description: 'Basic frontline worker with access to flows and knowledge base'
   },
   'operator-mr': {
     id: 'operator-mr',
@@ -40,7 +40,7 @@ export const ROLES: Record<UserRole, RoleInfo> = {
   'instructor': {
     id: 'instructor',
     label: 'Instructor',
-    description: 'Creates and manages training content and procedures'
+    description: 'Creates and manages training content and flows'
   },
   'service-support-manager': {
     id: 'service-support-manager',

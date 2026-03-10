@@ -1,4 +1,6 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
+import { useProcedureSteps } from '../../contexts/ProcedureStepsContext';
+import type { Step } from '../procedure-editor/ProcedureEditor';
 import ReactFlow, {
   Background,
   Controls,
@@ -60,17 +62,162 @@ const workspaceUsers = [
   { id: '3', name: 'Emma Williams', initials: 'EW', color: '#9747ff' },
 ];
 
-// Initial nodes
-const INITIAL_NODES: Node[] = [
-  {
-    id: '1',
+// ─── Convert between Step[] (shared context) and ReactFlow nodes/edges ──────
+
+// Convert Step[] from context into ReactFlow nodes and edges
+function stepsToFlow(steps: Step[]): { nodes: Node[]; edges: Edge[] } {
+  const startNode: Node = {
+    id: 'start-node',
     type: 'start',
     position: { x: 400, y: 50 },
     data: { label: 'Start' },
-  },
-];
+  };
 
-const INITIAL_EDGES: Edge[] = [];
+  if (!steps || steps.length === 0) {
+    return { nodes: [startNode], edges: [] };
+  }
+
+  // Build ordered list following parentStepId chain
+  const orderedSteps = getOrderedStepList(steps);
+
+  const nodes: Node[] = [startNode];
+  const edges: Edge[] = [];
+
+  orderedSteps.forEach((step, index) => {
+    const nodeId = step.id;
+    const prevId = index === 0 ? 'start-node' : orderedSteps[index - 1].id;
+
+    nodes.push({
+      id: nodeId,
+      type: 'dynamic',
+      position: { x: 400, y: 50 + (index + 1) * 300 },
+      data: {
+        title: step.title || `Step ${index + 1}`,
+        description: step.description || '',
+        isColorized: true,
+        color: step.color || '#2F80ED',
+        isInput: false,
+        inputType: 'text',
+        isBranching: step.actions.length > 0,
+        options: step.actions.length > 0
+          ? step.actions.map((a, i) => ({ id: `opt-${nodeId}-${i}`, text: a.label }))
+          : [{ id: `opt-${nodeId}`, text: 'Continue' }],
+        popups: step.popups.map(p => ({ id: p.id, title: p.title || '' })),
+        checklist: step.validation?.checkpoints.map(cp => ({ id: cp.id, text: cp.label, checked: false })) || [],
+        media: step.mediaFiles.map(m => m.id),
+      },
+    });
+
+    edges.push({
+      id: `e-${prevId}-${nodeId}`,
+      source: prevId,
+      target: nodeId,
+      type: 'custom',
+      style: { strokeWidth: 2, stroke: '#2f80ed' },
+      animated: false,
+    });
+  });
+
+  return getLayoutedElements(nodes, edges);
+}
+
+// Follow parentStepId chain to produce ordered array
+function getOrderedStepList(steps: Step[]): Step[] {
+  if (steps.length === 0) return [];
+  // Find root step (no parentStepId)
+  const childIds = new Set(steps.filter(s => s.parentStepId).map(s => s.parentStepId!));
+  let root = steps.find(s => !s.parentStepId);
+  if (!root) root = steps[0];
+
+  const byParent = new Map<string, Step>();
+  for (const s of steps) {
+    if (s.parentStepId) byParent.set(s.parentStepId, s);
+  }
+
+  const ordered: Step[] = [root];
+  let current = root;
+  while (byParent.has(current.id)) {
+    current = byParent.get(current.id)!;
+    ordered.push(current);
+  }
+  // Add any orphans not in the chain
+  const inChain = new Set(ordered.map(s => s.id));
+  for (const s of steps) {
+    if (!inChain.has(s.id)) ordered.push(s);
+  }
+  return ordered;
+}
+
+// Convert ReactFlow nodes/edges back into Step[] for the shared context
+function flowToSteps(nodes: Node[], edges: Edge[]): Step[] {
+  // Get only dynamic (step) nodes, skip start/note/logic
+  const stepNodes = nodes.filter(n => n.type === 'dynamic');
+  if (stepNodes.length === 0) return [];
+
+  // Build adjacency from edges: source → target
+  const childMap = new Map<string, string[]>();
+  for (const e of edges) {
+    if (!childMap.has(e.source)) childMap.set(e.source, []);
+    childMap.get(e.source)!.push(e.target);
+  }
+
+  // Find the first step node connected from start-node
+  const startChildren = childMap.get('start-node') || [];
+  const firstStepId = startChildren.find(id => stepNodes.some(n => n.id === id));
+
+  // Topological order following edges from start
+  const ordered: Node[] = [];
+  const visited = new Set<string>();
+  function walk(id: string) {
+    if (visited.has(id)) return;
+    visited.add(id);
+    const node = stepNodes.find(n => n.id === id);
+    if (node) ordered.push(node);
+    const children = childMap.get(id) || [];
+    for (const c of children) walk(c);
+  }
+  if (firstStepId) walk(firstStepId);
+  // Add any unvisited step nodes
+  for (const n of stepNodes) {
+    if (!visited.has(n.id)) ordered.push(n);
+  }
+
+  return ordered.map((node, index) => {
+    const d = node.data as any;
+    return {
+      id: node.id,
+      parentStepId: index > 0 ? ordered[index - 1].id : undefined,
+      title: d.title || '',
+      description: d.description || '',
+      actions: d.isBranching && d.options
+        ? d.options.map((opt: any) => ({ label: opt.text, nextStepId: '' }))
+        : [],
+      color: d.color || '#2F80ED',
+      hasAnimation: false,
+      popups: (d.popups || []).map((p: any) => ({
+        id: p.id || crypto.randomUUID(),
+        title: p.title || '',
+        position: { x: 50, y: 50 },
+        mediaFiles: [],
+      })),
+      mediaFiles: [],
+      validation: d.checklist && d.checklist.length > 0
+        ? {
+            id: `val-${node.id}`,
+            checkpoints: d.checklist.map((c: any) => ({
+              id: c.id || crypto.randomUUID(),
+              type: 'visual' as const,
+              severity: 'warning' as const,
+              label: c.text,
+              selectedParts: [],
+              passState: { description: '', mediaFiles: [] },
+              failState: { description: '', mediaFiles: [] },
+            })),
+          }
+        : undefined,
+    };
+  });
+}
 
 // Auto-arrange function using dagre
 const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
@@ -134,8 +281,29 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
 };
 
 function FlowEditorInner({ procedureId, procedureName, onClose }: ProcedureCanvasProps) {
-  const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
+  const { getSteps, setSteps: setContextSteps } = useProcedureSteps();
+
+  // Build initial flow from shared context steps
+  const initialFlow = useMemo(() => {
+    const contextSteps = getSteps(procedureId);
+    return stepsToFlow(contextSteps);
+  }, [procedureId]); // only on first load
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialFlow.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialFlow.edges);
+
+  // Sync flow changes back to the shared context (debounced)
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      const steps = flowToSteps(nodes, edges);
+      if (steps.length > 0) {
+        setContextSteps(procedureId, steps);
+      }
+    }, 500);
+    return () => { if (syncTimerRef.current) clearTimeout(syncTimerRef.current); };
+  }, [nodes, edges, procedureId, setContextSteps]);
   const [menu, setMenu] = useState<{ x: number; y: number; type: ContextMenuType; data?: any } | null>(null);
   const connectStartRef = useRef<{ nodeId: string | null; handleId: string | null } | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -175,7 +343,7 @@ function FlowEditorInner({ procedureId, procedureName, onClose }: ProcedureCanva
     
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [nodes, setNodes, setEdges]);
+  }, [nodes, edges, setNodes, setEdges]);
 
   // Helper to update node data
   const onNodeDataChange = useCallback((id: string, newData: any) => {
@@ -183,9 +351,9 @@ function FlowEditorInner({ procedureId, procedureName, onClose }: ProcedureCanva
       nds.map((node) => {
         if (node.id === id) {
           const updatedData = { ...node.data, ...newData };
-          // Auto-update isBranching based on options
+          // Auto-update isBranching based on options (>1 means actual branching, 1 is the default "Continue")
           if ('options' in updatedData) {
-            updatedData.isBranching = updatedData.options.length > 0;
+            updatedData.isBranching = updatedData.options.length > 1;
           }
           return { ...node, data: updatedData };
         }
@@ -282,20 +450,17 @@ function FlowEditorInner({ procedureId, procedureName, onClose }: ProcedureCanva
 
   // Add additional branching option (first option is always the default output)
   const handleAddOption = useCallback((nodeId: string) => {
-    const node = nodes.find(n => n.id === nodeId);
-    const currentOptions = (node?.data as any)?.options || [{ id: crypto.randomUUID(), text: 'Continue' }];
-    const optionId = crypto.randomUUID();
-    
     setNodes(currentNodes => {
       return currentNodes.map(n => {
         if (n.id === nodeId) {
-          const newOption = { id: optionId, text: `Option ${currentOptions.length}` };
-          
+          const existingOptions = (n.data as any)?.options || [{ id: crypto.randomUUID(), text: 'Continue' }];
+          const newOption = { id: crypto.randomUUID(), text: `Option ${existingOptions.length}` };
+
           return {
             ...n,
             data: {
               ...n.data,
-              options: [...currentOptions, newOption],
+              options: [...existingOptions, newOption],
               isBranching: true
             }
           };
@@ -303,9 +468,9 @@ function FlowEditorInner({ procedureId, procedureName, onClose }: ProcedureCanva
         return n;
       });
     });
-    
+
     setHasUnsavedChanges(true);
-  }, [setNodes, setEdges, nodes]);
+  }, [setNodes]);
 
   // Add node between two connected nodes (from edge + button)
   const handleAddNodeBetween = useCallback((edgeId: string) => {
@@ -442,24 +607,14 @@ function FlowEditorInner({ procedureId, procedureName, onClose }: ProcedureCanva
     }));
   }, [edges, handleAddNodeBetween, handleDeleteEdge]);
 
-  // Validate connections: outputs can only have one connection, inputs can have multiple
+  // Validate connections: prevent self-loops; replacement handled by onConnect
   const isValidConnection = useCallback(
     (connection: Connection) => {
-      // Check if source handle already has a connection
-      const existingConnection = edges.find(
-        (edge) => 
-          edge.source === connection.source && 
-          edge.sourceHandle === connection.sourceHandle
-      );
-      
-      // Prevent connection if source already has one
-      if (existingConnection) {
-        return false;
-      }
-      
+      // Prevent self-connections
+      if (connection.source === connection.target) return false;
       return true;
     },
-    [edges]
+    []
   );
 
   const onConnect = useCallback(
@@ -570,13 +725,14 @@ function FlowEditorInner({ procedureId, procedureName, onClose }: ProcedureCanva
         x: event.clientX,
         y: event.clientY,
         type: ContextMenuType.NODE,
-        data: node.data
+        data: { ...node.data, nodeId: node.id, nodeType: node.type }
       });
     },
     []
   );
 
   const onPaneClick = useCallback(() => setMenu(null), []);
+  const onNodeClick = useCallback(() => setMenu(null), []);
 
   const handleMenuAction = useCallback((action: string) => {
     if (!menu) return;
@@ -588,9 +744,23 @@ function FlowEditorInner({ procedureId, procedureName, onClose }: ProcedureCanva
       return;
     }
 
+    // Handle node-specific actions from context menu
+    if (menu.type === ContextMenuType.NODE && menu.data?.nodeId) {
+      if (action === 'delete') {
+        onNodeAction(menu.data.nodeId, 'delete');
+        setMenu(null);
+        return;
+      }
+      if (action === 'duplicate') {
+        onNodeAction(menu.data.nodeId, 'duplicate');
+        setMenu(null);
+        return;
+      }
+    }
+
     const position = menu.data?.position || screenToFlowPosition({ x: menu.x, y: menu.y });
     const stepCount = nodes.filter(n => n.type !== 'start').length + 1;
-    
+
     let newNode: Node | null = null;
 
     if (action === 'create-step') {
@@ -632,7 +802,7 @@ function FlowEditorInner({ procedureId, procedureName, onClose }: ProcedureCanva
     }
 
     setMenu(null);
-  }, [menu, nodes, screenToFlowPosition, setNodes, setEdges, onAutoArrange]);
+  }, [menu, nodes, screenToFlowPosition, setNodes, setEdges, onAutoArrange, onNodeAction]);
 
   const handleSave = () => {
     // Save logic here
@@ -797,11 +967,12 @@ function FlowEditorInner({ procedureId, procedureName, onClose }: ProcedureCanva
 
         <div className="flex-1" />
 
-        <button 
-          className="p-2 rounded-lg hover:bg-secondary transition-colors"
-          title="Undo"
+        <button
+          className="p-2 rounded-lg transition-colors opacity-40 cursor-not-allowed"
+          title="Undo (coming soon)"
+          disabled
         >
-          <Undo className="w-4 h-4" style={{ color: 'var(--foreground)' }} />
+          <Undo className="w-4 h-4" style={{ color: 'var(--muted)' }} />
         </button>
 
         <div className="w-px h-6 bg-border" style={{ backgroundColor: 'var(--border)' }} />
@@ -841,7 +1012,7 @@ function FlowEditorInner({ procedureId, procedureName, onClose }: ProcedureCanva
         <button 
           onClick={() => setIsProcedureModalOpen(true)}
           className="p-2 rounded-lg hover:bg-secondary transition-colors"
-          title="Procedure Settings"
+          title="Flow Settings"
         >
           <Settings className="w-4 h-4" style={{ color: 'var(--foreground)' }} />
         </button>
@@ -881,6 +1052,7 @@ function FlowEditorInner({ procedureId, procedureName, onClose }: ProcedureCanva
           onPaneContextMenu={onPaneContextMenu}
           onNodeContextMenu={onNodeContextMenu}
           onPaneClick={onPaneClick}
+          onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           fitView
@@ -1028,7 +1200,7 @@ function FlowEditorInner({ procedureId, procedureName, onClose }: ProcedureCanva
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'var(--secondary)';
             }}
-            title="Link to Procedure"
+            title="Link to Flow"
           >
             <ExternalLink className="w-4 h-4" />
             <span className="text-sm font-medium">Procedure</span>

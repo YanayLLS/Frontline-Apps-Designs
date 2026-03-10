@@ -16,7 +16,7 @@ interface TutorialStep {
 
 const tutorialSteps: TutorialStep[] = [
   {
-    title: 'Welcome to the Procedure Editor!',
+    title: 'Welcome to the Flow Editor!',
     description: 'This quick tutorial will show you the main features. Click Next to continue or skip anytime.'
   },
   {
@@ -49,7 +49,7 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     title: 'You\'re All Set!',
-    description: 'That\'s it! Start building your procedure. Remember, you can always access this tutorial from the debug menu.'
+    description: 'That\'s it! Start building your flow. Remember, you can always access this tutorial from the debug menu.'
   }
 ];
 
