@@ -15044,13 +15044,15 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
   let isDragging = false;
 
   // ==================== DETECT WEBXR ====================
+  const inIframe = (window.self !== window.top);
   (async function checkXR() {
-    if (navigator.xr) {
+    // WebXR immersive-ar doesn't work reliably inside iframes — skip detection
+    if (!inIframe && navigator.xr) {
       try {
         xrSupported = await navigator.xr.isSessionSupported('immersive-ar');
       } catch(e) { xrSupported = false; }
     }
-    console.log('[AR] WebXR immersive-ar supported:', xrSupported);
+    console.log('[AR] WebXR immersive-ar supported:', xrSupported, '| inIframe:', inIframe);
   })();
 
   // ==================== RETICLE (WebXR surface indicator) ====================
@@ -15108,6 +15110,10 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
       xrSession = await navigator.xr.requestSession('immersive-ar', sessionInit);
     } catch(e) {
       console.warn('[AR] WebXR session request failed, falling back:', e);
+      // Restore model visibility before falling back
+      if (fbxModel) { fbxModel.visible = true; }
+      if (xrModelGroup) { scene.remove(xrModelGroup); xrModelGroup = null; }
+      xrSavedModelPos = null; xrSavedModelParent = null;
       startFallbackAR();
       return;
     }
@@ -15258,24 +15264,29 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
 
   async function startCamera() {
     try {
+      console.log('[AR] Requesting camera...');
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
       });
+      console.log('[AR] Camera stream obtained');
       cameraStream = stream;
       let video = arCameraFeed.querySelector('video');
       if (!video) {
         video = document.createElement('video');
         video.setAttribute('playsinline', '');
         video.setAttribute('autoplay', '');
+        video.setAttribute('muted', '');
         video.muted = true;
+        video.style.cssText = 'width:100%;height:100%;object-fit:cover;';
         arCameraFeed.appendChild(video);
       }
       video.srcObject = stream;
-      video.play();
+      await video.play();
       arCameraFeed.classList.add('visible');
+      console.log('[AR] Camera feed visible');
     } catch (e) {
       console.warn('[AR] Camera unavailable:', e);
-      arCameraFeed.innerHTML = '<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.3);font-size:14px;">Camera feed (simulated)</div>';
+      arCameraFeed.innerHTML = '<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.3);font-size:14px;">Camera unavailable</div>';
       arCameraFeed.classList.add('visible');
     }
   }
