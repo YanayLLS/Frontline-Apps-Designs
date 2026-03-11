@@ -28,7 +28,7 @@
 </script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-html, body { width:100%; height:100%; overflow:hidden; font-family:'Open Sans',sans-serif; background:#1d4593; }
+html, body { width:100%; height:100%; overflow:hidden; font-family:'Open Sans',sans-serif; background:#1d4593; touch-action:none; position:fixed; inset:0; }
 
 /* Embedded mode: hide scene's own chrome, keep toolbar & panels */
 html.embedded .top-bar,
@@ -878,9 +878,9 @@ html.embedded .right-panel { top:12px !important; }
   text-shadow:0 1px 8px rgba(0,0,0,0.5);
   animation:arScanPulse 2s ease-in-out infinite;
 }
-/* AR grid dots overlay */
+/* AR grid dots overlay (during scan) */
 .ar-grid-dots {
-  position:absolute; inset:0; pointer-events:none; opacity:0.15;
+  position:absolute; inset:0; pointer-events:none; opacity:0;
   background-image:radial-gradient(circle, rgba(47,128,237,0.8) 1px, transparent 1px);
   background-size:30px 30px;
   animation:arGridFade 3s ease-in-out infinite;
@@ -888,6 +888,34 @@ html.embedded .right-panel { top:12px !important; }
 @keyframes arGridFade {
   0%,100% { opacity:0.08; }
   50% { opacity:0.2; }
+}
+
+/* AR surface dots — persist after scan to show recognized environment */
+.ar-surface-dots {
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  display:none; overflow:hidden;
+}
+.ar-surface-dots.visible { display:block; }
+.ar-surface-dot {
+  position:absolute; width:6px; height:6px; border-radius:50%;
+  background:rgba(47,128,237,0.6);
+  box-shadow:0 0 6px rgba(47,128,237,0.3);
+  animation:arDotAppear 0.6s ease-out forwards;
+  opacity:0;
+}
+.ar-surface-dot.fading { animation:arDotFade 2s ease-out forwards; }
+@keyframes arDotAppear {
+  0% { opacity:0; transform:scale(0); }
+  60% { opacity:1; transform:scale(1.3); }
+  100% { opacity:0.7; transform:scale(1); }
+}
+@keyframes arDotPulse {
+  0%,100% { opacity:0.4; transform:scale(1); }
+  50% { opacity:0.7; transform:scale(1.15); }
+}
+@keyframes arDotFade {
+  0% { opacity:0.7; }
+  100% { opacity:0; }
 }
 /* AR placement toast */
 .ar-placement-toast {
@@ -3158,6 +3186,9 @@ html.embedded .right-panel { top:12px !important; }
   </div>
   <div class="ar-scan-text">Scanning environment...</div>
 </div>
+
+<!-- AR surface dots (persist after scan) -->
+<div class="ar-surface-dots" id="arSurfaceDots"></div>
 
 <!-- AR placement toast & confirm -->
 <div class="ar-placement-toast" id="arPlacementToast">Drag to move model on surface</div>
@@ -14974,6 +15005,7 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
   const arPlacementBtn = document.getElementById('arPlacementBtn');
   const arPlacementMenu = document.getElementById('arPlacementMenu');
   const arScanOverlay = document.getElementById('arScanOverlay');
+  const arSurfaceDots = document.getElementById('arSurfaceDots');
   const arPlacementToast = document.getElementById('arPlacementToast');
   const arConfirmBtn = document.getElementById('arConfirmBtn');
   const viewportEl   = document.getElementById('viewport');
@@ -15043,11 +15075,54 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
 
   function showScanEffect() {
     arScanOverlay.classList.add('visible');
+    arSurfaceDots.innerHTML = '';
+    arSurfaceDots.classList.add('visible');
+
+    // Spawn dots progressively during scan
+    const dotCount = 60;
+    const spawnInterval = AR_SCAN_DURATION / dotCount;
+    let dotIdx = 0;
+    const dotSpawner = setInterval(() => {
+      if (dotIdx >= dotCount || !arActive) { clearInterval(dotSpawner); return; }
+      const dot = document.createElement('div');
+      dot.className = 'ar-surface-dot';
+      // Distribute across screen with some randomness, biased toward center-lower area
+      const x = 10 + Math.random() * 80; // 10%-90% of screen width
+      const y = 15 + Math.random() * 70; // 15%-85% of screen height
+      dot.style.left = x + '%';
+      dot.style.top = y + '%';
+      dot.style.animationDelay = (Math.random() * 0.3) + 's';
+      // Vary dot size slightly
+      const size = 4 + Math.random() * 4;
+      dot.style.width = size + 'px';
+      dot.style.height = size + 'px';
+      arSurfaceDots.appendChild(dot);
+      // After appear animation, switch to gentle pulse
+      setTimeout(() => {
+        if (dot.parentNode) {
+          dot.style.animation = 'arDotPulse ' + (1.5 + Math.random() * 1.5) + 's ease-in-out infinite';
+          dot.style.animationDelay = (Math.random() * 1) + 's';
+        }
+      }, 700);
+      dotIdx++;
+    }, spawnInterval);
+
     if (scanTimer) clearTimeout(scanTimer);
     scanTimer = setTimeout(() => {
       arScanOverlay.classList.remove('visible');
       scanTimer = null;
+      // Dots stay visible — they pulse gently to show recognized surfaces
     }, AR_SCAN_DURATION);
+  }
+
+  function clearSurfaceDots() {
+    // Fade out all dots then remove
+    const dots = arSurfaceDots.querySelectorAll('.ar-surface-dot');
+    dots.forEach(d => d.classList.add('fading'));
+    setTimeout(() => {
+      arSurfaceDots.innerHTML = '';
+      arSurfaceDots.classList.remove('visible');
+    }, 2000);
   }
 
   async function enterAR() {
@@ -15110,6 +15185,7 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
 
     arScanOverlay.classList.remove('visible');
     if (scanTimer) { clearTimeout(scanTimer); scanTimer = null; }
+    clearSurfaceDots();
 
     viewportEl.style.background = '';
     document.body.style.background = '';

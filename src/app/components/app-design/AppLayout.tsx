@@ -110,10 +110,11 @@ function App3DViewer() {
 
   return (
     <>
-      <div className="w-full h-full relative">
+      <div className="w-full h-full relative" style={{ overflow: 'hidden', touchAction: 'none' }}>
         <iframe
           src={`${import.meta.env.BASE_URL}app/digital-twin-scene.html?embedded=true${startMode}`}
           className="absolute inset-0 w-full h-full border-0"
+          style={{ overflow: 'hidden' }}
           title="Digital Twin"
           allow="autoplay; fullscreen; camera"
         />
@@ -245,7 +246,7 @@ export function AppLayout() {
                         isFullscreenEmbed;
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden" style={{ fontFamily: 'var(--font-family)' }}>
+    <div className="flex flex-col w-full overflow-hidden" style={{ fontFamily: 'var(--font-family)', height: '100dvh' }}>
       {/* ===== TOP HEADER BAR ===== */}
       <header className="shrink-0 flex items-center px-4 lg:pl-0 lg:pr-0 gap-3" style={{ backgroundColor: '#FFFFFF', height: isPreviewMode ? '0px' : '55px', borderBottom: isPreviewMode ? 'none' : '1px solid #C2C9DB', overflow: isPreviewMode ? 'hidden' : undefined }}>
         {/* Logo — aligned above sidebar on desktop */}
