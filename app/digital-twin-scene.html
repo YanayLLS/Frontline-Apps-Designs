@@ -829,15 +829,18 @@ html.embedded .right-panel { top:12px !important; }
 /* ===== AR MODE (mobile only) ===== */
 .ar-btn {
   position:fixed; top:14px; right:14px; z-index:200;
-  width:44px; height:44px; border:none; border-radius:12px;
-  background:rgba(0,0,0,0.55); backdrop-filter:blur(8px);
+  width:40px; height:40px; border:none; border-radius:10px;
+  background:#fff; box-shadow:1px 1px 10px rgba(0,0,0,0.15);
   display:none; align-items:center; justify-content:center;
   cursor:pointer; transition:background 0.2s, transform 0.15s;
 }
+.ar-btn:hover { background:#f0f0f0; }
 .ar-btn:active { transform:scale(0.92); }
-.ar-btn svg { width:22px; height:22px; fill:#fff; }
+.ar-btn svg { width:20px; height:20px; fill:#36415d; }
 .ar-btn.visible { display:flex; }
-.ar-btn.ar-active { background:rgba(255,31,31,0.65); }
+.ar-btn.ar-active { background:rgba(255,31,31,0.75); }
+.ar-btn.ar-active svg { fill:#fff; }
+.ar-btn.ar-active:hover { background:rgba(255,31,31,0.85); }
 
 /* AR sub-buttons (mesh toggle + placement) */
 .ar-sub-btns {
@@ -15146,7 +15149,7 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
         fbxModel.traverse(c => { if (c.isMesh) c.visible = true; });
         // Show the start overlay
         arStartOverlay.classList.remove('hidden');
-        arBackBtn.classList.add('visible');
+        if (isARStandalone) arBackBtn.classList.add('visible');
       }
     }, 200);
   }
@@ -15252,7 +15255,7 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
 
     arPlacementToast.textContent = 'Point at a surface, tap to place';
     arPlacementToast.classList.add('visible');
-    arBackBtn.classList.add('visible');
+    if (isARStandalone) arBackBtn.classList.add('visible');
   }
 
   function xrRenderLoop(timestamp, frame) {
@@ -15395,7 +15398,7 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
 
     arPlacementToast.textContent = 'Move your phone to look around';
     arPlacementToast.classList.add('visible');
-    arBackBtn.classList.add('visible');
+    if (isARStandalone) arBackBtn.classList.add('visible');
   }
 
   function startDeviceOrientation() {
@@ -15543,14 +15546,7 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
   }
 
   async function enterAR() {
-    // If inside iframe, break out to direct URL for real AR
-    if (inIframe) {
-      const sceneUrl = window.location.pathname;
-      const arUrl = sceneUrl.split('?')[0] + '?ar=true';
-      console.log('[AR] In iframe — opening AR in new tab:', arUrl);
-      window.open(arUrl, '_blank');
-      return;
-    }
+    console.log('[AR] enterAR called | inIframe:', inIframe, '| xrSupported:', xrSupported);
 
     arActive = true;
     state._arActive = true;
@@ -15571,7 +15567,8 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
     arPlacementBtn.classList.remove('active');
     arPlacementMenu.classList.remove('visible');
 
-    if (xrSupported) {
+    // In iframe: skip WebXR (doesn't work in iframes), go straight to camera fallback
+    if (xrSupported && !inIframe) {
       await startWebXR();
     } else {
       await startFallbackAR();
