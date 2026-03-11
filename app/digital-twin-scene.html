@@ -768,6 +768,127 @@ html.embedded .right-panel { top:12px !important; }
 .viewer-more-menu-item:hover { background:#e9e9e9; }
 .viewer-more-menu-item svg { width:16px; height:16px; fill:#36415d; }
 
+/* ===== AR MODE (mobile only) ===== */
+.ar-btn {
+  position:fixed; top:14px; right:14px; z-index:200;
+  width:44px; height:44px; border:none; border-radius:12px;
+  background:rgba(0,0,0,0.55); backdrop-filter:blur(8px);
+  display:none; align-items:center; justify-content:center;
+  cursor:pointer; transition:background 0.2s, transform 0.15s;
+}
+.ar-btn:active { transform:scale(0.92); }
+.ar-btn svg { width:22px; height:22px; fill:#fff; }
+.ar-btn.visible { display:flex; }
+.ar-btn.ar-active { background:rgba(255,31,31,0.65); }
+
+/* AR sub-buttons (mesh toggle + placement) */
+.ar-sub-btns {
+  position:fixed; top:66px; right:14px; z-index:200;
+  display:none; flex-direction:column; gap:8px;
+}
+.ar-sub-btns.visible { display:flex; }
+.ar-sub-btn {
+  width:44px; height:44px; border:none; border-radius:12px;
+  background:rgba(0,0,0,0.55); backdrop-filter:blur(8px);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:background 0.2s, transform 0.15s;
+  position:relative;
+}
+.ar-sub-btn:active { transform:scale(0.92); }
+.ar-sub-btn svg { width:20px; height:20px; fill:#fff; }
+.ar-sub-btn.active { background:rgba(47,128,237,0.7); }
+.ar-sub-btn .ar-sub-label {
+  position:absolute; right:52px; top:50%; transform:translateY(-50%);
+  background:rgba(0,0,0,0.7); color:#fff; font-size:11px; font-weight:600;
+  padding:4px 10px; border-radius:8px; white-space:nowrap;
+  pointer-events:none; opacity:0; transition:opacity 0.2s;
+}
+.ar-sub-btn:hover .ar-sub-label { opacity:1; }
+
+/* Placement mode menu */
+.ar-placement-menu {
+  position:fixed; z-index:201;
+  background:rgba(0,0,0,0.75); backdrop-filter:blur(12px);
+  border-radius:14px; padding:6px;
+  display:none; flex-direction:column; gap:2px;
+  min-width:180px;
+}
+.ar-placement-menu.visible { display:flex; }
+.ar-placement-option {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 14px; border:none; background:transparent;
+  color:#fff; font-size:13px; font-family:inherit; font-weight:500;
+  border-radius:10px; cursor:pointer; transition:background 0.15s;
+}
+.ar-placement-option:hover { background:rgba(255,255,255,0.12); }
+.ar-placement-option.selected { background:rgba(47,128,237,0.5); }
+.ar-placement-option svg { width:18px; height:18px; fill:#fff; flex-shrink:0; }
+
+/* AR camera feed background */
+.ar-camera-feed {
+  position:fixed; inset:0; z-index:-1;
+  display:none; background:#000;
+}
+.ar-camera-feed.visible { display:block; z-index:0; }
+.ar-camera-feed video {
+  width:100%; height:100%; object-fit:cover;
+}
+
+/* Scanning overlay effect */
+.ar-scan-overlay {
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  display:none;
+}
+.ar-scan-overlay.visible { display:block; }
+.ar-scan-line {
+  position:absolute; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, transparent 0%, rgba(47,128,237,0.0) 10%, rgba(47,128,237,0.8) 50%, rgba(47,128,237,0.0) 90%, transparent 100%);
+  box-shadow:0 0 20px rgba(47,128,237,0.5), 0 0 60px rgba(47,128,237,0.2);
+  animation:arScanLine 2.5s ease-in-out infinite;
+}
+@keyframes arScanLine {
+  0% { top:5%; opacity:0; }
+  10% { opacity:1; }
+  90% { opacity:1; }
+  100% { top:95%; opacity:0; }
+}
+.ar-scan-corners {
+  position:absolute; inset:20%; pointer-events:none;
+}
+.ar-scan-corners::before, .ar-scan-corners::after,
+.ar-scan-corner-bl::before, .ar-scan-corner-br::before {
+  content:''; position:absolute; width:30px; height:30px;
+  border-color:rgba(47,128,237,0.7); border-style:solid; border-width:0;
+}
+.ar-scan-corners::before { top:0; left:0; border-top-width:3px; border-left-width:3px; border-radius:4px 0 0 0; }
+.ar-scan-corners::after { top:0; right:0; border-top-width:3px; border-right-width:3px; border-radius:0 4px 0 0; }
+.ar-scan-corner-bl::before { bottom:0; left:0; border-bottom-width:3px; border-left-width:3px; border-radius:0 0 0 4px; }
+.ar-scan-corner-br::before { bottom:0; right:0; border-bottom-width:3px; border-right-width:3px; border-radius:0 0 4px 0; }
+.ar-scan-corners, .ar-scan-corner-bl, .ar-scan-corner-br {
+  animation:arScanPulse 2s ease-in-out infinite;
+}
+@keyframes arScanPulse {
+  0%,100% { opacity:0.6; }
+  50% { opacity:1; }
+}
+.ar-scan-text {
+  position:absolute; bottom:18%; left:50%; transform:translateX(-50%);
+  color:#fff; font-size:14px; font-weight:600;
+  text-shadow:0 1px 8px rgba(0,0,0,0.5);
+  animation:arScanPulse 2s ease-in-out infinite;
+}
+/* AR grid dots overlay */
+.ar-grid-dots {
+  position:absolute; inset:0; pointer-events:none; opacity:0.15;
+  background-image:radial-gradient(circle, rgba(47,128,237,0.8) 1px, transparent 1px);
+  background-size:30px 30px;
+  animation:arGridFade 3s ease-in-out infinite;
+}
+@keyframes arGridFade {
+  0%,100% { opacity:0.08; }
+  50% { opacity:0.2; }
+}
+
 /* ===== SLICER PANEL ===== */
 #slicerPanel {
   position:fixed; bottom:70px; left:50%; transform:translateX(-50%); z-index:120;
@@ -2963,6 +3084,55 @@ html.embedded .right-panel { top:12px !important; }
 <div class="viewer-more-menu" id="viewerMoreMenu">
   <button class="viewer-more-menu-item" id="editDTBtn"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Edit digital twin</button>
   <button class="viewer-more-menu-item" id="manageAnimBtn"><svg viewBox="0 0 24 24"><path d="M4 6.47L5.76 10H20v8H4V6.47M22 4h-4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4z"/></svg> Manage animations</button>
+</div>
+
+<!-- AR MODE (mobile viewer only) -->
+<button class="ar-btn" id="arBtn" title="Enter AR">
+  <svg viewBox="0 0 24 24"><path d="M20 3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H4V5h16v14z"/><path d="M6 13h2.5l1.5-4 1.5 4H14" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 9h2c.55 0 1 .45 1 1v1c0 .55-.45 1-1 1h-1.5L17 14" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+</button>
+
+<!-- AR sub-buttons (shown when AR is active) -->
+<div class="ar-sub-btns" id="arSubBtns">
+  <!-- Toggle mesh visibility -->
+  <button class="ar-sub-btn" id="arMeshToggle" title="Show/Hide Mesh">
+    <span class="ar-sub-label">Show/Hide Mesh</span>
+    <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+  </button>
+  <!-- Object placement -->
+  <button class="ar-sub-btn" id="arPlacementBtn" title="Object Placement">
+    <span class="ar-sub-label">Object Placement</span>
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><path d="M12 7v10M7 12h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<!-- Placement mode menu -->
+<div class="ar-placement-menu" id="arPlacementMenu">
+  <button class="ar-placement-option" data-placement="object-target">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+    Object Target
+  </button>
+  <button class="ar-placement-option" data-placement="qr">
+    <svg viewBox="0 0 24 24"><path d="M3 11h2v2H3zm0-4h2v2H3zm4 4h2v2H7zM3 3h2v2H3zm4 0h2v2H7zm0 4h2v2H7zM3 7h2v2H3zm8-4h2v2h-2zm0 8h2v2h-2zm4-4h2v2h-2zm0 4h2v2h-2zm4-8h2v2h-2zm0 4h2v2h-2zm-4-4h2v2h-2zm4 8h2v2h-2zm0 4h2v2h-2zm-4 0h2v2h-2zm-4 0h2v2h-2zm-4 0h2v2H7zm-4 0h2v2H3zm8-4h2v2h-2zm4 0h2v2h-2z"/></svg>
+    QR Code
+  </button>
+  <button class="ar-placement-option" data-placement="manual">
+    <svg viewBox="0 0 24 24"><path d="M9.5 3.5L7.5 5.5l2 2-2 2 2 2-2 2 2 2-2 2 2 2" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 8c0-2.21 1.79-4 4-4s4 1.79 4 4-1.79 4-4 4M14 8H6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+    Manual Placement
+  </button>
+</div>
+
+<!-- Camera feed layer -->
+<div class="ar-camera-feed" id="arCameraFeed"></div>
+
+<!-- Scan overlay -->
+<div class="ar-scan-overlay" id="arScanOverlay">
+  <div class="ar-grid-dots"></div>
+  <div class="ar-scan-line"></div>
+  <div class="ar-scan-corners">
+    <div class="ar-scan-corner-bl"></div>
+    <div class="ar-scan-corner-br"></div>
+  </div>
+  <div class="ar-scan-text">Scanning environment...</div>
 </div>
 
 <!-- ANIMATION MANAGER PANEL -->
@@ -14753,6 +14923,188 @@ document.getElementById('newCatCreate').addEventListener('click', () => {
 });
 document.getElementById('newCatNameInput').addEventListener('input', () => { document.getElementById('newCatError').classList.remove('visible'); });
 document.getElementById('newCatNameInput').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('newCatCreate').click(); });
+
+// ==================== AR MODE (mobile viewer only) ====================
+(function() {
+  const AR_SCAN_DURATION = 3500;
+  const isMobile = () => true; // For now always show — will gate to mobile-only later
+
+  const arBtn       = document.getElementById('arBtn');
+  const arSubBtns   = document.getElementById('arSubBtns');
+  const arMeshToggle = document.getElementById('arMeshToggle');
+  const arPlacementBtn = document.getElementById('arPlacementBtn');
+  const arPlacementMenu = document.getElementById('arPlacementMenu');
+  const arCameraFeed = document.getElementById('arCameraFeed');
+  const arScanOverlay = document.getElementById('arScanOverlay');
+  const viewportEl   = document.getElementById('viewport');
+
+  let arActive = false;
+  let arMeshVisible = true;
+  let arPlacementMode = null;
+  let cameraStream = null;
+  let scanTimer = null;
+
+  function updateARButtonVisibility() {
+    const isViewerMobile = isMobile() && state.mode === 'viewer';
+    arBtn.classList.toggle('visible', isViewerMobile || arActive);
+    if (arActive && state.mode !== 'viewer') exitAR();
+  }
+
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+      });
+      cameraStream = stream;
+      let video = arCameraFeed.querySelector('video');
+      if (!video) {
+        video = document.createElement('video');
+        video.setAttribute('playsinline', '');
+        video.setAttribute('autoplay', '');
+        video.muted = true;
+        arCameraFeed.appendChild(video);
+      }
+      video.srcObject = stream;
+      video.play();
+      arCameraFeed.classList.add('visible');
+      return true;
+    } catch (e) {
+      console.warn('[AR] Camera access denied or unavailable:', e);
+      arCameraFeed.innerHTML = '<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.3);font-size:14px;">Camera feed (simulated)</div>';
+      arCameraFeed.classList.add('visible');
+      return false;
+    }
+  }
+
+  function stopCamera() {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      cameraStream = null;
+    }
+    const video = arCameraFeed.querySelector('video');
+    if (video) { video.srcObject = null; }
+    arCameraFeed.classList.remove('visible');
+  }
+
+  function showScanEffect() {
+    arScanOverlay.classList.add('visible');
+    if (scanTimer) clearTimeout(scanTimer);
+    scanTimer = setTimeout(() => {
+      arScanOverlay.classList.remove('visible');
+      scanTimer = null;
+    }, AR_SCAN_DURATION);
+  }
+
+  async function enterAR() {
+    arActive = true;
+    arMeshVisible = true;
+    arPlacementMode = null;
+
+    arBtn.classList.add('ar-active');
+    arBtn.title = 'Exit AR';
+    arBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#fff"/></svg>';
+
+    arSubBtns.classList.add('visible');
+
+    viewportEl.style.background = 'transparent';
+    renderer.setClearColor(0x000000, 0);
+
+    await startCamera();
+    showScanEffect();
+
+    document.getElementById('viewerMoreBtn').classList.remove('visible');
+
+    arMeshToggle.classList.remove('active');
+    arPlacementBtn.classList.remove('active');
+    arPlacementMenu.classList.remove('visible');
+  }
+
+  function exitAR() {
+    arActive = false;
+    arPlacementMode = null;
+
+    arBtn.classList.remove('ar-active');
+    arBtn.title = 'Enter AR';
+    arBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20 3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H4V5h16v14z"/><path d="M6 13h2.5l1.5-4 1.5 4H14" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 9h2c.55 0 1 .45 1 1v1c0 .55-.45 1-1 1h-1.5L17 14" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    arSubBtns.classList.remove('visible');
+    arPlacementMenu.classList.remove('visible');
+
+    stopCamera();
+
+    arScanOverlay.classList.remove('visible');
+    if (scanTimer) { clearTimeout(scanTimer); scanTimer = null; }
+
+    viewportEl.style.background = '';
+    renderer.setClearColor(0x000000, 1);
+
+    if (!arMeshVisible && fbxModel) {
+      fbxModel.visible = true;
+      arMeshVisible = true;
+    }
+
+    if (state.mode === 'viewer') {
+      document.getElementById('viewerMoreBtn').classList.add('visible');
+    }
+  }
+
+  arBtn.addEventListener('click', () => {
+    if (arActive) exitAR();
+    else enterAR();
+  });
+
+  arMeshToggle.addEventListener('click', () => {
+    arMeshVisible = !arMeshVisible;
+    arMeshToggle.classList.toggle('active', !arMeshVisible);
+    if (fbxModel) fbxModel.visible = arMeshVisible;
+    if (arMeshVisible) {
+      arMeshToggle.querySelector('svg').innerHTML = '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>';
+    } else {
+      arMeshToggle.querySelector('svg').innerHTML = '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.8 11.8 0 001 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>';
+    }
+  });
+
+  arPlacementBtn.addEventListener('click', () => {
+    const showing = arPlacementMenu.classList.contains('visible');
+    arPlacementMenu.classList.toggle('visible', !showing);
+    arPlacementBtn.classList.toggle('active', !showing);
+    if (!showing) {
+      const r = arPlacementBtn.getBoundingClientRect();
+      arPlacementMenu.style.top = r.top + 'px';
+      arPlacementMenu.style.right = (window.innerWidth - r.left + 8) + 'px';
+      arPlacementMenu.style.left = 'auto';
+    }
+  });
+
+  arPlacementMenu.querySelectorAll('.ar-placement-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      const mode = opt.dataset.placement;
+      arPlacementMode = arPlacementMode === mode ? null : mode;
+      arPlacementMenu.querySelectorAll('.ar-placement-option').forEach(o => o.classList.toggle('selected', o.dataset.placement === arPlacementMode));
+      arPlacementMenu.classList.remove('visible');
+      arPlacementBtn.classList.toggle('active', !!arPlacementMode);
+    });
+  });
+
+  document.addEventListener('pointerdown', (e) => {
+    if (arPlacementMenu.classList.contains('visible') &&
+        !arPlacementMenu.contains(e.target) &&
+        e.target !== arPlacementBtn && !arPlacementBtn.contains(e.target)) {
+      arPlacementMenu.classList.remove('visible');
+      if (!arPlacementMode) arPlacementBtn.classList.remove('active');
+    }
+  });
+
+  // Hook into updateUI to manage AR button visibility
+  const _origUpdateUI = updateUI;
+  updateUI = function() {
+    _origUpdateUI.apply(this, arguments);
+    updateARButtonVisibility();
+  };
+
+  window.addEventListener('resize', updateARButtonVisibility);
+  updateARButtonVisibility();
+})();
 
 </script>
 <script>
