@@ -12092,8 +12092,8 @@ if (urlParams.get('startMode') === 'immersive') {
       officeBox.getCenter(officeCenter);
 
       // Position: move office down so the model sits on a table surface
-      // Extra offset: 160 units down (~1.6m), 30 units on X (~30cm)
-      const extraDown = 160;
+      // Extra offset: 40 units down (~0.4m), 30 units on X (~30cm)
+      const extraDown = 40;
       const extraX = -30;
       const officeHeight = officeBox.max.y - officeBox.min.y;
       const tableOffset = officeHeight * 0.4 + extraDown;
