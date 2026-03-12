@@ -834,12 +834,14 @@ html.embedded .right-panel { top:12px !important; }
 
 /* ===== AR MODE (mobile only) ===== */
 .ar-btn {
-  position:fixed; top:14px; right:14px; z-index:200;
+  position:fixed; top:62px; right:14px; z-index:200;
   width:40px; height:40px; border:none; border-radius:10px;
   background:#fff; box-shadow:1px 1px 10px rgba(0,0,0,0.15);
   display:none; align-items:center; justify-content:center;
   cursor:pointer; transition:background 0.2s, transform 0.15s;
 }
+html.embedded .ar-btn { display:none !important; }
+html.embedded .ar-sub-btns { top:44px; }
 .ar-btn:hover { background:#f0f0f0; }
 .ar-btn:active { transform:scale(0.92); }
 .ar-btn svg { width:20px; height:20px; fill:#36415d; }
@@ -850,9 +852,10 @@ html.embedded .right-panel { top:12px !important; }
 
 /* AR sub-buttons (mesh toggle + placement) */
 .ar-sub-btns {
-  position:fixed; top:66px; right:14px; z-index:200;
+  position:fixed; top:114px; right:14px; z-index:200;
   display:none; flex-direction:column; gap:8px;
 }
+html.embedded .ar-sub-btns { top:66px; }
 .ar-sub-btns.visible { display:flex; }
 .ar-sub-btn {
   width:44px; height:44px; border:none; border-radius:12px;
@@ -1960,6 +1963,48 @@ html.embedded .right-panel { top:12px !important; }
 #animEditorBar .ae-save { background:#2f80ed; color:#fff; }
 #animEditorBar .ae-save:hover { background:#5999f1; }
 
+/* Animation editor unsaved-changes dialog */
+.ae-unsaved-overlay {
+  position:fixed; inset:0; z-index:9999;
+  background:rgba(0,0,0,0.45); backdrop-filter:blur(3px);
+  display:none; align-items:center; justify-content:center;
+  opacity:0; transition:opacity 0.15s ease;
+}
+.ae-unsaved-overlay.visible { opacity:1; }
+.ae-unsaved-dialog {
+  background:#fff; border-radius:14px; padding:28px 32px 24px;
+  width:360px; max-width:calc(100vw - 32px);
+  box-shadow:0 20px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.06);
+  font-family:var(--font-family); transform:scale(0.95) translateY(8px);
+  transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+.ae-unsaved-overlay.visible .ae-unsaved-dialog { transform:scale(1) translateY(0); }
+.ae-unsaved-dialog h3 {
+  margin:0 0 8px; font-size:16px; font-weight:700; color:#36415D;
+}
+.ae-unsaved-dialog p {
+  margin:0 0 24px; font-size:13px; color:#868D9E; line-height:1.5;
+}
+.ae-unsaved-actions { display:flex; gap:8px; justify-content:flex-end; }
+.ae-unsaved-actions button {
+  height:36px; padding:0 18px; border:none; border-radius:8px;
+  font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+  transition:background 0.15s, transform 0.1s;
+}
+.ae-unsaved-actions button:active { transform:scale(0.97); }
+.ae-unsaved-actions .ae-usd-cancel {
+  background:#F5F5F5; color:#36415D;
+}
+.ae-unsaved-actions .ae-usd-cancel:hover { background:#E9E9E9; }
+.ae-unsaved-actions .ae-usd-discard {
+  background:#FFF0F0; color:#FF1F1F;
+}
+.ae-unsaved-actions .ae-usd-discard:hover { background:#FFE0E0; }
+.ae-unsaved-actions .ae-usd-save {
+  background:#2F80ED; color:#fff;
+}
+.ae-unsaved-actions .ae-usd-save:hover { background:#5999F1; }
+
 /* Timeline panel — matches reference: TRACK_HEIGHT=32, sidebar=320, zoom=0.1-5x */
 #animTimeline {
   position:fixed; bottom:0; left:0; right:0; height:280px; z-index:150;
@@ -3047,6 +3092,18 @@ html.embedded .right-panel { top:12px !important; }
   <div class="bt-divider"></div>
   <button class="bt-text-btn" id="btPreview"><svg viewBox="0 0 24 24" fill="#2f80ed"><path d="M8 5v14l11-7z"/></svg><span>Preview</span></button>
   <button class="bt-save" id="btSave">Save</button>
+</div>
+<!-- Unsaved changes dialog for animation editor -->
+<div class="ae-unsaved-overlay" id="aeUnsavedOverlay">
+  <div class="ae-unsaved-dialog">
+    <h3>Unsaved changes</h3>
+    <p>You have unsaved changes to this animation. Would you like to save before leaving?</p>
+    <div class="ae-unsaved-actions">
+      <button class="ae-usd-cancel" id="aeUsdCancel">Cancel</button>
+      <button class="ae-usd-discard" id="aeUsdDiscard">Discard</button>
+      <button class="ae-usd-save" id="aeUsdSave">Save &amp; close</button>
+    </div>
+  </div>
 </div>
 <!-- EDITOR MORE MENU (above bottom toolbar) -->
 <div class="viewer-more-menu" id="editorMoreMenu" style="bottom:auto;left:auto;">
@@ -5233,6 +5290,10 @@ loader.load('./Generator.fbx', (object) => {
 
   // Generate sample bookmarks for demo (only if none exist yet)
   generateSampleBookmarks();
+  // Re-render bookmarks list if panel is already open (e.g. opened before model loaded)
+  if (!document.getElementById('bookmarksPanel').classList.contains('hidden')) {
+    renderBookmarksList();
+  }
 
 }, (progress) => {
   if (progress.total) document.getElementById('loadingText').textContent = `Loading 3D model... ${Math.round(progress.loaded/progress.total*100)}%`;
@@ -11974,6 +12035,107 @@ if (urlParams.has('embedded')) document.documentElement.classList.add('embedded'
 if (urlParams.get('mode') === 'procedure') document.documentElement.classList.add('procedure');
 if (urlParams.get('startMode') === 'editor') { setMode('editor', { force: true }); }
 
+// ==================== IMMERSIVE ROOM MODE ====================
+if (urlParams.get('startMode') === 'immersive') {
+  (function loadImmersiveRoom() {
+    console.log('[Immersive] Loading office environment...');
+    const basePath = (window.location.pathname.includes('/app/'))
+      ? window.location.pathname.replace(/\/app\/.*$/, '/shared/')
+      : '../shared/';
+
+    let officeScene = null;
+
+    // Load the office GLB
+    _enhancedGLTFLoader.load(
+      basePath + 'Office.glb',
+      function(gltf) {
+        officeScene = gltf.scene;
+        officeScene.name = '__immersive_room__';
+        console.log('[Immersive] Office GLB parsed, waiting for DT model...');
+        placeOfficeWhenReady();
+      },
+      function(progress) {
+        if (progress.total) console.log('[Immersive] Loading:', Math.round(progress.loaded / progress.total * 100) + '%');
+      },
+      function(error) {
+        console.warn('[Immersive] Failed to load office environment:', error);
+      }
+    );
+
+    function placeOfficeWhenReady() {
+      if (!officeScene) return;
+      // Wait for fbxModel to be loaded
+      if (!fbxModel) {
+        setTimeout(placeOfficeWhenReady, 200);
+        return;
+      }
+      const office = officeScene;
+
+      // Compute model bounds
+      const modelBox = new THREE.Box3().setFromObject(fbxModel);
+      const modelCenter = new THREE.Vector3(); modelBox.getCenter(modelCenter);
+      const modelSize = new THREE.Vector3(); modelBox.getSize(modelSize);
+
+      // Compute office bounds
+      const officeBox = new THREE.Box3().setFromObject(office);
+      const officeSize = new THREE.Vector3(); officeBox.getSize(officeSize);
+      const officeCenter = new THREE.Vector3(); officeBox.getCenter(officeCenter);
+
+      // Scale office so it's a room environment around the DT model
+      const modelMax = Math.max(modelSize.x, modelSize.y, modelSize.z);
+      const officeMax = Math.max(officeSize.x, officeSize.y, officeSize.z);
+      const scale = (modelMax * 3) / officeMax;
+      office.scale.setScalar(scale);
+
+      // Recompute after scaling
+      officeBox.setFromObject(office);
+      officeBox.getCenter(officeCenter);
+
+      // Position: center office around model, floor aligned
+      office.position.set(
+        modelCenter.x - officeCenter.x,
+        modelBox.min.y - officeBox.min.y,
+        modelCenter.z - officeCenter.z
+      );
+
+      // Ensure office materials receive scene lighting properly
+      office.traverse(child => {
+        if (child.isMesh && child.material) {
+          child.castShadow = false;
+          child.receiveShadow = true;
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          mats.forEach(mat => { if (mat.envMapIntensity !== undefined) mat.envMapIntensity = 1.5; });
+        }
+      });
+
+      scene.add(office);
+
+      // Strong lighting for the office interior
+      const roomAmbient = new THREE.AmbientLight(0xffffff, 1.2);
+      roomAmbient.name = '__immersive_ambient__';
+      scene.add(roomAmbient);
+      const roomCeiling = new THREE.DirectionalLight(0xfff5e6, 1.5);
+      roomCeiling.name = '__immersive_ceiling__';
+      roomCeiling.position.set(modelCenter.x, modelCenter.y + modelMax * 3, modelCenter.z);
+      roomCeiling.target.position.set(modelCenter.x, modelCenter.y, modelCenter.z);
+      scene.add(roomCeiling); scene.add(roomCeiling.target);
+      const roomWindow = new THREE.DirectionalLight(0xe8f0ff, 0.8);
+      roomWindow.name = '__immersive_window__';
+      roomWindow.position.set(modelCenter.x + modelMax * 2, modelCenter.y + modelMax, modelCenter.z);
+      scene.add(roomWindow);
+
+      // Hide the infinite grid — the office has its own floor
+      if (infiniteGrid && infiniteGrid.mesh) infiniteGrid.mesh.visible = false;
+      state.gridVisible = false;
+
+      // Change background to a subtle dark to blend with room instead of sky gradient
+      renderer.setClearColor(0x1a1a2e, 1);
+
+      console.log('[Immersive] Office environment placed (scale:', scale.toFixed(2), ')');
+    }
+  })();
+}
+
 // ==================== ANIMATION EDITOR / TIMELINE ====================
 const animEditor = {
   active: false,
@@ -12115,6 +12277,8 @@ function aeOpen(animId) {
   // Notify parent (procedure editor) that animation editor is now open
   window.parent.postMessage({ type: 'animation-editor-opened' }, '*');
   aeRender();
+  // Snapshot state for unsaved-changes detection
+  if (typeof window._aeSnapshotState === 'function') window._aeSnapshotState();
 }
 
 function aeClose() {
@@ -13816,10 +13980,56 @@ function aePasteKeyframes(targetTrackIdx) {
   setupHandle('tlRangeRight', false);
 })();
 
-// Back / Save buttons
-document.getElementById('aeBack').onclick = () => {
-  if (confirm('Discard changes to this animation?')) aeClose();
-};
+// Back / Save buttons — with unsaved-changes check
+(function() {
+  const overlay = document.getElementById('aeUnsavedOverlay');
+  let _aeOpenSnapshot = null;
+
+  // Snapshot the current animation state for dirty-checking
+  window._aeSnapshotState = function() {
+    _aeOpenSnapshot = {
+      name: document.getElementById('aeName').value,
+      duration: document.getElementById('aeDuration').value,
+      tracks: JSON.stringify(animEditor.tracks)
+    };
+  };
+
+  function aeHasUnsavedChanges() {
+    if (!_aeOpenSnapshot) return false;
+    if (document.getElementById('aeName').value !== _aeOpenSnapshot.name) return true;
+    if (document.getElementById('aeDuration').value !== _aeOpenSnapshot.duration) return true;
+    if (JSON.stringify(animEditor.tracks) !== _aeOpenSnapshot.tracks) return true;
+    return false;
+  }
+
+  function showUnsavedDialog() {
+    overlay.style.display = 'flex';
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+  }
+
+  function hideUnsavedDialog() {
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.style.display = 'none'; }, 200);
+  }
+
+  document.getElementById('aeBack').onclick = () => {
+    if (aeHasUnsavedChanges()) {
+      showUnsavedDialog();
+    } else {
+      aeClose();
+    }
+  };
+
+  document.getElementById('aeUsdCancel').onclick = hideUnsavedDialog;
+  document.getElementById('aeUsdDiscard').onclick = () => { hideUnsavedDialog(); aeClose(); };
+  document.getElementById('aeUsdSave').onclick = () => { hideUnsavedDialog(); aeSave(); };
+
+  // Close dialog on Escape
+  overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideUnsavedDialog(); });
+  // Close dialog on overlay background click
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) hideUnsavedDialog(); });
+})();
+
 document.getElementById('aeSave').onclick = () => {
   const btn = document.getElementById('aeSave');
   aeSave();
@@ -14049,9 +14259,14 @@ window.addEventListener('message', function(e) {
   if (msg.type === 'toggle-bookmarks') {
     var bp = document.getElementById('bookmarksPanel');
     if (bp) {
-      if (bp.classList.contains('hidden')) { flShow('bookmarksPanel'); if (typeof renderBookmarks === 'function') renderBookmarks(); }
+      if (bp.classList.contains('hidden')) { flShow('bookmarksPanel'); if (typeof renderBookmarksList === 'function') renderBookmarksList(); }
       else flHide('bookmarksPanel');
     }
+  }
+
+  // --- Toggle AR from parent (procedure overlay button) ---
+  if (msg.type === 'toggle-ar') {
+    if (typeof window._toggleAR === 'function') window._toggleAR();
   }
 
   // --- Toggle parts catalog (same as the 3D viewer's right panel) ---
@@ -15595,6 +15810,8 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
     const show = isMobile() && state.mode === 'viewer';
     arBtn.classList.toggle('visible', show || arActive);
     if (arActive && state.mode !== 'viewer') exitAR();
+    // Notify parent of AR availability for embedded overlay buttons
+    if (inIframe) window.parent.postMessage({ type: 'ar-available', available: show || arActive }, '*');
   }
 
   async function enterAR() {
@@ -15603,6 +15820,7 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
     arActive = true;
     state._arActive = true;
     arMeshVisible = true;
+    if (inIframe) window.parent.postMessage({ type: 'ar-state-changed', active: true }, '*');
     arPlacementMode = null;
 
     _arSavedPixelRatio = renderer.getPixelRatio();
@@ -15636,6 +15854,7 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
     arActive = false;
     state._arActive = false;
     arPlacementMode = null;
+    if (inIframe) window.parent.postMessage({ type: 'ar-state-changed', active: false }, '*');
 
     if (_arSavedPixelRatio !== null) { renderer.setPixelRatio(_arSavedPixelRatio); _arSavedPixelRatio = null; }
 
@@ -15901,6 +16120,9 @@ document.getElementById('newCatNameInput').addEventListener('keydown', e => { if
 
   // ==================== BUTTON HANDLERS ====================
   arBtn.addEventListener('click', () => { if (arActive) exitAR(); else enterAR(); });
+  // Expose toggle for postMessage from parent
+  window._toggleAR = () => { if (arActive) exitAR(); else enterAR(); };
+  window._isARActive = () => arActive;
 
   arMeshToggle.addEventListener('click', () => {
     arMeshVisible = !arMeshVisible;

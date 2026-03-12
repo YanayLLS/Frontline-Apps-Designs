@@ -31,14 +31,10 @@ const roleGroups: { label: string; roles: UserRole[] }[] = [
 // ==================== PAGE DATA ====================
 const appPages: PageLink[] = [
   { label: 'Projects', path: '/app/knowledgebase' },
-  { label: 'Knowledge Base', path: '/app/project/915-i-series/kb', children: [
-    { label: 'Folder: Flows', path: '/app/project/915-i-series/folder/f1' },
-    { label: 'Folder: Protocols', path: '/app/project/915-i-series/folder/f2' },
-    { label: 'Folder: Training', path: '/app/project/915-i-series/folder/f3' },
-  ]},
+  { label: 'Knowledge Base', path: '/app/project/915-i-series/kb' },
   { label: 'Remote Support', path: '/app/remote-support' },
   { label: 'AI Chat', path: '/app/ai-chat' },
-  { label: 'Flow Editor', path: '/app/procedure-editor/p1' },
+  { label: '3D Flow (Edit)', path: '/app/procedure-editor/p1' },
   { label: '3D Flow (View)', path: '/app/procedure-editor/generator-maintenance?mode=view' },
   { label: 'Digital Twin Viewer', path: '/app/3d-viewer' },
   { label: 'Digital Twin Editor', path: '/app/3d-viewer?mode=editor' },
@@ -91,6 +87,9 @@ const featureGroups: FeatureGroup[] = [
     { id: 'xr-procedures', name: 'Flows', icon: '\u{1F4CB}', desc: 'Follow step-by-step guided flows with media and validation.', demoSteps: 6, route: '/xr' },
     { id: 'xr-call', name: 'Remote Support & Calls', icon: '\u{1F4DE}', desc: 'Start a remote support call with video, chat, and participants.', demoSteps: 6, route: '/xr' },
     { id: 'xr-camera', name: 'XR Camera & Navigation', icon: '\u{1F3A5}', desc: 'Navigate the XR camera view with drag and keyboard controls.', demoSteps: 4, route: '/xr' },
+  ]},
+  { label: 'Procedures', features: [
+    { id: 'proc-twin-state', name: 'Set State of a Digital Twin', icon: '\u{1F4BE}', desc: 'Save and restore the 3D scene state (camera, visibility, X-Ray) per procedure step.', demoSteps: 5, route: '/app/procedure-editor/p1' },
   ]},
 ];
 
@@ -215,10 +214,17 @@ export function DebugMenu() {
   }, [navigate]);
 
   const startDemo = useCallback((feat: FeatureItem, keepOpen = false) => {
-    const onPage = currentPathname === feat.route || currentPathname.startsWith(feat.route + '/');
+    const isParentDemo = feat.id.startsWith('proc-');
+    const onPage = currentPathname === feat.route || currentPathname.startsWith(feat.route + '/')
+      || (isParentDemo && currentPathname.startsWith('/app/procedure-editor/'));
     if (onPage) {
-      const iframe = document.querySelector('iframe') as HTMLIFrameElement | null;
-      if (iframe?.contentWindow) iframe.contentWindow.postMessage({ type: 'debugStartDemo', featureId: feat.id }, '*');
+      if (isParentDemo) {
+        // Procedure demos run in the React parent, not the iframe
+        window.dispatchEvent(new CustomEvent('procedure-demo-start', { detail: { featureId: feat.id } }));
+      } else {
+        const iframe = document.querySelector('iframe') as HTMLIFrameElement | null;
+        if (iframe?.contentWindow) iframe.contentWindow.postMessage({ type: 'debugStartDemo', featureId: feat.id }, '*');
+      }
     } else {
       pendingDemoRef.current = feat.id;
       navigate(`${feat.route}?demo=${feat.id}`);
@@ -463,11 +469,25 @@ export function DebugMenu() {
         setIsOpen(p => { const n = !p; if (n) setTimeout(() => searchInputRef.current?.focus(), 50); return n; });
       }
       if (e.data?.type === 'debugFeatures' && pendingDemoRef.current) {
-        const fid = pendingDemoRef.current; pendingDemoRef.current = null;
-        setTimeout(() => {
-          const iframe = document.querySelector('iframe') as HTMLIFrameElement | null;
-          if (iframe?.contentWindow) iframe.contentWindow.postMessage({ type: 'debugStartDemo', featureId: fid }, '*');
-        }, 300);
+        const fid = pendingDemoRef.current;
+        if (fid.startsWith('proc-')) {
+          // Don't clear pending — wait for procedureDemosAvailable
+        } else {
+          pendingDemoRef.current = null;
+          setTimeout(() => {
+            const iframe = document.querySelector('iframe') as HTMLIFrameElement | null;
+            if (iframe?.contentWindow) iframe.contentWindow.postMessage({ type: 'debugStartDemo', featureId: fid }, '*');
+          }, 300);
+        }
+      }
+      if (e.data?.type === 'procedureDemosAvailable' && pendingDemoRef.current) {
+        const fid = pendingDemoRef.current;
+        if (fid.startsWith('proc-')) {
+          pendingDemoRef.current = null;
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('procedure-demo-start', { detail: { featureId: fid } }));
+          }, 300);
+        }
       }
       if (e.data?.type === 'debugDemoStarted') {
         const url = new URL(window.location.href);
@@ -506,9 +526,20 @@ export function DebugMenu() {
         const feat = g.features.find(f => f.id === demoId);
         if (feat) {
           autoStartedRef.current = demoId;
-          pendingDemoRef.current = feat.id;
-          const onPage = currentPathname === feat.route || currentPathname.startsWith(feat.route + '/');
-          if (!onPage) navigate(`${feat.route}?demo=${feat.id}`);
+          const isParent = feat.id.startsWith('proc-');
+          const onPage = currentPathname === feat.route || currentPathname.startsWith(feat.route + '/')
+            || (isParent && currentPathname.startsWith('/app/procedure-editor/'));
+          if (onPage && isParent) {
+            // Dispatch directly with delay to let components mount
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('procedure-demo-start', { detail: { featureId: feat.id } }));
+            }, 600);
+          } else if (onPage) {
+            pendingDemoRef.current = feat.id;
+          } else {
+            pendingDemoRef.current = feat.id;
+            navigate(`${feat.route}?demo=${feat.id}`);
+          }
           break;
         }
       }
@@ -1034,17 +1065,7 @@ export function DebugMenu() {
                   {isApp && (<><div style={{ fontSize: '11px', color: '#868D9E', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '4px 8px', marginBottom: '2px', fontWeight: 700 }}>App Pages</div>{renderPageList(appPages)}</>)}
                   {isWeb && (<><div style={{ fontSize: '11px', color: '#868D9E', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '4px 8px', marginBottom: '2px', fontWeight: 700 }}>Web Pages</div>{renderPageList(webPages)}</>)}
                   {!isApp && !isWeb && (
-                    <>
-                      <div style={{ fontSize: '11px', color: '#868D9E', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '4px 8px', marginBottom: '4px', fontWeight: 700 }}>Platforms</div>
-                      {[{ label: 'Open App Design', path: '/app/knowledgebase' }, { label: 'Open Web Design', path: '/web/home' }, { label: 'Open XR Design', path: '/xr' }].map(item => {
-                        const idx = nextDi();
-                        return (
-                          <div key={item.path} data-di={idx} className="cursor-pointer hover:bg-black/5 rounded transition-colors" style={{ padding: '4px 8px', ...diFocusStyle(idx) }}>
-                            <button onClick={() => handleNavigate(item.path)} style={{ fontSize: '13px', color: '#36415D' }}>{item.label}</button>
-                          </div>
-                        );
-                      })}
-                    </>
+                    <div style={{ padding: '8px', color: '#868D9E', fontSize: '12px', textAlign: 'center' }}>Select a platform tab above</div>
                   )}
                 </div>
               )}

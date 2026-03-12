@@ -83,7 +83,8 @@ function App3DViewer() {
   };
 
   const params = new URLSearchParams(location.search);
-  const startMode = params.get('mode') === 'editor' ? '&startMode=editor' : '';
+  const urlMode = params.get('mode');
+  const startMode = urlMode === 'editor' ? '&startMode=editor' : urlMode === 'immersive' ? '&startMode=immersive' : '';
 
   // Auto-open from URL param
   useEffect(() => {
