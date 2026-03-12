@@ -12091,10 +12091,13 @@ if (urlParams.get('startMode') === 'immersive') {
       officeBox.setFromObject(office);
       officeBox.getCenter(officeCenter);
 
-      // Position: center office around model, floor aligned
+      // Position: move office down so the model sits on a table surface
+      // Estimate table height as ~40% of office height (desks are roughly waist-height in a room)
+      const officeHeight = officeBox.max.y - officeBox.min.y;
+      const tableOffset = officeHeight * 0.4;
       office.position.set(
         modelCenter.x - officeCenter.x,
-        modelBox.min.y - officeBox.min.y,
+        modelBox.min.y - officeBox.min.y - tableOffset,
         modelCenter.z - officeCenter.z
       );
 
@@ -12128,8 +12131,13 @@ if (urlParams.get('startMode') === 'immersive') {
       if (infiniteGrid && infiniteGrid.mesh) infiniteGrid.mesh.visible = false;
       state.gridVisible = false;
 
-      // Change background to a subtle dark to blend with room instead of sky gradient
+      // Dark background to blend with room interior
       renderer.setClearColor(0x1a1a2e, 1);
+
+      // Adjust camera planes for the larger scene to avoid z-fighting
+      camera.near = 1;
+      camera.far = 200000;
+      camera.updateProjectionMatrix();
 
       console.log('[Immersive] Office environment placed (scale:', scale.toFixed(2), ')');
     }
