@@ -62,7 +62,8 @@ const responses: ResponseMatch[] = [
     response: `**Lockout/Tagout (LOTO) Procedure:**\n\n**Before any maintenance:**\n1. **Notify** all affected personnel\n2. **Shut down** the equipment using normal procedures\n3. **Isolate** all energy sources:\n   • Disconnect electrical power\n   • Close fuel valves\n   • Release stored energy (capacitors, springs, pressure)\n4. **Apply** your personal lock and tag to each energy isolation device\n5. **Verify** zero energy state — try to start the equipment\n\n**After maintenance:**\n1. Inspect the work area — tools removed, guards replaced\n2. Verify all personnel are clear\n3. Remove your lock and tag\n4. Restore energy and test\n\n⚠️ **Never remove someone else's lock!**\n\nNeed the full LOTO procedure document?`,
   },
   {
-    keywords: ['procedure', 'create', 'new'],
+    keywords: ['procedure', 'create'],
+    matchAll: true,
     response: `I can help you create a new procedure! Here's how:\n\n1. Go to your **Knowledge Base**\n2. Click **"+ New"** and select **"Flow"**\n3. Give it a name and description\n4. Use the **Flow Editor** to add steps:\n   • Add text instructions for each step\n   • Attach photos or videos as visual references\n   • Connect to a Digital Twin for 3D guidance\n   • Add validation checkpoints\n5. **Preview** the procedure in viewer mode\n6. **Publish** when ready\n\nWould you like me to suggest a structure for your procedure?`,
   },
   {
@@ -78,7 +79,7 @@ const responses: ResponseMatch[] = [
     response: `I'd be happy to guide you! Here are the most common tasks I can help with:\n\n🔧 **Maintenance & Repair**\n• "How do I change the oil?"\n• "Walk me through belt replacement"\n• "Troubleshoot engine overheating"\n\n📋 **Procedures & Knowledge Base**\n• "Find the startup procedure"\n• "Create a new maintenance checklist"\n• "Show me safety protocols"\n\n🎯 **Digital Twins & 3D**\n• "Open the generator model"\n• "Show me where the fuel filter is"\n\n📞 **Support**\n• "Connect me with an expert"\n• "Start a remote support call"\n\nJust describe what you need in plain language and I'll help you step by step!`,
   },
   {
-    keywords: ['what', 'machine', 'supported', 'equipment'],
+    keywords: ['machine', 'supported', 'equipment'],
     response: `Currently, your workspace has the following equipment:\n\n**Active Projects:**\n• 🔴 **Generator** — Diesel generator assembly with full 3D model and maintenance procedures\n• ⚙️ **915 i Series** — Industrial equipment with comprehensive KB\n• 🏭 **Manufacturing Facility Alpha** — CNC machines and robotic arms\n• 💻 **Elitebook 840 G9** — Laptop hardware documentation\n• 💻 **ProBook 450 G10** — Laptop service procedures\n• 💻 **ZBook Studio G9** — Workstation documentation\n• 🖨 **High-Volume Printing Equipment** — Industrial printers\n\nEach project contains procedures, digital twins, and supporting documents.\n\nWhich equipment would you like to explore?`,
   },
   {
@@ -92,6 +93,51 @@ const responses: ResponseMatch[] = [
   {
     keywords: ['error', 'warning', 'fault', 'code', 'alarm'],
     response: `To help diagnose the error, I'll need a bit more info:\n\n1. **What error code or message** are you seeing?\n2. **Which equipment** is showing the error?\n3. **When did it start** — during operation, on startup, or at shutdown?\n\n**Common error codes:**\n• **E01** — Low oil pressure → Check oil level, inspect oil pump\n• **E02** — High temperature → Check coolant level, inspect radiator\n• **E03** — Overspeed → Check governor, inspect fuel system\n• **E04** — Low battery → Check battery voltage, inspect charging system\n• **E05** — Fuel pressure → Check fuel filter, inspect fuel pump\n\nDescribe the error and I'll walk you through the resolution!`,
+  },
+
+  // ===== CONFIGURATIONS FEATURE =====
+  {
+    keywords: ['configuration', 'configurations', 'config', 'configs'],
+    response: `**Digital Twin Configurations** let you manage multiple variants of the same equipment without duplicating digital twins.\n\n**What are configurations?**\nThe same physical product may have many configurations:\n• **Functionality** — e.g. a machine with or without an optional module\n• **As-built / ECO** — production line changes for cost or reliability\n• **FCO (Field Change Order)** — changes made at the customer's site\n\n**Key capabilities:**\n• Define part visibility, transforms, descriptions, and tags per configuration\n• Role-based permissions — technicians only see configs relevant to them\n• Import/Export via Excel for bulk management\n• Default Configuration always exists as a read-only baseline\n• Duplicate configs to quickly create variants\n\n**Who uses it?**\n• **Content Creators** — define and manage configurations in the editor\n• **Technicians** — select the right config when opening a digital twin\n• **Admins** — control permissions per configuration\n\nWant to know more about creating, editing, or viewing configurations?`,
+  },
+  {
+    keywords: ['configuration', 'create', 'new'],
+    matchAll: true,
+    response: `**Creating a New Configuration:**\n\n1. Open the digital twin in the **editor**\n2. Go to the **Configurations** tab in the parts catalog panel\n3. Click **"Create Configuration"**\n4. A new config is created named "Configuration 1" — the current parts visibility state is captured\n5. Modify the 3D scene — hide/show parts, adjust transforms\n6. Changes are captured when you switch configs or click **"Set from view"**\n7. Rename the config and add a description and tags\n\n**Tips:**\n• You can also **duplicate** an existing config to start from a known state\n• The **Default Configuration** is always read-only and reflects the full parts catalog\n• Each configuration tracks: name, description, tags, part visibility, part transforms, and permissions\n\nWould you like to know about managing permissions or bulk import/export?`,
+  },
+  {
+    keywords: ['configuration', 'edit'],
+    matchAll: true,
+    response: `**Editing a Configuration:**\n\n1. Open the digital twin editor and go to the **Configurations** tab\n2. Click on the configuration you want to edit — it becomes the **active** config\n3. In the 3D scene, show or hide parts as needed\n4. Adjust part transforms (position, rotation, scale) if required\n5. Click **"Set from view"** to capture the current 3D state into the config\n6. Edit the name, description, and tags inline in the config panel\n\n**What you can change per config:**\n• **Part visibility** — show/hide individual parts or assemblies\n• **Part transforms** — move, rotate, or scale parts\n• **Description** — text describing this variant\n• **Tags** — for search and filtering (e.g. "Premium", "USA-East")\n• **Permissions** — which roles can see this config\n\nNote: Undo/Redo is supported for configuration changes.`,
+  },
+  {
+    keywords: ['configuration', 'permission'],
+    matchAll: true,
+    response: `**Configuration Permissions:**\n\nEach configuration has a **PermittedTrainingAndFieldRoles** setting that controls who can see it.\n\n**How it works:**\n• When a technician opens a digital twin, they only see configurations they have permission to view\n• Non-permitted configurations are **hidden** (not shown as "access denied")\n• Service managers can be granted access to all configurations\n\n**Setting permissions:**\n1. Open the configuration properties in the editor\n2. Under **Permissions**, select which roles can view this config\n3. Save and publish the digital twin\n\n**Example:**\n• "AutoCorp-USA-East" config → visible to USA-East technicians only\n• "AutoCorp-Mexico" config → visible to Mexico technicians only\n• Service managers see all three regional configs\n\nThis is especially useful when different customers or regions have different equipment variants.`,
+  },
+  {
+    keywords: ['configuration', 'import'],
+    matchAll: true,
+    response: `**Import/Export Configurations via Excel:**\n\nYou can bulk-manage part visibility across configurations using Excel.\n\n**Export:**\n1. Open the digital twin editor → Parts Catalog\n2. Click **Export** — downloads an Excel file\n3. Each configuration gets its own column next to the parts list\n4. Cells show visibility state (visible/hidden) per part per config\n\n**Edit in Excel:**\n• Add new configuration columns\n• Toggle visibility values per part\n• Excel controls **visibility only** — names, descriptions, tags, and transforms are managed in the editor\n\n**Import:**\n1. Click **Import** and select the modified Excel file\n2. If the file references configs that don't exist, you'll be asked: "Some configurations don't exist. Regenerate them?"\n3. Configurations refresh to match the Excel\n4. Other properties (description, tags, transforms) remain unchanged\n\nThis is great for standardizing configs across multiple digital twins.`,
+  },
+  {
+    keywords: ['configuration', 'view'],
+    matchAll: true,
+    response: `**Viewing Configurations (as a Technician):**\n\nWhen you open a digital twin that has configurations:\n\n1. The loading/preview screen shows an **"Open with Configuration"** button\n2. Click it to see a **searchable popup** with available configs\n3. Search by name or tag to find the right variant\n4. Select a configuration — the 3D scene loads with the correct parts visible\n5. The parts catalog shows only parts relevant to this configuration\n\n**Opening a procedure with a configuration:**\n• When you open a procedure linked to a configured digital twin, the procedure uses the selected configuration\n• Steps reference only the parts visible in that config\n• If no config is selected, the Default Configuration is used\n\n**Note:** You only see configurations you have permission to access — others are hidden.`,
+  },
+  {
+    keywords: ['configuration', 'default'],
+    matchAll: true,
+    response: `**Default Configuration:**\n\nEvery digital twin automatically has a **Default Configuration** that:\n\n• Is **read-only** — you can't modify it directly\n• Represents the **full parts catalog** with all parts visible\n• Is always available to all users regardless of permissions\n• Serves as the baseline when no specific config is selected\n\n**When is it used?**\n• When a user opens a digital twin without selecting a specific configuration\n• When a procedure doesn't specify a particular config\n• As the starting point when creating new configurations\n\nThe Default Configuration ensures there's always a complete, unmodified view of the digital twin available.`,
+  },
+  {
+    keywords: ['configuration', 'duplicate'],
+    matchAll: true,
+    response: `**Duplicating a Configuration:**\n\nDuplicating is the fastest way to create a new variant:\n\n1. In the Configurations tab, find the config you want to copy\n2. Click the **three-dot menu** → **"Duplicate"**\n3. A new config is created with all the same settings:\n   • Part visibility state\n   • Part transforms\n   • Description and tags\n4. The duplicate gets the name "[Original Name] (Copy)"\n5. Rename it and make your changes\n\n**Use case:** You have a "Standard" config and need a "Premium" variant that adds a few extra parts — duplicate Standard, then show the additional parts.`,
+  },
+  {
+    keywords: ['what', 'configuration', 'feature'],
+    response: `**Configurations** is an upcoming feature for Digital Twins that solves a common problem: **the same equipment has multiple variants**.\n\n**The problem today:**\nContent creators have to duplicate entire digital twins for minor variations — different optional modules, regional differences, or field modifications. This leads to duplicated work and maintenance headaches.\n\n**What Configurations solves:**\n• **One digital twin, many variants** — define part visibility and transforms per configuration\n• **Role-based access** — technicians only see configs relevant to their equipment\n• **Bulk management** — import/export via Excel for large-scale operations\n• **Procedure integration** — procedures automatically adapt to the selected configuration\n\n**Platforms:**\n• **PC** — Full editor + viewer\n• **Mobile** — Viewer only (select and view configs)\n• **XR** — Not in scope for initial release\n\nWant me to explain any specific aspect in more detail?`,
   },
 ];
 
@@ -269,16 +315,18 @@ export function getSmartAIResponse(userMessage: string, projects?: ProjectInfo[]
   const contentResponse = getContentAwareResponse(lower, projects);
   if (contentResponse) return contentResponse;
 
-  // Then try static keyword matches
-  for (const entry of responses) {
-    if (entry.matchAll) {
-      if (entry.keywords.every(kw => lower.includes(kw))) {
-        return entry.response;
-      }
-    } else {
-      if (entry.keywords.some(kw => lower.includes(kw))) {
-        return entry.response;
-      }
+  // Then try static keyword matches — matchAll entries first (more specific), then any-match
+  const matchAllEntries = responses.filter(e => e.matchAll);
+  const anyMatchEntries = responses.filter(e => !e.matchAll);
+
+  for (const entry of matchAllEntries) {
+    if (entry.keywords.every(kw => lower.includes(kw))) {
+      return entry.response;
+    }
+  }
+  for (const entry of anyMatchEntries) {
+    if (entry.keywords.some(kw => lower.includes(kw))) {
+      return entry.response;
     }
   }
 

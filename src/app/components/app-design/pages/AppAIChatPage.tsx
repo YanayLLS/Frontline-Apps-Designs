@@ -22,7 +22,7 @@ const chatHistory = [
 const suggestions = [
   'List my procedures',
   'Tell me about the Generator',
-  'Which machines are supported?',
+  'What is the Configurations feature?',
   'Guide me',
 ];
 
