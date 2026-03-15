@@ -10,6 +10,8 @@ import { ValidationPanel } from './ValidationPanel';
 import { OptionsManager } from './OptionsManager';
 import { BookmarksModal } from './BookmarksModal';
 import { PartsCatalogPanel } from './PartsCatalogPanel';
+import { ConfigurationsPanel } from './ConfigurationsPanel';
+import { MOCK_CONFIGURATIONS } from './configurationsData';
 import type { ModelHierarchyNode } from './Viewer3D';
 import { TableOfContents } from './TableOfContents';
 import { Tutorial } from './Tutorial';
@@ -138,6 +140,21 @@ function getProcedureIdFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
   const match = window.location.pathname.match(/procedure-editor\/([^/?]+)/);
   return match ? match[1] : null;
+}
+
+// Map procedure IDs to their web knowledgebase URLs (for "open in web" settings)
+function getWebSettingsUrl(procedureId: string | null): string {
+  const mapping: Record<string, string> = {
+    'p1': '/web/project/915-i-series/knowledgebase?open=915-i-series-kb-1-1',
+    'p2': '/web/project/915-i-series/knowledgebase?open=p2',
+    'p3': '/web/project/915-i-series/knowledgebase?open=p3',
+    'p4': '/web/project/915-i-series/knowledgebase?open=p4',
+    'p5': '/web/project/915-i-series/knowledgebase?open=p5',
+    'p6': '/web/project/915-i-series/knowledgebase?open=p6',
+    'generator-maintenance': '/web/project/generator/knowledgebase?open=generator-kb-2',
+  };
+  if (procedureId && mapping[procedureId]) return mapping[procedureId];
+  return `/web/project/generator/knowledgebase?open=${procedureId || 'new'}`;
 }
 
 const sampleStepIds = {
@@ -629,6 +646,7 @@ export function ProcedureEditor() {
   const [searchParams] = useSearchParams();
   const urlMode = searchParams.get('mode'); // 'view' | 'edit' | null
   const isPreviewMode = searchParams.get('preview') === 'true';
+  const activeConfigName = searchParams.get('config') || null;
   const hasProcedureId = typeof window !== 'undefined' && window.location.pathname.includes('/procedure-editor/');
   const procedureIdFromUrl = getProcedureIdFromUrl();
 
@@ -676,6 +694,7 @@ export function ProcedureEditor() {
   const [showOptionsManager, setShowOptionsManager] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [showPartsCatalog, setShowPartsCatalog] = useState(false);
+  const [showConfigurationsPanel, setShowConfigurationsPanel] = useState(false);
   const [showTOC, setShowTOC] = useState(false);
   const [showPopupPanel, setShowPopupPanel] = useState(false);
   const [showValidationPanel, setShowValidationPanel] = useState(false);
@@ -750,9 +769,67 @@ export function ProcedureEditor() {
   // Demo runner state
   const [activeDemo, setActiveDemo] = useState<DemoFeature | null>(null);
 
+  // AR overlay state (synced from iframe via direct DOM access)
+  const [arActive, setArActive] = useState(false);
+
   // Send a command to the 3D scene iframe
   const postToScene = useCallback((msg: Record<string, unknown>) => {
     sceneIframeRef.current?.contentWindow?.postMessage(msg, '*');
+  }, []);
+
+  // Hide iframe's AR button in embedded mode and sync AR state via direct DOM access
+  useEffect(() => {
+    const iframe = sceneIframeRef.current;
+    if (!iframe) return;
+
+    let observer: MutationObserver | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    const setup = () => {
+      const iframeDoc = iframe.contentDocument;
+      if (!iframeDoc) return;
+
+      const arBtn = iframeDoc.getElementById('arBtn');
+      const arSubBtns = iframeDoc.getElementById('arSubBtns');
+
+      if (arBtn) {
+        // Hide the iframe AR button — React renders its own
+        arBtn.style.display = 'none';
+
+        // Observe class changes to sync arActive state
+        observer = new MutationObserver(() => {
+          setArActive(arBtn.classList.contains('ar-active'));
+        });
+        observer.observe(arBtn, { attributes: true, attributeFilter: ['class'] });
+      }
+
+      // Reposition sub-buttons to continue the React overlay column.
+      // The React overlay is positioned at top-3 right-3 (12px each) relative to
+      // the procedure editor container, which is offset from the iframe by 0px
+      // (iframe fills the viewport below the top bar). The React buttons are at
+      // iframe-y ≈ 11, 46, 81 with 28px height and 8px gap. Sub-btns start at ~117px.
+      // Center the wider 44px sub-btns over the 28px React buttons (right ≈ 4px).
+      if (arSubBtns) {
+        arSubBtns.style.top = '117px';
+        arSubBtns.style.right = '4px';
+      }
+
+      if (pollTimer) clearInterval(pollTimer);
+    };
+
+    // The iframe may not be loaded yet — poll until DOM is accessible
+    pollTimer = setInterval(() => {
+      try {
+        if (iframe.contentDocument?.getElementById('arBtn')) setup();
+      } catch { /* cross-origin guard */ }
+    }, 500);
+
+    iframe.addEventListener('load', setup);
+    return () => {
+      iframe.removeEventListener('load', setup);
+      if (observer) observer.disconnect();
+      if (pollTimer) clearInterval(pollTimer);
+    };
   }, []);
 
   // Ensure current step has validation property
@@ -933,6 +1010,16 @@ export function ProcedureEditor() {
       if (type === 'animation-editor-closed') {
         setIsAnimationEditorOpen(false);
       }
+
+      if (type === 'open-flow-settings') {
+        // If we're in an iframe (preview mode), forward to parent
+        if (window !== window.top) {
+          window.parent.postMessage({ type: 'open-flow-settings' }, '*');
+        } else {
+          // Standalone: open in web context
+          window.open(getWebSettingsUrl(procedureIdFromUrl), '_blank');
+        }
+      }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
@@ -953,38 +1040,177 @@ export function ProcedureEditor() {
       steps: [
         {
           target: '[data-tutorial="toolbar"]',
-          text: 'This is the <b>procedure toolbar</b>. It contains tools to manage your digital twin state, animations, validation, and publishing.',
+          text: 'This is the <b>procedure toolbar</b>. It contains tools for digital twin state, animations, validation, and publishing.',
           pos: 'bottom',
           wait: 'observe',
         },
         {
           target: '[data-demo="twin-save"]',
-          text: 'This is the <b>Save Twin Setup</b> button. It lets you capture the current 3D scene state — camera angle, part visibility, and X-Ray — and attach it to this step.',
-          pos: 'bottom',
-          wait: 'observe',
-        },
-        {
-          target: '[data-demo="twin-save"]',
-          text: 'Click the <b>Save Twin Setup</b> button to open the state menu.',
+          text: 'This is the <b>Save Twin Setup</b> button. It captures the current 3D scene — camera angle, part visibility, and X-Ray — and attaches it to this step.<br><br>Click it to open the state menu.',
           pos: 'bottom',
           wait: 'click',
         },
         {
           target: '[data-demo="twin-set"]',
-          text: 'Click <b>Set State</b> to capture the current 3D view. This saves the camera position, hidden parts, and X-Ray parts for this step.',
+          text: 'Click <b>Set State</b> to capture the current 3D view as this step\'s twin state.',
           pos: 'right',
           wait: 'click',
         },
         {
           target: '[data-demo="twin-save"]',
-          text: 'The <b>accent dot</b> on the button confirms a twin state is saved for this step. When users navigate to this step, the 3D scene will automatically restore this exact view.',
+          text: 'The <b>accent dot</b> on the button confirms a twin state is saved. When users navigate to this step, the 3D scene will automatically restore this exact view.',
           pos: 'bottom',
-          wait: 'validate',
-          validate: () => !!document.querySelector('[data-demo="twin-save"][aria-pressed="true"]'),
+          wait: 'observe',
         },
         {
           target: '[data-demo="twin-save"]',
-          text: 'You can <b>update</b> the state anytime by repeating the process, or <b>clear</b> it from the same menu. Twin state works like bookmarks — saving camera, visibility, and X-Ray settings per step.',
+          text: 'You can <b>update</b> the state by repeating the process, or <b>clear</b> it from the same menu. Twin state saves camera, visibility, and X-Ray settings per step — just like bookmarks.',
+          pos: 'bottom',
+          wait: 'observe',
+        },
+      ]
+    },
+    'proc-configurations': {
+      id: 'proc-configurations',
+      name: 'Configurations',
+      steps: [
+        // ── Step 1: Introduce the Configurations button ──
+        {
+          target: '[data-demo="configurations-btn"]',
+          text: 'This is the <b>Configurations</b> button in the toolbar. It opens the configurations panel where you can define different variants of your digital twin — for example, models with or without optional accessories.<br><br>Click it to open the panel.',
+          pos: 'bottom',
+          wait: 'click',
+        },
+        // ── Step 2: Panel overview ──
+        {
+          target: '[data-demo="configurations-header"]',
+          text: 'The <b>Configurations panel</b> is now open. It shows a list of all configurations for this digital twin. The count badge shows how many exist. The <b>Default Configuration</b> (read-only) always represents the saved parts catalog state.',
+          pos: 'left',
+          wait: 'observe',
+          setup: function() {
+            // Ensure configurations panel is open
+            var btn = document.querySelector('[data-demo="configurations-btn"]') as HTMLElement;
+            var panel = document.querySelector('[data-demo="configurations-header"]');
+            if (btn && !panel) btn.click();
+          },
+        },
+        // ── Step 3: See existing configurations ──
+        {
+          target: '[data-demo="configurations-list"]',
+          text: 'This is the <b>configuration list</b>. Each item shows the config name, enable/disable toggle, and tags. The active configuration is highlighted with a <b>purple left border</b>. Click any configuration to select and activate it.',
+          pos: 'left',
+          wait: 'observe',
+        },
+        // ── Step 4: Create a new configuration ──
+        {
+          target: '[data-demo="configurations-create"]',
+          text: 'Click <b>Create Configuration</b> to add a new configuration. It will capture the current 3D view state as its initial part visibility.',
+          pos: 'left',
+          wait: 'click',
+        },
+        // ── Step 5: See the detail section ──
+        {
+          target: '[data-demo="configurations-detail"]',
+          text: 'A new configuration was created and selected. The <b>Configuration Details</b> section appears below the list. Here you can edit the name, description, tags, and permissions.',
+          pos: 'left',
+          wait: 'observe',
+        },
+        // ── Step 6: Rename the configuration ──
+        {
+          target: '[data-demo="configurations-detail"]',
+          text: 'The <b>Name</b> field shows the auto-generated name. You can type a new name to rename it — for example, "Premium with Coolant" or "Standard Model". Duplicate names are validated and rejected.',
+          pos: 'left',
+          wait: 'observe',
+        },
+        // ── Step 7: Add tags ──
+        {
+          target: '[data-demo="configurations-tags"]',
+          text: 'Use the <b>Tags</b> field to add searchable labels. Type a tag name and press Enter or click Add. Tags help users find configurations by keyword — both in the editor and in the viewer config selector.',
+          pos: 'left',
+          wait: 'observe',
+        },
+        // ── Step 8: Set from View ──
+        {
+          target: '[data-demo="configurations-set-from-view"]',
+          text: 'Click <b>Set from View</b> to capture the current 3D scene state into this configuration. This is a full overwrite — it saves which parts are visible and their transforms. You can also use "Add Selected Parts" and "Remove Selected Parts" for incremental changes.',
+          pos: 'left',
+          wait: 'click',
+        },
+        // ── Step 9: Duplicate via context menu ──
+        {
+          target: '[data-demo="configurations-list"]',
+          text: 'Each non-default configuration has a <b>three-dot menu</b> (visible on hover). It offers <b>Rename</b>, <b>Duplicate</b>, and <b>Delete</b>. Try hovering over a config item to see the menu icon appear.',
+          pos: 'left',
+          wait: 'observe',
+        },
+        // ── Step 10: Permissions ──
+        {
+          target: '[data-demo="configurations-permissions"]',
+          text: 'The <b>Permissions</b> section controls which user roles can see this configuration. Click to expand it and toggle roles on/off. Users without permission will never see this configuration in the viewer — it\'s invisible, not "access denied".',
+          pos: 'left',
+          wait: 'validate',
+          validate: function() {
+            // Validate that the permissions section is expanded
+            var el = document.querySelector('[data-demo="configurations-permissions"]');
+            if (!el) return false;
+            // Check if the inner content is visible (expanded state)
+            var inner = el.querySelector('.border-t');
+            return !!inner;
+          },
+        },
+        // ── Step 11: Observe permissions roles ──
+        {
+          target: '[data-demo="configurations-permissions"]',
+          text: 'Each role has a checkbox. Unchecking all roles makes the configuration invisible to everyone — a warning toast will appear. Roles include Guest, Operator, Field Service Engineer, Content Creator, Admin, and more.',
+          pos: 'left',
+          wait: 'observe',
+        },
+        // ── Step 12: Export ──
+        {
+          target: '[data-demo="configurations-export"]',
+          text: 'Click <b>Export</b> to download all configurations as a file. This is useful for backing up configurations or transferring them between digital twins.',
+          pos: 'top',
+          wait: 'click',
+        },
+        // ── Step 13: Import ──
+        {
+          target: '[data-demo="configurations-import"]',
+          text: 'Click <b>Import</b> to load configurations from a file. If the file references configurations that don\'t exist here, you\'ll be prompted to regenerate them from the imported data.',
+          pos: 'top',
+          wait: 'click',
+        },
+        // ── Step 14: Search ──
+        {
+          target: '[data-demo="configurations-search"]',
+          text: 'Use the <b>search bar</b> to filter configurations by name or tag. This is helpful when you have many configurations — type a keyword and the list updates instantly.',
+          pos: 'left',
+          wait: 'observe',
+        },
+        // ── Step 15: Badge on toolbar ──
+        {
+          target: '[data-demo="configurations-btn"]',
+          text: 'Notice the <b>badge count</b> on the Configurations button — it shows how many configurations exist. This gives a quick at-a-glance indicator without opening the panel.',
+          pos: 'bottom',
+          wait: 'observe',
+        },
+        // ── Step 16: Close panel & state save ──
+        {
+          target: '[data-demo="configurations-btn"]',
+          text: 'When you close the panel (click the X or the backdrop), the active configuration\'s state is automatically saved. A toast confirms: "Configuration state saved". Tab-switching also captures state before resetting to default.',
+          pos: 'bottom',
+          wait: 'observe',
+        },
+        // ── Step 17: Viewer flow summary ──
+        {
+          target: '[data-tutorial="toolbar"]',
+          text: '<b>Viewer Flow:</b> When a technician opens this digital twin from the Knowledge Base, they\'ll see a <b>Configuration selector</b> (only if 2+ enabled configs exist for their role). They can search by name or tag, select a config, and the 3D model loads with the correct parts visible.',
+          pos: 'bottom',
+          wait: 'observe',
+        },
+        // ── Step 18: Complete ──
+        {
+          target: '[data-tutorial="toolbar"]',
+          text: 'You\'ve learned the full <b>Configurations</b> workflow: create, rename, tag, set from view, duplicate, manage permissions, export/import, and how viewers select configs. Configurations ensure every user sees the right variant of your digital twin.',
           pos: 'bottom',
           wait: 'observe',
         },
@@ -2032,13 +2258,31 @@ export function ProcedureEditor() {
               hasAnimation={currentStep.hasAnimation}
               hasTwinState={!!currentStep.twinState}
               onOpenSettings={() => {
-                // Navigate to the flow settings page in the web app
-                const procId = getProcedureIdFromUrl() || 'p1';
-                navigate(`/app/procedure-editor/${procId}?settings=true`);
+                // If embedded in an iframe (preview mode), forward to parent
+                if (window !== window.top) {
+                  window.parent.postMessage({ type: 'open-flow-settings' }, '*');
+                } else {
+                  // Standalone: open in web context
+                  window.open(getWebSettingsUrl(procedureIdFromUrl), '_blank');
+                }
               }}
-              onOpenBookmarks={() => postToScene({ type: 'toggle-bookmarks' })}
+              onOpenBookmarks={() => {
+                postToScene({ type: 'toggle-bookmarks' });
+                // Workaround: the iframe's toggle-bookmarks handler calls a non-existent
+                // renderBookmarks() instead of renderBookmarksList(). Clicking the active
+                // tab in the iframe re-triggers the correct render function.
+                setTimeout(() => {
+                  try {
+                    const tab = sceneIframeRef.current?.contentDocument?.querySelector('.bk-tab.active') as HTMLElement;
+                    if (tab) tab.click();
+                  } catch { /* cross-origin guard */ }
+                }, 150);
+              }}
               onTogglePartsCatalog={() => postToScene({ type: 'toggle-parts-catalog' })}
               isPartsCatalogOpen={false}
+              onToggleConfigurations={() => setShowConfigurationsPanel(prev => !prev)}
+              isConfigurationsOpen={showConfigurationsPanel}
+              configurationCount={MOCK_CONFIGURATIONS.filter(c => !c.isDefault).length}
               onOpenPublish={() => setShowPublish(true)}
               onOpenValidation={() => setShowValidationPanel(true)}
               checkpointCount={currentStep.validation?.checkpoints?.length ?? 0}
@@ -2461,7 +2705,35 @@ export function ProcedureEditor() {
             </div>
           )}
 
-          {/* Top-right scene buttons: close & more (hidden in preview mode and during animation editing) */}
+          {/* Configuration indicator badge in viewer mode */}
+          {!editingEnabled && activeConfigName && !isAnimationEditorOpen && !showARPlacement && (
+            <div
+              className="absolute top-3 left-3 z-10 flex items-center"
+              style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.55)',
+                backdropFilter: 'blur(8px)',
+                borderRadius: '20px',
+                padding: '6px 14px 6px 10px',
+                borderLeft: '3px solid #8404B3',
+                maxWidth: '220px',
+              }}
+            >
+              <span
+                className="truncate"
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 'var(--font-weight-semibold)',
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  fontFamily: 'var(--font-family)',
+                }}
+                title={activeConfigName}
+              >
+                {activeConfigName}
+              </span>
+            </div>
+          )}
+
+          {/* Top-right scene buttons: close, more, AR (hidden in preview mode and during animation editing) */}
           <div className="absolute top-3 right-3 flex flex-col gap-2 z-10" style={{ display: (isPreviewMode || isAnimationEditorOpen) ? 'none' : undefined }}>
             <button
               onClick={handleBack}
@@ -2528,7 +2800,38 @@ export function ProcedureEditor() {
                 </div>
               )}
             </div>
+            <button
+              onClick={() => {
+                // Directly click the iframe's AR button (same-origin)
+                const iframeArBtn = sceneIframeRef.current?.contentDocument?.getElementById('arBtn');
+                if (iframeArBtn) iframeArBtn.click();
+              }}
+              className="size-8 rounded-lg flex items-center justify-center cursor-pointer hover:bg-white/20 transition-colors"
+              style={{
+                background: arActive ? 'rgba(255,31,31,0.75)' : 'rgba(0,0,0,0.5)',
+                border: '1px solid #36415d'
+              }}
+              title={arActive ? 'Exit AR' : 'Enter AR'}
+            >
+              {arActive ? (
+                <X className="size-4 text-white" />
+              ) : (
+                <svg viewBox="0 0 24 24" className="size-4" fill="none">
+                  <rect x="2" y="3" width="20" height="18" rx="2" stroke="rgba(255,255,255,0.8)" strokeWidth="2" fill="none" />
+                  <text x="12" y="15" textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize="8" fontWeight="bold" fontFamily="sans-serif">AR</text>
+                </svg>
+              )}
+            </button>
           </div>
+
+          {/* Settings Modal */}
+          {showSettings && (
+            <SettingsModal
+              onClose={() => setShowSettings(false)}
+              procedureTitle={procedureTitle}
+              onProcedureTitleChange={handleProcedureTitleChange}
+            />
+          )}
 
           {/* Publish Modal */}
           {showPublish && (
@@ -2582,6 +2885,12 @@ export function ProcedureEditor() {
               onClose={() => setShowOptionsManager(false)}
             />
           )}
+
+          {/* Configurations Panel */}
+          <ConfigurationsPanel
+            isOpen={showConfigurationsPanel}
+            onClose={() => setShowConfigurationsPanel(false)}
+          />
 
           {/* Bookmarks and Parts Catalog are now opened inside the 3D scene via postMessage */}
         </div>

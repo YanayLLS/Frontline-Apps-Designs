@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Globe, ChevronDown, Play, Pencil } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRole, hasAccess } from '../../../contexts/RoleContext';
+import { AppConfigurationSelector } from './AppConfigurationSelector';
 
 interface ProcedureInfo {
   id: string;
@@ -28,14 +29,21 @@ export function AppProcedureInfoModal({ procedure, onClose }: AppProcedureInfoMo
   const [language, setLanguage] = useState('English');
   const { currentRole } = useRole();
   const isContentCreator = hasAccess(currentRole, 'projects-edit');
+  const [showConfigSelector, setShowConfigSelector] = useState(false);
+  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
+  const [selectedConfigName, setSelectedConfigName] = useState<string | null>(
+    procedure.configurationName || null
+  );
 
   const handleRunIn3D = () => {
     onClose();
     if (procedure.type === 'procedure') {
-      // Open procedure in VIEW mode (no editing)
-      navigate(`/app/procedure-editor/${procedure.id}?mode=view`);
+      // Open procedure in VIEW mode (no editing), pass config if selected
+      const configParam = selectedConfigName ? `&config=${encodeURIComponent(selectedConfigName)}` : '';
+      navigate(`/app/procedure-editor/${procedure.id}?mode=view${configParam}`);
     } else {
-      navigate('/app/3d-viewer');
+      const configParam = selectedConfigName ? `?config=${encodeURIComponent(selectedConfigName)}` : '';
+      navigate(`/app/3d-viewer${configParam}`);
     }
   };
 
@@ -161,12 +169,14 @@ export function AppProcedureInfoModal({ procedure, onClose }: AppProcedureInfoMo
                 Configuration
               </span>
               <button
+                onClick={() => setShowConfigSelector(true)}
                 className="flex-1 flex items-center justify-between hover:bg-white/50 transition-colors min-w-0"
-                style={{ padding: '8px 12px', borderRadius: '10px' }}
+                style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid #C2C9DB' }}
               >
-                <span className="truncate" style={{ fontSize: '13px', color: '#36415D' }}>
-                  {procedure.configurationName || 'Select a configuration'}
+                <span className="truncate" style={{ fontSize: '13px', color: selectedConfigName ? '#36415D' : '#868D9E' }}>
+                  {selectedConfigName || 'Select a configuration'}
                 </span>
+                <ChevronDown style={{ width: '14px', height: '14px', color: '#868D9E', flexShrink: 0 }} />
               </button>
             </div>
 
@@ -253,6 +263,17 @@ export function AppProcedureInfoModal({ procedure, onClose }: AppProcedureInfoMo
           </button>
         </div>
       </div>
+
+      {/* Configuration Selector Modal */}
+      <AppConfigurationSelector
+        isOpen={showConfigSelector}
+        onClose={() => setShowConfigSelector(false)}
+        onSelect={(configId, configName) => {
+          setSelectedConfigId(configId);
+          setSelectedConfigName(configName);
+          setShowConfigSelector(false);
+        }}
+      />
     </>
   );
 }

@@ -1,7 +1,9 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { FolderOpen, FileText, Film, ChevronRight, Plus, ChevronDown, X, Eye, RefreshCw, Cuboid } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { FolderOpen, FileText, Film, ChevronRight, Plus, ChevronDown, X, Eye, EyeOff, RefreshCw, Cuboid, Search, SlidersHorizontal, LayoutGrid, List } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { AppProcedureInfoModal } from '../components/AppProcedureInfoModal';
+import { AppConfigurationSelector } from '../components/AppConfigurationSelector';
+import { MOCK_CONFIGURATIONS } from '../../procedure-editor/configurationsData';
 import { getUrlParam, setUrlParam } from '../../../utils/urlParams';
 import { useProject } from '../../../contexts/ProjectContext';
 import { useRole, hasAccess } from '../../../contexts/RoleContext';
@@ -27,11 +29,11 @@ const projectData: Record<string, { name: string; items: KBItem[] }> = {
       { id: 'f1', name: 'Maintenance Procedures', type: 'folder', items: 12, lastUpdated: '2 days ago' },
       { id: 'f2', name: 'Safety Protocols', type: 'folder', items: 8, lastUpdated: '1 week ago' },
       { id: 'f3', name: 'Training Materials', type: 'folder', items: 5, lastUpdated: '3 days ago' },
+      { id: 'dt1', name: 'Main Engine Assembly', type: 'digital-twin', description: 'Complete 3D model of the main engine', lastUpdated: '1 week ago' },
+      { id: 'dt2', name: 'Hydraulic System', type: 'digital-twin', description: 'Hydraulic pump and valve assembly', lastUpdated: '5 days ago' },
       { id: 'p1', name: 'Routine Maintenance for High-Volume Printing Equipment', type: 'procedure', steps: 35, lastUpdated: '4 hours ago', version: '1.5', image: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=200&h=150&fit=crop', description: 'Complete routine maintenance procedure covering safety prep, belt inspection, bearing lubrication, fluid checks, and final verification for high-volume printing equipment.' },
       { id: 'p2', name: 'Engine Calibration Procedure', type: 'procedure', steps: 22, lastUpdated: '1 day ago', version: '2.1', image: 'https://images.unsplash.com/photo-1565043666747-69f6646db940?w=200&h=150&fit=crop', description: 'Step-by-step calibration procedure for engine timing, fuel mixture, and governor settings.' },
       { id: 'p3', name: 'Belt Replacement Guide', type: 'procedure', steps: 15, lastUpdated: '3 days ago', version: '1.0', description: 'Guide for inspecting and replacing drive belts including tensioner adjustment and torque specifications.' },
-      { id: 'dt1', name: 'Main Engine Assembly', type: 'digital-twin', description: 'Complete 3D model of the main engine', lastUpdated: '1 week ago' },
-      { id: 'dt2', name: 'Hydraulic System', type: 'digital-twin', description: 'Hydraulic pump and valve assembly', lastUpdated: '5 days ago' },
       { id: 'm1', name: 'Installation Tutorial Video', type: 'media', description: 'Step-by-step video guide', lastUpdated: '2 days ago' },
       { id: 'm2', name: 'Wiring Diagram', type: 'media', description: 'Complete wiring schematic', lastUpdated: '1 week ago' },
     ],
@@ -52,8 +54,8 @@ const projectData: Record<string, { name: string; items: KBItem[] }> = {
     items: [
       { id: 'f1', name: 'Equipment Procedures', type: 'folder', items: 18, lastUpdated: '1 day ago' },
       { id: 'f2', name: 'Quality Control', type: 'folder', items: 10, lastUpdated: '3 days ago' },
-      { id: 'p1', name: 'CNC Machine X500 Setup', type: 'procedure', steps: 28, lastUpdated: '5 hours ago', version: '3.2', image: 'https://images.unsplash.com/photo-1565043666747-69f6646db940?w=200&h=150&fit=crop' },
       { id: 'dt1', name: 'Assembly Line Robot AR-2000', type: 'digital-twin', description: 'Full robotic arm assembly', lastUpdated: '2 days ago' },
+      { id: 'p1', name: 'CNC Machine X500 Setup', type: 'procedure', steps: 28, lastUpdated: '5 hours ago', version: '3.2', image: 'https://images.unsplash.com/photo-1565043666747-69f6646db940?w=200&h=150&fit=crop' },
     ],
   },
 };
@@ -63,8 +65,8 @@ const defaultProject = {
   name: 'Project',
   items: [
     { id: 'f1', name: 'Documentation', type: 'folder' as KBItemType, items: 5, lastUpdated: '1 day ago' },
-    { id: 'p1', name: 'Getting Started Guide', type: 'procedure' as KBItemType, steps: 10, lastUpdated: '2 days ago', version: '1.0' },
     { id: 'dt1', name: 'Base Model', type: 'digital-twin' as KBItemType, description: '3D model overview', lastUpdated: '1 week ago' },
+    { id: 'p1', name: 'Getting Started Guide', type: 'procedure' as KBItemType, steps: 10, lastUpdated: '2 days ago', version: '1.0' },
   ],
 };
 
@@ -78,9 +80,20 @@ export function AppProjectKBPage() {
   const [selectedItem, setSelectedItem] = useState<KBItem | null>(null);
   const [loadingDT, setLoadingDT] = useState<KBItem | null>(null);
   const [loadProgress, setLoadProgress] = useState(0);
+  const [dtLoadingPaused, setDtLoadingPaused] = useState(false);
+  const [showDTConfigSelector, setShowDTConfigSelector] = useState(false);
+  const [dtSelectedConfigName, setDtSelectedConfigName] = useState<string | null>(null);
   const { dtThumbnail } = useProject();
   const { currentRole } = useRole();
   const canCreate = hasAccess(currentRole, 'create-content');
+
+  // Count enabled configs accessible to current role (Fix 2)
+  const accessibleConfigCount = useMemo(() => {
+    return MOCK_CONFIGURATIONS.filter(
+      (c) => c.isEnabled && c.permittedRoles.includes(currentRole)
+    ).length;
+  }, [currentRole]);
+  const showConfigSelector = accessibleConfigCount >= 2;
 
   const selectItem = (item: KBItem | null) => {
     setSelectedItem(item);
@@ -106,9 +119,9 @@ export function AppProjectKBPage() {
     }
   }, []);
 
-  // Digital twin loading animation
+  // Digital twin loading animation (pauses when config selector is open)
   useEffect(() => {
-    if (!loadingDT) return;
+    if (!loadingDT || dtLoadingPaused) return;
     setLoadProgress(0);
     let progress = 0;
     const interval = setInterval(() => {
@@ -117,14 +130,16 @@ export function AppProjectKBPage() {
         progress = 100;
         clearInterval(interval);
         setTimeout(() => {
+          const configParam = dtSelectedConfigName ? `?config=${encodeURIComponent(dtSelectedConfigName)}` : '';
           setLoadingDT(null);
-          navigate('/app/3d-viewer');
+          setDtSelectedConfigName(null);
+          navigate(`/app/3d-viewer${configParam}`);
         }, 200);
       }
       setLoadProgress(progress);
     }, 80);
     return () => clearInterval(interval);
-  }, [loadingDT]);
+  }, [loadingDT, dtLoadingPaused]);
 
   // Group by type
   const folders = project.items.filter(i => i.type === 'folder');
@@ -132,40 +147,24 @@ export function AppProjectKBPage() {
   const digitalTwins = project.items.filter(i => i.type === 'digital-twin');
   const media = project.items.filter(i => i.type === 'media');
 
+  const [showUnpublished, setShowUnpublished] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const totalItems = project.items.length;
+  const twinCount = project.items.filter(i => i.type === 'digital-twin').length;
+  const flowCount = project.items.filter(i => i.type === 'procedure').length;
+  const folderCount = project.items.filter(i => i.type === 'folder').length;
+
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
+
   return (
     <div className="h-full flex flex-col overflow-y-auto" style={{ padding: '16px' }}>
-      {/* Toolbar */}
-      <div
-        className="flex items-center gap-3 mb-4"
-        style={{
-          border: '1px solid #C2C9DB',
-          borderRadius: '10px',
-          padding: '0 16px',
-          height: '48px',
-          backgroundColor: 'white',
-        }}
-      >
-        {canCreate && (
-          <button
-            onClick={() => setShowCreateDialog(true)}
-            className="flex items-center gap-1 text-sm hover:opacity-80 transition-opacity min-h-[44px]"
-            style={{ color: '#2F80ED', fontWeight: 'var(--font-weight-bold)' }}
-          >
-            <Plus className="size-4" />
-            Create
-          </button>
-        )}
-        <div className="flex-1" />
-        <button className="p-2 sm:p-1.5 hover:bg-secondary rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" style={{ color: '#7F7F7F' }}>
-          <Eye className="size-4" />
-        </button>
-        <button className="p-2 sm:p-1.5 hover:bg-secondary rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" style={{ color: '#7F7F7F' }}>
-          <RefreshCw className="size-4" />
-        </button>
-      </div>
-
       {/* Breadcrumbs */}
-      <div className="flex items-center gap-1 mb-5 overflow-x-auto" style={{ fontSize: '14px' }}>
+      <div className="flex items-center gap-1 mb-3 overflow-x-auto" style={{ fontSize: '13px' }}>
         <button
           onClick={() => navigate('/app/knowledgebase')}
           className="hover:underline transition-colors shrink-0"
@@ -173,10 +172,148 @@ export function AppProjectKBPage() {
         >
           Knowledge Base
         </button>
-        <ChevronRight className="size-3 shrink-0" style={{ color: '#7F7F7F' }} />
+        <ChevronRight className="size-3 shrink-0" style={{ color: '#C2C9DB' }} />
         <span className="shrink-0" style={{ fontWeight: 'var(--font-weight-bold)', color: '#36415D' }}>
           {project.name}
         </span>
+      </div>
+
+      {/* Header */}
+      <div className="mb-4">
+        {/* Title row */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <h1 style={{ fontSize: '22px', fontWeight: 'var(--font-weight-bold)', color: '#36415D', margin: 0 }}>
+              {project.name}
+            </h1>
+            <span
+              style={{
+                fontSize: '12px',
+                color: '#868D9E',
+                backgroundColor: '#F5F5F5',
+                borderRadius: '12px',
+                padding: '2px 10px',
+                fontWeight: 500,
+              }}
+            >
+              {totalItems} items
+            </span>
+          </div>
+          {canCreate && (
+            <button
+              onClick={() => setShowCreateDialog(true)}
+              className="flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+              style={{
+                color: 'white',
+                backgroundColor: '#2F80ED',
+                fontWeight: 'var(--font-weight-bold)',
+                fontSize: '13px',
+                borderRadius: '8px',
+                padding: '7px 14px',
+                border: 'none',
+              }}
+            >
+              <Plus className="size-4" />
+              Create
+            </button>
+          )}
+        </div>
+
+        {/* Stats chips */}
+        <div className="flex items-center gap-2 mb-3" style={{ fontSize: '12px', color: '#868D9E' }}>
+          {twinCount > 0 && (
+            <span className="flex items-center gap-1">
+              <Cuboid style={{ width: '12px', height: '12px', color: '#8404B3' }} />
+              {twinCount} Digital Twin{twinCount !== 1 ? 's' : ''}
+            </span>
+          )}
+          {twinCount > 0 && flowCount > 0 && <span style={{ color: '#E9E9E9' }}>|</span>}
+          {flowCount > 0 && (
+            <span className="flex items-center gap-1">
+              <FileText style={{ width: '12px', height: '12px', color: '#2F80ED' }} />
+              {flowCount} Flow{flowCount !== 1 ? 's' : ''}
+            </span>
+          )}
+          {flowCount > 0 && folderCount > 0 && <span style={{ color: '#E9E9E9' }}>|</span>}
+          {folderCount > 0 && (
+            <span className="flex items-center gap-1">
+              <FolderOpen style={{ width: '12px', height: '12px', color: '#2F80ED' }} />
+              {folderCount} Folder{folderCount !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+
+        {/* Toolbar */}
+        <div
+          className="flex items-center gap-1"
+          style={{
+            borderRadius: '10px',
+            padding: '4px',
+            backgroundColor: '#F5F5F5',
+          }}
+        >
+          {/* Search */}
+          <div className="flex items-center" style={{ flex: searchOpen ? 1 : undefined }}>
+            {searchOpen ? (
+              <div className="flex items-center flex-1 rounded-md" style={{ backgroundColor: 'white', border: '1px solid #C2C9DB', padding: '0 8px', height: '32px' }}>
+                <Search style={{ width: '14px', height: '14px', color: '#868D9E', flexShrink: 0 }} />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search items..."
+                  className="flex-1 outline-none bg-transparent"
+                  style={{ fontSize: '13px', color: '#36415D', border: 'none', marginLeft: '6px' }}
+                />
+                <button onClick={() => { setSearchOpen(false); setSearchQuery(''); }} className="hover:opacity-70">
+                  <X style={{ width: '14px', height: '14px', color: '#868D9E' }} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="flex items-center justify-center rounded-md hover:bg-white transition-colors"
+                style={{ width: '32px', height: '32px', color: '#868D9E' }}
+                title="Search"
+              >
+                <Search style={{ width: '15px', height: '15px' }} />
+              </button>
+            )}
+          </div>
+
+          {!searchOpen && <div style={{ width: '1px', height: '18px', backgroundColor: '#E9E9E9' }} />}
+
+          {/* Show unpublished toggle */}
+          {!searchOpen && (
+            <button
+              onClick={() => setShowUnpublished(!showUnpublished)}
+              className="flex items-center gap-1.5 rounded-md hover:bg-white transition-colors"
+              style={{
+                height: '32px',
+                padding: '0 10px',
+                fontSize: '12px',
+                color: showUnpublished ? '#2F80ED' : '#868D9E',
+                fontWeight: showUnpublished ? 600 : 400,
+              }}
+              title={showUnpublished ? 'Showing unpublished' : 'Show unpublished'}
+            >
+              {showUnpublished ? <Eye style={{ width: '14px', height: '14px' }} /> : <EyeOff style={{ width: '14px', height: '14px' }} />}
+              <span className="hidden sm:inline">Unpublished</span>
+            </button>
+          )}
+
+          <div className="flex-1" />
+
+          {/* Refresh */}
+          <button
+            className="flex items-center justify-center rounded-md hover:bg-white transition-colors"
+            style={{ width: '32px', height: '32px', color: '#868D9E' }}
+            title="Refresh"
+          >
+            <RefreshCw style={{ width: '15px', height: '15px' }} />
+          </button>
+        </div>
       </div>
 
       {/* Item grid */}
@@ -203,6 +340,36 @@ export function AppProjectKBPage() {
               <div style={{ fontSize: '12px', color: '#7F7F7F', marginTop: '2px' }}>
                 {item.items} items
               </div>
+            </div>
+          </div>
+        ))}
+
+        {/* Digital Twins */}
+        {digitalTwins.map((item) => (
+          <div
+            key={item.id}
+            onClick={() => { setDtLoadingPaused(showConfigSelector); setDtSelectedConfigName(null); setLoadingDT(item); }}
+            className="cursor-pointer overflow-hidden hover:shadow-elevation-md transition-all"
+            style={{
+              width: '100%',
+              height: '172px',
+              borderRadius: '10px',
+              position: 'relative',
+              backgroundColor: '#E9E9E9',
+            }}
+          >
+            <div className="w-full h-full flex items-center justify-center">
+              <Cuboid style={{ width: '48px', height: '48px', color: '#8404B3' }} />
+            </div>
+            <div
+              className="absolute flex items-center gap-1 px-2 py-1"
+              style={{ top: '8px', left: '8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'var(--font-weight-bold)', color: 'white', border: '1px solid #8404B3', backgroundColor: 'rgba(132,4,179,0.5)' }}
+            >
+              <Cuboid style={{ width: '12px', height: '12px' }} />
+              Digital Twin
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 px-3 pb-2 truncate" style={{ fontSize: '14px', fontWeight: 'var(--font-weight-bold)', color: '#36415D' }}>
+              {item.name}
             </div>
           </div>
         ))}
@@ -236,36 +403,6 @@ export function AppProjectKBPage() {
               Flow
             </div>
             <div className="absolute bottom-0 left-0 right-0 px-3 pb-2 truncate" style={{ fontSize: '14px', fontWeight: 'var(--font-weight-bold)', color: 'white' }}>
-              {item.name}
-            </div>
-          </div>
-        ))}
-
-        {/* Digital Twins */}
-        {digitalTwins.map((item) => (
-          <div
-            key={item.id}
-            onClick={() => setLoadingDT(item)}
-            className="cursor-pointer overflow-hidden hover:shadow-elevation-md transition-all"
-            style={{
-              width: '100%',
-              height: '172px',
-              borderRadius: '10px',
-              position: 'relative',
-              backgroundColor: '#E9E9E9',
-            }}
-          >
-            <div className="w-full h-full flex items-center justify-center">
-              <Cuboid style={{ width: '48px', height: '48px', color: '#8404B3' }} />
-            </div>
-            <div
-              className="absolute flex items-center gap-1 px-2 py-1"
-              style={{ top: '8px', left: '8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'var(--font-weight-bold)', color: 'white', border: '1px solid #8404B3', backgroundColor: 'rgba(132,4,179,0.5)' }}
-            >
-              <Cuboid style={{ width: '12px', height: '12px' }} />
-              Digital Twin
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 px-3 pb-2 truncate" style={{ fontSize: '14px', fontWeight: 'var(--font-weight-bold)', color: '#36415D' }}>
               {item.name}
             </div>
           </div>
@@ -316,7 +453,7 @@ export function AppProjectKBPage() {
       {/* Digital Twin Loading Modal */}
       {loadingDT && (
         <>
-          <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setLoadingDT(null)} />
+          <div className="fixed inset-0 bg-black/40 z-50" onClick={() => { setLoadingDT(null); setDtLoadingPaused(false); setDtSelectedConfigName(null); }} />
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
             <div
               className="pointer-events-auto flex flex-col items-center"
@@ -334,7 +471,7 @@ export function AppProjectKBPage() {
               {/* Close button */}
               <div className="flex items-center justify-end w-full" style={{ marginBottom: '8px' }}>
                 <button
-                  onClick={() => setLoadingDT(null)}
+                  onClick={() => { setLoadingDT(null); setDtLoadingPaused(false); setDtSelectedConfigName(null); }}
                   className="flex items-center justify-center hover:bg-white/50 transition-colors"
                   style={{ width: '40px', height: '40px', borderRadius: '10px' }}
                 >
@@ -369,6 +506,63 @@ export function AppProjectKBPage() {
                 {loadingDT.version && <span>Version {loadingDT.version}</span>}
               </div>
 
+              {/* Configuration selection row (shown before loading starts or when paused, only if 2+ accessible configs) */}
+              {dtLoadingPaused && showConfigSelector && (
+                <div
+                  className="w-full flex items-center justify-between"
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '10px',
+                    padding: '10px 14px',
+                    marginBottom: '12px',
+                    border: '1px solid #C2C9DB',
+                  }}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span style={{ fontSize: '13px', fontWeight: 'var(--font-weight-bold)', color: '#36415D', flexShrink: 0 }}>
+                      Configuration:
+                    </span>
+                    <span className="truncate" style={{ fontSize: '13px', color: dtSelectedConfigName ? '#8404B3' : '#868D9E', fontWeight: dtSelectedConfigName ? 'var(--font-weight-semibold)' : 'normal' }}>
+                      {dtSelectedConfigName || 'None selected'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setShowDTConfigSelector(true)}
+                    className="hover:opacity-80 transition-opacity shrink-0"
+                    style={{
+                      fontSize: '12px',
+                      color: '#2F80ED',
+                      fontWeight: 'var(--font-weight-semibold)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '2px 6px',
+                    }}
+                  >
+                    {dtSelectedConfigName ? 'Change' : 'Select'}
+                  </button>
+                </div>
+              )}
+
+              {/* Selected config badge (shown during loading, only if configs are available) */}
+              {!dtLoadingPaused && dtSelectedConfigName && showConfigSelector && (
+                <div
+                  className="w-full flex items-center gap-2"
+                  style={{
+                    marginBottom: '12px',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(132,4,179,0.08)',
+                    borderLeft: '3px solid #8404B3',
+                  }}
+                >
+                  <span style={{ fontSize: '12px', color: '#868D9E' }}>Configuration:</span>
+                  <span style={{ fontSize: '12px', color: '#8404B3', fontWeight: 'var(--font-weight-semibold)' }}>
+                    {dtSelectedConfigName}
+                  </span>
+                </div>
+              )}
+
               {/* Content creator area - only for roles with edit access */}
               {hasAccess(currentRole, 'projects-edit') && (
                 <div
@@ -395,33 +589,64 @@ export function AppProjectKBPage() {
                 </div>
               )}
 
-              {/* Loading progress */}
-              <div className="w-full flex flex-col items-center" style={{ gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 'var(--font-weight-semibold)', color: '#36415D' }}>
-                  Loading &nbsp;{Math.min(Math.round(loadProgress), 100)} %
-                </span>
-                <div
-                  style={{
-                    width: '100%',
-                    height: '6px',
-                    backgroundColor: '#E9E9E9',
-                    borderRadius: '3px',
-                    overflow: 'hidden',
-                  }}
-                >
+              {/* Loading progress or action buttons */}
+              {dtLoadingPaused ? (
+                <div className="w-full flex flex-col items-center" style={{ gap: '10px' }}>
+                  <button
+                    onClick={() => setDtLoadingPaused(false)}
+                    className="w-full flex items-center justify-center gap-2 hover:opacity-90 transition-all"
+                    style={{
+                      padding: '12px 16px',
+                      backgroundColor: '#2F80ED',
+                      borderRadius: '25px',
+                      fontSize: '14px',
+                      fontWeight: 'var(--font-weight-bold)',
+                      color: 'white',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {dtSelectedConfigName ? `Open with "${dtSelectedConfigName}"` : 'Open without Configuration'}
+                  </button>
+                </div>
+              ) : (
+                <div className="w-full flex flex-col items-center" style={{ gap: '8px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 'var(--font-weight-semibold)', color: '#36415D' }}>
+                    Loading &nbsp;{Math.min(Math.round(loadProgress), 100)} %
+                  </span>
                   <div
                     style={{
-                      width: `${Math.min(loadProgress, 100)}%`,
-                      height: '100%',
-                      backgroundColor: '#2F80ED',
+                      width: '100%',
+                      height: '6px',
+                      backgroundColor: '#E9E9E9',
                       borderRadius: '3px',
-                      transition: 'width 0.15s ease',
+                      overflow: 'hidden',
                     }}
-                  />
+                  >
+                    <div
+                      style={{
+                        width: `${Math.min(loadProgress, 100)}%`,
+                        height: '100%',
+                        backgroundColor: '#2F80ED',
+                        borderRadius: '3px',
+                        transition: 'width 0.15s ease',
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
+
+          {/* Configuration Selector for DT loading */}
+          <AppConfigurationSelector
+            isOpen={showDTConfigSelector}
+            onClose={() => setShowDTConfigSelector(false)}
+            onSelect={(configId, configName) => {
+              setDtSelectedConfigName(configName);
+              setShowDTConfigSelector(false);
+            }}
+          />
         </>
       )}
 

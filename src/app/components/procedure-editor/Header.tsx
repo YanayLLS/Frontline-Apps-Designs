@@ -1,87 +1,86 @@
-import svgPaths from "../../../imports/svg-hd561eopnw";
 import { useState, useEffect, useRef } from 'react';
-import { Settings, X, RotateCw, Upload, Save, Zap, Bookmark, Package, AlertCircle, Undo, List, CheckCircle } from 'lucide-react';
+import { Settings, X, RotateCw, Upload, Save, Zap, Bookmark, AlertCircle, Undo, List, CheckCircle, ExternalLink, Sliders } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { StepAction } from './ProcedureEditor';
 import { useClickOutside } from '../../hooks/useClickOutside';
+import type { TwinState } from './ProcedureEditor';
 
 interface HeaderProps {
   hasAnimation: boolean;
+  hasTwinState: boolean;
   onOpenSettings: () => void;
   onOpenBookmarks: () => void;
   onTogglePartsCatalog: () => void;
   isPartsCatalogOpen: boolean;
+  onToggleConfigurations: () => void;
+  isConfigurationsOpen: boolean;
+  configurationCount: number;
   onOpenPublish: () => void;
   onOpenValidation: () => void;
   checkpointCount: number;
   hasCritical: boolean;
+  onAnimate: () => void;
+  onSaveTwinState: () => void;
+  onClearTwinState: () => void;
 }
 
 export function Header({
   hasAnimation,
+  hasTwinState,
   onOpenSettings,
   onOpenBookmarks,
   onTogglePartsCatalog,
   isPartsCatalogOpen,
+  onToggleConfigurations,
+  isConfigurationsOpen,
+  configurationCount,
   onOpenPublish,
   onOpenValidation,
   checkpointCount,
-  hasCritical
+  hasCritical,
+  onAnimate,
+  onSaveTwinState,
+  onClearTwinState
 }: HeaderProps) {
-  const [digitalTwinStateActive, setDigitalTwinStateActive] = useState(false);
   const [showDigitalTwinMenu, setShowDigitalTwinMenu] = useState(false);
-  const [deletedTwinState, setDeletedTwinState] = useState<any>(null);
+  const [deletedTwinState, setDeletedTwinState] = useState(false);
   const [showUndoTwinNotification, setShowUndoTwinNotification] = useState(false);
-  
+
   const digitalTwinRef = useRef<HTMLDivElement>(null);
   const digitalTwinButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleToggleDigitalTwinState = () => {
-    // Always open the menu, don't toggle state
     setShowDigitalTwinMenu(!showDigitalTwinMenu);
   };
 
   const handleUpdateDigitalTwinState = () => {
-    console.log('Saving digital twin state...');
-    setDigitalTwinStateActive(true);
+    onSaveTwinState();
     setShowDigitalTwinMenu(false);
   };
 
   const handleClearDigitalTwinState = () => {
-    // Store state for undo
-    setDeletedTwinState({ active: digitalTwinStateActive });
+    setDeletedTwinState(true);
     setShowUndoTwinNotification(true);
-    
-    // Clear state
-    setDigitalTwinStateActive(false);
+    onClearTwinState();
     setShowDigitalTwinMenu(false);
-    
-    // Auto-hide undo notification after 5 seconds
     setTimeout(() => {
       setShowUndoTwinNotification(false);
-      setDeletedTwinState(null);
+      setDeletedTwinState(false);
     }, 5000);
   };
 
   const handleUndoClearTwinState = () => {
-    if (deletedTwinState) {
-      setDigitalTwinStateActive(deletedTwinState.active);
-      setShowUndoTwinNotification(false);
-      setDeletedTwinState(null);
-    }
+    // Re-save: the scene state hasn't changed, so saving again restores it
+    onSaveTwinState();
+    setShowUndoTwinNotification(false);
+    setDeletedTwinState(false);
   };
 
-  // Click outside handler
   useClickOutside([digitalTwinRef, digitalTwinButtonRef], () => setShowDigitalTwinMenu(false), showDigitalTwinMenu);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowDigitalTwinMenu(false);
-      }
+      if (e.key === 'Escape') setShowDigitalTwinMenu(false);
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
@@ -93,8 +92,8 @@ export function Header({
         className="bg-card content-stretch flex flex-wrap gap-0.5 items-center p-2 relative rounded-button shrink-0 z-10 max-w-[calc(100vw-32px)] overflow-x-auto"
       >
         <div aria-hidden="true" className="absolute border border-border inset-0 pointer-events-none rounded-button shadow-elevation-sm" />
-        
-        {/* Bookmarks Button - Icon only */}
+
+        {/* Bookmarks Button */}
         <button
           onClick={onOpenBookmarks}
           className="content-stretch flex gap-2 items-center p-2 relative rounded-lg shrink-0 w-8 h-8 min-h-[44px] min-w-[44px] justify-center hover:bg-secondary/50 transition-colors"
@@ -104,7 +103,7 @@ export function Header({
           <Bookmark className="size-4 text-foreground" />
         </button>
 
-        {/* Parts Catalog Toggle - Icon only */}
+        {/* Parts Catalog Toggle */}
         <button
           onClick={onTogglePartsCatalog}
           className={`content-stretch flex gap-2 items-center p-2 relative rounded-lg shrink-0 w-8 h-8 min-h-[44px] min-w-[44px] justify-center transition-colors ${
@@ -117,40 +116,109 @@ export function Header({
           <List className="size-4 text-foreground" />
         </button>
 
+        {/* Configurations Toggle */}
+        <div className="relative shrink-0">
+          <button
+            onClick={onToggleConfigurations}
+            data-demo="configurations-btn"
+            className={`content-stretch flex gap-2 items-center p-2 relative rounded-lg shrink-0 w-8 h-8 min-h-[44px] min-w-[44px] justify-center transition-colors ${
+              isConfigurationsOpen ? 'bg-accent/20 hover:bg-accent/30' : 'hover:bg-secondary/50'
+            }`}
+            title={isConfigurationsOpen ? 'Close configurations' : 'Open configurations'}
+            aria-label={isConfigurationsOpen ? 'Close configurations' : 'Open configurations'}
+            aria-pressed={isConfigurationsOpen}
+          >
+            <Sliders className="size-4 text-foreground" />
+          </button>
+          {configurationCount > 0 && (
+            <div
+              className="absolute rounded-full flex items-center justify-center"
+              style={{
+                top: '-6px',
+                right: '-6px',
+                minWidth: '16px',
+                height: '16px',
+                padding: '0 4px',
+                backgroundColor: 'var(--accent)',
+                pointerEvents: 'none',
+                fontSize: '10px',
+                fontWeight: 600,
+                fontFamily: 'var(--font-family)',
+                color: 'white',
+                lineHeight: 1
+              }}
+            >
+              {configurationCount}
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-row items-center self-stretch">
           <div className="bg-border h-full shrink-0 w-px" />
         </div>
 
-        {/* Save Twin Setup Button - Icon only */}
+        {/* Save Twin Setup Button */}
         <div className="relative shrink-0">
-          <button 
+          <button
             ref={digitalTwinButtonRef}
             onClick={handleToggleDigitalTwinState}
+            data-demo="twin-save"
             className={`content-stretch flex gap-2 items-center p-2 relative rounded-lg shrink-0 w-8 h-8 min-h-[44px] min-w-[44px] justify-center transition-colors ${
-              digitalTwinStateActive
+              hasTwinState
                 ? 'bg-accent/20 hover:bg-accent/30'
                 : 'hover:bg-secondary/50'
             }`}
             title="Save Twin Setup"
             aria-label="Save Twin Setup"
-            aria-pressed={digitalTwinStateActive}
+            aria-pressed={hasTwinState}
           >
             <Save className="size-4 text-foreground" />
+            {hasTwinState && (
+              <div
+                className="absolute rounded-full"
+                style={{
+                  top: '4px',
+                  right: '4px',
+                  width: '7px',
+                  height: '7px',
+                  backgroundColor: 'var(--accent)',
+                  border: '1.5px solid var(--card)',
+                  pointerEvents: 'none'
+                }}
+              />
+            )}
           </button>
         </div>
 
-        {/* Animate Button - Icon only, highlighted if animation exists */}
-        <button 
-          className={`content-stretch flex gap-2 items-center p-2 relative rounded-lg shrink-0 w-8 h-8 min-h-[44px] min-w-[44px] justify-center transition-colors ${
-            hasAnimation ? 'bg-accent/20 hover:bg-accent/30' : 'hover:bg-secondary/50'
-          }`}
-          title="Animate"
-          aria-label="Animate"
-        >
-          <Zap className="size-4 text-foreground" />
-        </button>
+        {/* Animate Button — highlighted + dot indicator when animation exists */}
+        <div className="relative shrink-0">
+          <button
+            onClick={onAnimate}
+            className={`content-stretch flex gap-2 items-center p-2 relative rounded-lg shrink-0 w-8 h-8 min-h-[44px] min-w-[44px] justify-center transition-colors ${
+              hasAnimation ? 'bg-accent/20 hover:bg-accent/30' : 'hover:bg-secondary/50'
+            }`}
+            title={hasAnimation ? 'Edit Animation' : 'Add Animation'}
+            aria-label={hasAnimation ? 'Edit Animation' : 'Add Animation'}
+          >
+            <Zap className={`size-4 ${hasAnimation ? 'text-accent' : 'text-foreground'}`} />
+            {hasAnimation && (
+              <div
+                className="absolute rounded-full"
+                style={{
+                  top: '4px',
+                  right: '4px',
+                  width: '7px',
+                  height: '7px',
+                  backgroundColor: 'var(--accent)',
+                  border: '1.5px solid var(--card)',
+                  pointerEvents: 'none'
+                }}
+              />
+            )}
+          </button>
+        </div>
 
-        {/* Validation Button - Icon only with count badge */}
+        {/* Validation Button with count badge */}
         <div className="relative shrink-0">
           <button
             onClick={onOpenValidation}
@@ -189,8 +257,8 @@ export function Header({
           <div className="bg-border h-full shrink-0 w-px" />
         </div>
 
-        {/* Settings Button */}
-        <button 
+        {/* Settings Button — opens flow settings page */}
+        <button
           onClick={onOpenSettings}
           className="content-stretch flex gap-2 items-center p-2 relative rounded-lg shrink-0 w-8 h-8 min-h-[44px] min-w-[44px] justify-center hover:bg-secondary/50 transition-colors"
           title="Flow settings"
@@ -215,7 +283,7 @@ export function Header({
         </button>
       </div>
 
-      {/* Digital Twin State Menu - Compact and modern */}
+      {/* Digital Twin State Menu */}
       <AnimatePresence>
         {showDigitalTwinMenu && digitalTwinButtonRef.current && (
           <motion.div
@@ -237,8 +305,9 @@ export function Header({
             <div className="flex flex-col" style={{ padding: 'var(--spacing-md)' }}>
               <button
                 onClick={handleUpdateDigitalTwinState}
+                data-demo="twin-set"
                 className="flex flex-col gap-1 px-3 py-3 min-h-[44px] rounded-md hover:bg-accent hover:text-accent-foreground text-left w-full transition-all group"
-                style={{ 
+                style={{
                   color: 'var(--foreground)',
                   fontFamily: 'var(--font-family)',
                   fontSize: '13px'
@@ -248,12 +317,12 @@ export function Header({
                 <div className="flex items-center gap-2">
                   <RotateCw className="size-3.5 group-hover:rotate-180 transition-transform duration-300" />
                   <span style={{ fontSize: '13px', fontWeight: '500' }}>
-                    {digitalTwinStateActive ? 'Update State' : 'Set State'}
+                    {hasTwinState ? 'Update State' : 'Set State'}
                   </span>
                 </div>
-                {!digitalTwinStateActive && (
-                  <span style={{ 
-                    fontSize: '11px', 
+                {!hasTwinState && (
+                  <span style={{
+                    fontSize: '11px',
                     opacity: 0.7,
                     paddingLeft: '22px',
                     fontFamily: 'var(--font-family)'
@@ -262,25 +331,29 @@ export function Header({
                   </span>
                 )}
               </button>
-              <button
-                onClick={handleClearDigitalTwinState}
-                className="flex items-center gap-2 px-3 py-3 min-h-[44px] rounded-md hover:bg-destructive/10 hover:text-destructive text-left w-full transition-all group"
-                style={{ 
-                  color: 'var(--foreground)',
-                  fontFamily: 'var(--font-family)',
-                  fontSize: '13px'
-                }}
-                role="menuitem"
-              >
-                <X className="size-3.5 group-hover:scale-110 transition-transform" />
-                <span>Clear State</span>
-              </button>
+              {hasTwinState && (
+                <button
+                  onClick={handleClearDigitalTwinState}
+                  data-demo="twin-clear"
+                  className="flex items-center gap-2 px-3 py-3 min-h-[44px] rounded-md hover:bg-destructive/10 hover:text-destructive text-left w-full transition-all group"
+                  style={{
+                    color: 'var(--foreground)',
+                    fontFamily: 'var(--font-family)',
+                    fontSize: '13px'
+                  }}
+                  role="menuitem"
+                >
+                  <X className="size-3.5 group-hover:scale-110 transition-transform" />
+                  <span>Clear State</span>
+                </button>
+              )}
             </div>
           </motion.div>
-        )}\n      </AnimatePresence>
+        )}
+      </AnimatePresence>
 
       {/* Undo Clear Twin State Notification */}
-      {showUndoTwinNotification && deletedTwinState && (
+      {showUndoTwinNotification && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] pointer-events-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -290,8 +363,8 @@ export function Header({
             className="flex items-center gap-4 px-5 py-3 rounded-lg shadow-elevation-lg border-2 border-border bg-card text-card-foreground min-w-[280px] max-w-[calc(100vw-32px)]"
           >
             <AlertCircle className="size-5 flex-shrink-0" style={{ color: 'var(--muted-foreground)' }} />
-            <p className="flex-1 leading-tight" style={{ 
-              fontFamily: 'var(--font-family)', 
+            <p className="flex-1 leading-tight" style={{
+              fontFamily: 'var(--font-family)',
               fontWeight: 600,
               color: 'var(--foreground)'
             }}>
@@ -300,7 +373,7 @@ export function Header({
             <button
               onClick={handleUndoClearTwinState}
               className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-button hover:opacity-90 transition-opacity"
-              style={{ 
+              style={{
                 fontFamily: 'var(--font-family)',
                 fontWeight: 600,
                 fontSize: '13px'
@@ -312,7 +385,7 @@ export function Header({
             <button
               onClick={() => {
                 setShowUndoTwinNotification(false);
-                setDeletedTwinState(null);
+                setDeletedTwinState(false);
               }}
               className="flex-shrink-0 hover:opacity-70 transition-opacity"
               style={{ color: 'var(--muted-foreground)' }}

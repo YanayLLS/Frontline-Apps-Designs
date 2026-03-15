@@ -90,6 +90,7 @@ const featureGroups: FeatureGroup[] = [
   ]},
   { label: 'Procedures', features: [
     { id: 'proc-twin-state', name: 'Set State of a Digital Twin', icon: '\u{1F4BE}', desc: 'Save and restore the 3D scene state (camera, visibility, X-Ray) per procedure step.', demoSteps: 5, route: '/app/procedure-editor/p1' },
+    { id: 'proc-configurations', name: 'Configurations', icon: '\u{1F39B}\uFE0F', desc: 'Create and manage digital twin configurations — define part visibility, tags, permissions, and import/export configs.', demoSteps: 18, route: '/app/procedure-editor/p1' },
   ]},
 ];
 
