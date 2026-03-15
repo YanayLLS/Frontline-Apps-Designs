@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { Search, Bell, ChevronDown, ChevronUp, X, BookOpen, Headset, Box, MessageSquare, HelpCircle, Star, Clock, User, Settings, LogOut, MoreVertical, Phone, Mic, MicOff, Users, PhoneOff, Crosshair, UserPlus, Send, Crown, Eye, EyeOff } from 'lucide-react';
+import { Search, Bell, ChevronDown, ChevronUp, X, BookOpen, Headset, Box, MessageSquare, HelpCircle, Star, Clock, User, Settings, LogOut, MoreVertical, Phone, Mic, MicOff, Users, PhoneOff, Crosshair, UserPlus, Send, Crown, Eye, EyeOff, Sliders } from 'lucide-react';
+import { ConfigurationsPanel } from '../procedure-editor/ConfigurationsPanel';
+import { MOCK_CONFIGURATIONS } from '../procedure-editor/configurationsData';
 import { AppKnowledgeBasePage } from './pages/AppKnowledgeBasePage';
 import { AppProjectKBPage } from './pages/AppProjectKBPage';
 import { AppRemoteSupportPage } from './pages/AppRemoteSupportPage';
@@ -421,6 +423,7 @@ function App3DViewer() {
   const navigate = useNavigate();
   const location = useLocation();
   const [procedureModal, setProcedureModal] = useState<string | null>(null);
+  const [showConfigurations, setShowConfigurations] = useState(false);
   const sceneIframeRef = useRef<HTMLIFrameElement>(null);
 
   const openProcInfo = (id: string | null) => {
@@ -471,6 +474,57 @@ function App3DViewer() {
           allow="autoplay; fullscreen; camera; xr-spatial-tracking"
         />
         {isImmersiveMode && <ImmersiveActionBar onLeave={() => navigate('/app/immersive')} iframeRef={sceneIframeRef} />}
+
+        {/* Configurations button — editor mode only */}
+        {urlMode === 'editor' && (
+          <button
+            onClick={() => setShowConfigurations(prev => !prev)}
+            data-demo="configurations-btn"
+            className="absolute flex items-center gap-2 rounded-lg border shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] z-10"
+            style={{
+              top: '16px',
+              right: '16px',
+              padding: '8px 14px',
+              backgroundColor: showConfigurations ? '#8404B3' : '#FFFFFF',
+              color: showConfigurations ? '#FFFFFF' : '#36415D',
+              borderColor: showConfigurations ? '#8404B3' : '#C2C9DB',
+              fontFamily: 'var(--font-family, Inter, sans-serif)',
+              fontWeight: 600,
+              fontSize: '13px',
+            }}
+            title={showConfigurations ? 'Close configurations' : 'Open configurations'}
+            aria-label={showConfigurations ? 'Close configurations' : 'Open configurations'}
+            aria-pressed={showConfigurations}
+          >
+            <Sliders className="size-4" />
+            <span>Configurations</span>
+            {MOCK_CONFIGURATIONS.filter(c => !c.isDefault).length > 0 && (
+              <span
+                className="rounded-full flex items-center justify-center"
+                style={{
+                  minWidth: '18px',
+                  height: '18px',
+                  padding: '0 5px',
+                  backgroundColor: showConfigurations ? 'rgba(255,255,255,0.25)' : '#8404B3',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  color: '#FFFFFF',
+                  lineHeight: 1,
+                }}
+              >
+                {MOCK_CONFIGURATIONS.filter(c => !c.isDefault).length}
+              </span>
+            )}
+          </button>
+        )}
+
+        {/* Configurations Panel — overlays on the right side */}
+        {urlMode === 'editor' && (
+          <ConfigurationsPanel
+            isOpen={showConfigurations}
+            onClose={() => setShowConfigurations(false)}
+          />
+        )}
       </div>
       {proc && (
         <AppProcedureInfoModal

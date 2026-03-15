@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Settings, X, RotateCw, Upload, Save, Zap, Bookmark, AlertCircle, Undo, List, CheckCircle, ExternalLink, Sliders } from 'lucide-react';
+import { Settings, X, RotateCw, Upload, Save, Zap, Bookmark, AlertCircle, Undo, List, CheckCircle, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import type { TwinState } from './ProcedureEditor';
@@ -11,9 +11,6 @@ interface HeaderProps {
   onOpenBookmarks: () => void;
   onTogglePartsCatalog: () => void;
   isPartsCatalogOpen: boolean;
-  onToggleConfigurations: () => void;
-  isConfigurationsOpen: boolean;
-  configurationCount: number;
   onOpenPublish: () => void;
   onOpenValidation: () => void;
   checkpointCount: number;
@@ -30,9 +27,6 @@ export function Header({
   onOpenBookmarks,
   onTogglePartsCatalog,
   isPartsCatalogOpen,
-  onToggleConfigurations,
-  isConfigurationsOpen,
-  configurationCount,
   onOpenPublish,
   onOpenValidation,
   checkpointCount,
@@ -115,47 +109,6 @@ export function Header({
         >
           <List className="size-4 text-foreground" />
         </button>
-
-        {/* Configurations Toggle */}
-        <div className="relative shrink-0">
-          <button
-            onClick={onToggleConfigurations}
-            data-demo="configurations-btn"
-            className={`content-stretch flex gap-2 items-center p-2 relative rounded-lg shrink-0 w-8 h-8 min-h-[44px] min-w-[44px] justify-center transition-colors ${
-              isConfigurationsOpen ? 'bg-accent/20 hover:bg-accent/30' : 'hover:bg-secondary/50'
-            }`}
-            title={isConfigurationsOpen ? 'Close configurations' : 'Open configurations'}
-            aria-label={isConfigurationsOpen ? 'Close configurations' : 'Open configurations'}
-            aria-pressed={isConfigurationsOpen}
-          >
-            <Sliders className="size-4 text-foreground" />
-          </button>
-          {configurationCount > 0 && (
-            <div
-              className="absolute rounded-full flex items-center justify-center"
-              style={{
-                top: '-6px',
-                right: '-6px',
-                minWidth: '16px',
-                height: '16px',
-                padding: '0 4px',
-                backgroundColor: 'var(--accent)',
-                pointerEvents: 'none',
-                fontSize: '10px',
-                fontWeight: 600,
-                fontFamily: 'var(--font-family)',
-                color: 'white',
-                lineHeight: 1
-              }}
-            >
-              {configurationCount}
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-row items-center self-stretch">
-          <div className="bg-border h-full shrink-0 w-px" />
-        </div>
 
         {/* Save Twin Setup Button */}
         <div className="relative shrink-0">

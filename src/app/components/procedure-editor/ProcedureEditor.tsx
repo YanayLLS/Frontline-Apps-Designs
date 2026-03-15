@@ -10,7 +10,6 @@ import { ValidationPanel } from './ValidationPanel';
 import { OptionsManager } from './OptionsManager';
 import { BookmarksModal } from './BookmarksModal';
 import { PartsCatalogPanel } from './PartsCatalogPanel';
-import { ConfigurationsPanel } from './ConfigurationsPanel';
 import { MOCK_CONFIGURATIONS } from './configurationsData';
 import type { ModelHierarchyNode } from './Viewer3D';
 import { TableOfContents } from './TableOfContents';
@@ -700,7 +699,6 @@ export function ProcedureEditor() {
   const [showOptionsManager, setShowOptionsManager] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [showPartsCatalog, setShowPartsCatalog] = useState(false);
-  const [showConfigurationsPanel, setShowConfigurationsPanel] = useState(false);
   const [showTOC, setShowTOC] = useState(false);
   const [showPopupPanel, setShowPopupPanel] = useState(false);
   const [showValidationPanel, setShowValidationPanel] = useState(false);
@@ -1076,152 +1074,6 @@ export function ProcedureEditor() {
         },
       ]
     },
-    'proc-configurations': {
-      id: 'proc-configurations',
-      name: 'Configurations',
-      steps: [
-        // ── Step 1: Introduce the Configurations button ──
-        {
-          target: '[data-demo="configurations-btn"]',
-          text: 'This is the <b>Configurations</b> button in the toolbar. It opens the configurations panel where you can define different variants of your digital twin — for example, models with or without optional accessories.<br><br>Click it to open the panel.',
-          pos: 'bottom',
-          wait: 'click',
-        },
-        // ── Step 2: Panel overview ──
-        {
-          target: '[data-demo="configurations-header"]',
-          text: 'The <b>Configurations panel</b> is now open. It shows a list of all configurations for this digital twin. The count badge shows how many exist. The <b>Default Configuration</b> (read-only) always represents the saved parts catalog state.',
-          pos: 'left',
-          wait: 'observe',
-          setup: function() {
-            // Ensure configurations panel is open
-            var btn = document.querySelector('[data-demo="configurations-btn"]') as HTMLElement;
-            var panel = document.querySelector('[data-demo="configurations-header"]');
-            if (btn && !panel) btn.click();
-          },
-        },
-        // ── Step 3: See existing configurations ──
-        {
-          target: '[data-demo="configurations-list"]',
-          text: 'This is the <b>configuration list</b>. Each item shows the config name, enable/disable toggle, and tags. The active configuration is highlighted with a <b>purple left border</b>. Click any configuration to select and activate it.',
-          pos: 'left',
-          wait: 'observe',
-        },
-        // ── Step 4: Create a new configuration ──
-        {
-          target: '[data-demo="configurations-create"]',
-          text: 'Click <b>Create Configuration</b> to add a new configuration. It will capture the current 3D view state as its initial part visibility.',
-          pos: 'left',
-          wait: 'click',
-        },
-        // ── Step 5: See the detail section ──
-        {
-          target: '[data-demo="configurations-detail"]',
-          text: 'A new configuration was created and selected. The <b>Configuration Details</b> section appears below the list. Here you can edit the name, description, tags, and permissions.',
-          pos: 'left',
-          wait: 'observe',
-        },
-        // ── Step 6: Rename the configuration ──
-        {
-          target: '[data-demo="configurations-detail"]',
-          text: 'The <b>Name</b> field shows the auto-generated name. You can type a new name to rename it — for example, "Premium with Coolant" or "Standard Model". Duplicate names are validated and rejected.',
-          pos: 'left',
-          wait: 'observe',
-        },
-        // ── Step 7: Add tags ──
-        {
-          target: '[data-demo="configurations-tags"]',
-          text: 'Use the <b>Tags</b> field to add searchable labels. Type a tag name and press Enter or click Add. Tags help users find configurations by keyword — both in the editor and in the viewer config selector.',
-          pos: 'left',
-          wait: 'observe',
-        },
-        // ── Step 8: Set from View ──
-        {
-          target: '[data-demo="configurations-set-from-view"]',
-          text: 'Click <b>Set from View</b> to capture the current 3D scene state into this configuration. This is a full overwrite — it saves which parts are visible and their transforms. You can also use "Add Selected Parts" and "Remove Selected Parts" for incremental changes.',
-          pos: 'left',
-          wait: 'click',
-        },
-        // ── Step 9: Duplicate via context menu ──
-        {
-          target: '[data-demo="configurations-list"]',
-          text: 'Each non-default configuration has a <b>three-dot menu</b> (visible on hover). It offers <b>Rename</b>, <b>Duplicate</b>, and <b>Delete</b>. Try hovering over a config item to see the menu icon appear.',
-          pos: 'left',
-          wait: 'observe',
-        },
-        // ── Step 10: Permissions ──
-        {
-          target: '[data-demo="configurations-permissions"]',
-          text: 'The <b>Permissions</b> section controls which user roles can see this configuration. Click to expand it and toggle roles on/off. Users without permission will never see this configuration in the viewer — it\'s invisible, not "access denied".',
-          pos: 'left',
-          wait: 'validate',
-          validate: function() {
-            // Validate that the permissions section is expanded
-            var el = document.querySelector('[data-demo="configurations-permissions"]');
-            if (!el) return false;
-            // Check if the inner content is visible (expanded state)
-            var inner = el.querySelector('.border-t');
-            return !!inner;
-          },
-        },
-        // ── Step 11: Observe permissions roles ──
-        {
-          target: '[data-demo="configurations-permissions"]',
-          text: 'Each role has a checkbox. Unchecking all roles makes the configuration invisible to everyone — a warning toast will appear. Roles include Guest, Operator, Field Service Engineer, Content Creator, Admin, and more.',
-          pos: 'left',
-          wait: 'observe',
-        },
-        // ── Step 12: Export ──
-        {
-          target: '[data-demo="configurations-export"]',
-          text: 'Click <b>Export</b> to download all configurations as a file. This is useful for backing up configurations or transferring them between digital twins.',
-          pos: 'top',
-          wait: 'click',
-        },
-        // ── Step 13: Import ──
-        {
-          target: '[data-demo="configurations-import"]',
-          text: 'Click <b>Import</b> to load configurations from a file. If the file references configurations that don\'t exist here, you\'ll be prompted to regenerate them from the imported data.',
-          pos: 'top',
-          wait: 'click',
-        },
-        // ── Step 14: Search ──
-        {
-          target: '[data-demo="configurations-search"]',
-          text: 'Use the <b>search bar</b> to filter configurations by name or tag. This is helpful when you have many configurations — type a keyword and the list updates instantly.',
-          pos: 'left',
-          wait: 'observe',
-        },
-        // ── Step 15: Badge on toolbar ──
-        {
-          target: '[data-demo="configurations-btn"]',
-          text: 'Notice the <b>badge count</b> on the Configurations button — it shows how many configurations exist. This gives a quick at-a-glance indicator without opening the panel.',
-          pos: 'bottom',
-          wait: 'observe',
-        },
-        // ── Step 16: Close panel & state save ──
-        {
-          target: '[data-demo="configurations-btn"]',
-          text: 'When you close the panel (click the X or the backdrop), the active configuration\'s state is automatically saved. A toast confirms: "Configuration state saved". Tab-switching also captures state before resetting to default.',
-          pos: 'bottom',
-          wait: 'observe',
-        },
-        // ── Step 17: Viewer flow summary ──
-        {
-          target: '[data-tutorial="toolbar"]',
-          text: '<b>Viewer Flow:</b> When a technician opens this digital twin from the Knowledge Base, they\'ll see a <b>Configuration selector</b> (only if 2+ enabled configs exist for their role). They can search by name or tag, select a config, and the 3D model loads with the correct parts visible.',
-          pos: 'bottom',
-          wait: 'observe',
-        },
-        // ── Step 18: Complete ──
-        {
-          target: '[data-tutorial="toolbar"]',
-          text: 'You\'ve learned the full <b>Configurations</b> workflow: create, rename, tag, set from view, duplicate, manage permissions, export/import, and how viewers select configs. Configurations ensure every user sees the right variant of your digital twin.',
-          pos: 'bottom',
-          wait: 'observe',
-        },
-      ]
-    }
   }), []);
 
   // Listen for demo start events from DebugMenu
@@ -2286,9 +2138,6 @@ export function ProcedureEditor() {
               }}
               onTogglePartsCatalog={() => postToScene({ type: 'toggle-parts-catalog' })}
               isPartsCatalogOpen={false}
-              onToggleConfigurations={() => setShowConfigurationsPanel(prev => !prev)}
-              isConfigurationsOpen={showConfigurationsPanel}
-              configurationCount={MOCK_CONFIGURATIONS.filter(c => !c.isDefault).length}
               onOpenPublish={() => setShowPublish(true)}
               onOpenValidation={() => setShowValidationPanel(true)}
               checkpointCount={currentStep.validation?.checkpoints?.length ?? 0}
@@ -2970,12 +2819,6 @@ export function ProcedureEditor() {
               onClose={() => setShowOptionsManager(false)}
             />
           )}
-
-          {/* Configurations Panel */}
-          <ConfigurationsPanel
-            isOpen={showConfigurationsPanel}
-            onClose={() => setShowConfigurationsPanel(false)}
-          />
 
           {/* Bookmarks and Parts Catalog are now opened inside the 3D scene via postMessage */}
         </div>

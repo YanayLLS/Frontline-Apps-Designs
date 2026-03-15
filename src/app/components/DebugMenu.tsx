@@ -80,6 +80,7 @@ const featureGroups: FeatureGroup[] = [
     { id: 'grid-settings', name: 'Grid & Settings', icon: '\u2699\uFE0F', desc: 'Toggle the reference grid and configure scene settings.', demoSteps: 8, route: '/app/3d-viewer' },
     { id: 'animations', name: 'Animation Manager', icon: '\u{1F39E}\uFE0F', desc: 'Create, organize, and preview animations for your parts.', demoSteps: 8, route: '/app/3d-viewer' },
     { id: 'keyboard', name: 'Keyboard Shortcuts', icon: '\u2328\uFE0F', desc: 'Master the keyboard shortcuts to speed up your workflow.', demoSteps: 5, route: '/app/3d-viewer' },
+    { id: 'dt-configurations', name: 'Configurations', icon: '\u{1F39B}\uFE0F', desc: 'Create and manage digital twin configurations — define part visibility, tags, permissions, and import/export configs.', demoSteps: 18, route: '/app/3d-viewer?mode=editor' },
   ]},
   { label: 'XR App', features: [
     { id: 'xr-login', name: 'Login & Settings', icon: '\u{1F510}', desc: 'Log in to the XR app and configure connection settings.', demoSteps: 5, route: '/xr' },
@@ -90,7 +91,6 @@ const featureGroups: FeatureGroup[] = [
   ]},
   { label: 'Procedures', features: [
     { id: 'proc-twin-state', name: 'Set State of a Digital Twin', icon: '\u{1F4BE}', desc: 'Save and restore the 3D scene state (camera, visibility, X-Ray) per procedure step.', demoSteps: 5, route: '/app/procedure-editor/p1' },
-    { id: 'proc-configurations', name: 'Configurations', icon: '\u{1F39B}\uFE0F', desc: 'Create and manage digital twin configurations — define part visibility, tags, permissions, and import/export configs.', demoSteps: 18, route: '/app/procedure-editor/p1' },
   ]},
 ];
 
