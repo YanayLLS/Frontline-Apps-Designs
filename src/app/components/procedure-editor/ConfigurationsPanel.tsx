@@ -1,4 +1,4 @@
-import { X, Search, Plus, MoreVertical, Copy, Trash2, ChevronDown, ChevronRight, Upload, Download, Shield, Sliders, GripVertical, Pencil, PlusSquare, MinusSquare } from 'lucide-react';
+import { X, Search, Plus, MoreVertical, Copy, Trash2, ChevronDown, ChevronRight, Upload, Download, Shield, Sliders, GripVertical, Pencil, PlusSquare, MinusSquare, Eye } from 'lucide-react';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useClickOutside } from '../../hooks/useClickOutside';
@@ -630,6 +630,28 @@ function DetailSection({ config, onUpdate, onShowToast }: DetailSectionProps) {
           </div>
         )}
 
+        {/* Captured parts summary */}
+        {Object.keys(config.partStates).length > 0 && (
+          <div
+            className="mb-3 rounded-lg"
+            style={{
+              padding: '8px 10px',
+              backgroundColor: 'rgba(132, 4, 179, 0.06)',
+              border: '1px solid rgba(132, 4, 179, 0.15)',
+            }}
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              <Eye className="size-3" style={{ color: '#8404B3' }} />
+              <span style={{ fontFamily: 'var(--font-family)', fontSize: '11px', fontWeight: 700, color: '#8404B3' }}>
+                Scene State Captured
+              </span>
+            </div>
+            <span style={{ fontFamily: 'var(--font-family)', fontSize: '11px', color: '#868D9E' }}>
+              {Object.values(config.partStates).filter(Boolean).length} parts visible, {Object.values(config.partStates).filter(v => !v).length} hidden
+            </span>
+          </div>
+        )}
+
         {/* Enable/Disable toggle */}
         {!config.isDefault && (
           <div className="flex items-center justify-between mb-3">
@@ -762,13 +784,26 @@ export function ConfigurationsPanel({ isOpen, onClose }: ConfigurationsPanelProp
   });
 
   const handleCreateConfiguration = useCallback(() => {
-    // Find a unique name
-    let baseName = `Configuration ${configurations.length}`;
-    if (configurations.some((c) => c.name === baseName)) {
-      let counter = configurations.length + 1;
-      while (configurations.some((c) => c.name === `Configuration ${counter}`)) counter++;
-      baseName = `Configuration ${counter}`;
-    }
+    // Find a unique name (auto-increment "Configuration N")
+    let counter = 1;
+    while (configurations.some((c) => c.name === `Configuration ${counter}`)) counter++;
+    const baseName = `Configuration ${counter}`;
+
+    // Capture the current 3D scene's part visibility as the initial state
+    // (In a real app this would read from the 3D iframe; here we simulate a snapshot)
+    const capturedPartStates: Record<string, boolean> = {
+      'EngineBlock': true,
+      'Alternator': true,
+      'FuelSystem': true,
+      'CoolantAssembly': true,
+      'ExhaustManifold': true,
+      'ControlPanel': true,
+      'OilFilter': true,
+      'AirFilter': true,
+      'BeltDrive': true,
+      'FuelTank': true,
+    };
+
     const newConfig: Configuration = {
       id: `config-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: baseName,
@@ -780,11 +815,12 @@ export function ConfigurationsPanel({ isOpen, onClose }: ConfigurationsPanelProp
       lastUpdated: new Date().toISOString(),
       sortOrder: configurations.length,
       permittedRoles: ['content-creator', 'admin'],
-      partStates: {},
+      partStates: capturedPartStates,
     };
     setConfigurations((prev) => [...prev, newConfig]);
+    // Auto-activate — you're now "in" this config
     setSelectedId(newConfig.id);
-    setToastMessage('Configuration created');
+    setToastMessage('Configuration created — current scene state captured');
   }, [configurations]);
 
   const handleDuplicate = useCallback((configId: string) => {
