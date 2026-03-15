@@ -1,4 +1,4 @@
-import { X, Search, Plus, MoreVertical, Copy, Trash2, ChevronDown, ChevronRight, Upload, Download, Shield, Sliders, GripVertical, Pencil, PlusSquare, MinusSquare, Eye } from 'lucide-react';
+import { X, Search, Plus, MoreVertical, Copy, Trash2, ChevronDown, ChevronRight, Upload, Download, Shield, Sliders, GripVertical, Pencil, PlusSquare, MinusSquare, Eye, Link2 } from 'lucide-react';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useClickOutside } from '../../hooks/useClickOutside';
@@ -112,9 +112,10 @@ interface ConfigItemProps {
   onRename: (name: string) => void;
   onStartInlineRename: () => void;
   onToggleChecked: () => void;
+  onCopyLink: () => void;
 }
 
-function ConfigItem({ config, isActive, isChecked, onSelect, onToggleEnabled, onDuplicate, onDelete, onRename, onStartInlineRename, onToggleChecked }: ConfigItemProps) {
+function ConfigItem({ config, isActive, isChecked, onSelect, onToggleEnabled, onDuplicate, onDelete, onRename, onStartInlineRename, onToggleChecked, onCopyLink }: ConfigItemProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(config.name);
@@ -353,6 +354,19 @@ function ConfigItem({ config, isActive, isChecked, onSelect, onToggleEnabled, on
                       Duplicate
                     </button>
                     <button
+                      className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-foreground/5 transition-colors text-left min-h-[36px]"
+                      style={{ fontFamily: 'var(--font-family)', fontSize: '13px', color: '#36415D' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onCopyLink();
+                      }}
+                    >
+                      <Link2 className="size-3.5" style={{ color: '#868D9E' }} />
+                      Copy Link
+                    </button>
+                    <div style={{ height: '1px', backgroundColor: '#E9E9E9', margin: '2px 8px' }} />
+                    <button
                       className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-[#FF1F1F]/10 transition-colors text-left min-h-[36px]"
                       style={{ fontFamily: 'var(--font-family)', fontSize: '13px', color: '#FF1F1F' }}
                       onClick={(e) => {
@@ -409,6 +423,8 @@ interface DetailSectionProps {
 function DetailSection({ config, onUpdate, onShowToast }: DetailSectionProps) {
   const [showPermissions, setShowPermissions] = useState(false);
   const [tagInput, setTagInput] = useState('');
+  // GAP 9 (FR17-18): Add/Remove parts hidden by default until parts selected in 3D
+  const [hasSelectedParts, setHasSelectedParts] = useState(false);
 
   const handleAddTag = () => {
     const tag = tagInput.trim().toLowerCase();
@@ -589,44 +605,74 @@ function DetailSection({ config, onUpdate, onShowToast }: DetailSectionProps) {
           </button>
         )}
 
-        {/* Add/Remove selected parts (mock) */}
+        {/* Add/Remove selected parts — GAP 9 (FR17-18): hidden until parts selected */}
         {!config.isReadOnly && (
           <div className="mb-3" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <div className="flex" style={{ gap: '6px' }}>
-              <button
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-button hover:opacity-90 transition-opacity min-h-[36px] border"
+            {hasSelectedParts ? (
+              <div className="flex" style={{ gap: '6px' }}>
+                <button
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-button hover:opacity-90 transition-opacity min-h-[36px] border"
+                  style={{
+                    fontFamily: 'var(--font-family)',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    color: '#36415D',
+                    borderColor: '#C2C9DB',
+                    padding: '6px 10px',
+                  }}
+                  onClick={() => onShowToast('Selected parts added to configuration')}
+                >
+                  <PlusSquare className="size-3.5" style={{ color: '#868D9E' }} />
+                  Add Selected Parts
+                </button>
+                <button
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-button hover:opacity-90 transition-opacity min-h-[36px] border"
+                  style={{
+                    fontFamily: 'var(--font-family)',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    color: '#36415D',
+                    borderColor: '#C2C9DB',
+                    padding: '6px 10px',
+                  }}
+                  onClick={() => onShowToast('Selected parts removed from configuration')}
+                >
+                  <MinusSquare className="size-3.5" style={{ color: '#868D9E' }} />
+                  Remove Selected Parts
+                </button>
+              </div>
+            ) : (
+              <div
+                className="flex items-center rounded-lg"
                 style={{
-                  fontFamily: 'var(--font-family)',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  color: '#36415D',
-                  borderColor: '#C2C9DB',
-                  padding: '6px 10px',
+                  padding: '8px 10px',
+                  backgroundColor: '#F5F5F5',
+                  border: '1px dashed #C2C9DB',
+                  gap: '8px',
                 }}
-                onClick={() => onShowToast('Selected parts added to configuration')}
               >
-                <PlusSquare className="size-3.5" style={{ color: '#868D9E' }} />
-                Add Selected Parts
-              </button>
-              <button
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-button hover:opacity-90 transition-opacity min-h-[36px] border"
-                style={{
-                  fontFamily: 'var(--font-family)',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  color: '#36415D',
-                  borderColor: '#C2C9DB',
-                  padding: '6px 10px',
-                }}
-                onClick={() => onShowToast('Selected parts removed from configuration')}
-              >
-                <MinusSquare className="size-3.5" style={{ color: '#868D9E' }} />
-                Remove Selected Parts
-              </button>
-            </div>
-            <p style={{ fontFamily: 'var(--font-family)', fontSize: '10px', color: '#868D9E', textAlign: 'center' }}>
-              (when parts are selected in 3D view)
-            </p>
+                <Eye className="size-3.5 shrink-0" style={{ color: '#868D9E' }} />
+                <span style={{ fontFamily: 'var(--font-family)', fontSize: '11px', color: '#868D9E', flex: 1 }}>
+                  Select parts in the 3D view to add or remove them from this configuration.
+                </span>
+              </div>
+            )}
+            {/* Demo toggle for part selection simulation */}
+            <button
+              onClick={() => setHasSelectedParts((v) => !v)}
+              className="flex items-center justify-center gap-1 rounded-button hover:opacity-80 transition-opacity"
+              style={{
+                fontFamily: 'var(--font-family)',
+                fontSize: '10px',
+                color: '#868D9E',
+                background: 'none',
+                border: '1px dashed #C2C9DB',
+                padding: '3px 8px',
+                cursor: 'pointer',
+              }}
+            >
+              {hasSelectedParts ? 'Clear part selection (demo)' : 'Simulate part selection (demo)'}
+            </button>
           </div>
         )}
 
@@ -845,7 +891,7 @@ export function ConfigurationsPanel({ isOpen, onClose }: ConfigurationsPanelProp
     if (!config || config.isDefault || config.isReadOnly) return;
     setConfirmDialog({
       title: 'Delete Configuration',
-      message: `Are you sure you want to delete "${config.name}"? This action cannot be undone.`,
+      message: `Are you sure you want to delete "${config.name}"?`,
       confirmLabel: 'Delete',
       confirmColor: '#FF1F1F',
       onConfirm: () => {
@@ -938,7 +984,7 @@ export function ConfigurationsPanel({ isOpen, onClose }: ConfigurationsPanelProp
     const names = configurations.filter((c) => checkedIds.has(c.id)).map((c) => c.name);
     setConfirmDialog({
       title: 'Delete Selected Configurations',
-      message: `Are you sure you want to delete ${checkedIds.size} configuration${checkedIds.size > 1 ? 's' : ''}? This action cannot be undone.`,
+      message: `Are you sure you want to delete ${checkedIds.size} configuration${checkedIds.size > 1 ? 's' : ''}?`,
       confirmLabel: 'Delete',
       confirmColor: '#FF1F1F',
       onConfirm: () => {
@@ -970,7 +1016,7 @@ export function ConfigurationsPanel({ isOpen, onClose }: ConfigurationsPanelProp
     if (selectedId && selectedId !== 'config-default') {
       const sc = configurations.find((c) => c.id === selectedId);
       if (sc && !sc.isDefault) {
-        setToastMessage('Configuration state saved');
+        setToastMessage('Configuration state saved. View reset to default.');
       }
     }
     onClose();
@@ -1101,12 +1147,25 @@ export function ConfigurationsPanel({ isOpen, onClose }: ConfigurationsPanelProp
                       config={config}
                       isActive={selectedId === config.id}
                       isChecked={checkedIds.has(config.id)}
-                      onSelect={() => setSelectedId(config.id)}
+                      onSelect={() => {
+                        // GAP 1 (FR24): Auto-capture toast on config switch
+                        if (selectedId && selectedId !== config.id && selectedId !== 'config-default') {
+                          const prev = configurations.find((c) => c.id === selectedId);
+                          if (prev && !prev.isDefault && !prev.isReadOnly) {
+                            setToastMessage('Previous configuration state saved');
+                          }
+                        }
+                        setSelectedId(config.id);
+                      }}
                       onToggleEnabled={() => handleToggleEnabled(config.id)}
                       onDuplicate={() => handleDuplicate(config.id)}
                       onDelete={() => handleDelete(config.id)}
                       onRename={(name) => handleRename(config.id, name)}
                       onStartInlineRename={() => setSelectedId(config.id)}
+                      onCopyLink={() => {
+                        navigator.clipboard?.writeText(`${window.location.origin}/app/3d-viewer?config=${encodeURIComponent(config.name)}`);
+                        setToastMessage('Link copied to clipboard');
+                      }}
                       onToggleChecked={() => {
                         setCheckedIds((prev) => {
                           const next = new Set(prev);
@@ -1188,50 +1247,55 @@ export function ConfigurationsPanel({ isOpen, onClose }: ConfigurationsPanelProp
                 </div>
               )}
 
-              {/* Footer: Import / Export */}
+              {/* Footer: Import / Export (GAP 8 — FR33: label as Excel) */}
               <div
                 data-demo="configurations-footer"
-                className="border-t flex"
+                className="border-t flex flex-col"
                 style={{
                   borderColor: '#C2C9DB',
                   padding: '10px 16px',
-                  gap: '8px',
+                  gap: '6px',
                   borderBottomLeftRadius: 'var(--radius)',
                   borderBottomRightRadius: 'var(--radius)',
                 }}
               >
-                <button
-                  onClick={handleImport}
-                  data-demo="configurations-import"
-                  className="flex-1 flex items-center justify-center gap-2 rounded-button border hover:bg-[#E9E9E9]/60 transition-colors min-h-[36px]"
-                  style={{
-                    fontFamily: 'var(--font-family)',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    color: '#36415D',
-                    borderColor: '#C2C9DB',
-                    padding: '6px 12px',
-                  }}
-                >
-                  <Upload className="size-3.5" style={{ color: '#868D9E' }} />
-                  Import
-                </button>
-                <button
-                  onClick={handleExport}
-                  data-demo="configurations-export"
-                  className="flex-1 flex items-center justify-center gap-2 rounded-button border hover:bg-[#E9E9E9]/60 transition-colors min-h-[36px]"
-                  style={{
-                    fontFamily: 'var(--font-family)',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    color: '#36415D',
-                    borderColor: '#C2C9DB',
-                    padding: '6px 12px',
-                  }}
-                >
-                  <Download className="size-3.5" style={{ color: '#868D9E' }} />
-                  Export
-                </button>
+                <div className="flex" style={{ gap: '8px' }}>
+                  <button
+                    onClick={handleImport}
+                    data-demo="configurations-import"
+                    className="flex-1 flex items-center justify-center gap-2 rounded-button border hover:bg-[#E9E9E9]/60 transition-colors min-h-[36px]"
+                    style={{
+                      fontFamily: 'var(--font-family)',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      color: '#36415D',
+                      borderColor: '#C2C9DB',
+                      padding: '6px 12px',
+                    }}
+                  >
+                    <Upload className="size-3.5" style={{ color: '#868D9E' }} />
+                    Import Excel
+                  </button>
+                  <button
+                    onClick={handleExport}
+                    data-demo="configurations-export"
+                    className="flex-1 flex items-center justify-center gap-2 rounded-button border hover:bg-[#E9E9E9]/60 transition-colors min-h-[36px]"
+                    style={{
+                      fontFamily: 'var(--font-family)',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      color: '#36415D',
+                      borderColor: '#C2C9DB',
+                      padding: '6px 12px',
+                    }}
+                  >
+                    <Download className="size-3.5" style={{ color: '#868D9E' }} />
+                    Export Excel
+                  </button>
+                </div>
+                <p style={{ fontFamily: 'var(--font-family)', fontSize: '10px', color: '#868D9E', textAlign: 'center', margin: 0 }}>
+                  Export parts catalog with configuration visibility columns
+                </p>
               </div>
             </div>
           </motion.div>

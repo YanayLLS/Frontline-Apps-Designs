@@ -60,6 +60,8 @@ export interface Step {
   parentStepId?: string;
   parentActionIndex?: number;
   nextStepId?: string; // For creating loops and custom step connections
+  configurationId?: string; // GAP 3 (FR55-57): Linked configuration
+  configurationName?: string; // Display name for the linked configuration
 }
 
 export interface Popup {
@@ -319,6 +321,8 @@ const sampleSteps: Step[] = [
     actions: [],
     color: '#FF6B35',
     hasAnimation: true,
+    configurationId: 'config-standard',
+    configurationName: 'Standard Model',
     popups: [
       {
         id: 'popup-4a',
@@ -358,6 +362,8 @@ const sampleSteps: Step[] = [
     actions: [],
     color: 'var(--foreground)',
     hasAnimation: true,
+    configurationId: 'config-premium',
+    configurationName: 'Premium Package',
     popups: [
       {
         id: 'popup-5a',
@@ -2683,7 +2689,86 @@ export function ProcedureEditor() {
                   hasCritical={currentStep.validation?.checkpoints?.some(cp => cp.severity === 'critical') ?? false}
                   onOpenValidation={() => setShowValidationPanel(true)}
                 />
-                
+
+                {/* GAP 4 (FR59): Animation-config incompatibility warning in viewer mode */}
+                {!editingEnabled && currentStep.hasAnimation && currentStep.configurationId && activeConfigName && (
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-lg pointer-events-auto"
+                    style={{
+                      top: '-36px',
+                      padding: '6px 14px',
+                      backgroundColor: 'rgba(255, 152, 0, 0.92)',
+                      color: 'white',
+                      fontSize: '12px',
+                      fontFamily: 'var(--font-family)',
+                      fontWeight: 500,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                      zIndex: 20,
+                      maxWidth: '480px',
+                    }}
+                  >
+                    <AlertCircle className="size-3.5 shrink-0" />
+                    <span>Some parts in this step may not be visible with the current configuration.</span>
+                  </div>
+                )}
+
+                {/* GAP 3 (FR55-57): Configuration dropdown for steps — shown in edit mode */}
+                {editingEnabled && (
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 pointer-events-auto"
+                    style={{ top: '-32px', zIndex: 20 }}
+                  >
+                    <div className="flex items-center gap-2" style={{ fontSize: '12px', fontFamily: 'var(--font-family)' }}>
+                      <span style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>Config:</span>
+                      <select
+                        value={currentStep.configurationId || ''}
+                        onChange={(e) => {
+                          const configId = e.target.value || undefined;
+                          const configName = configId
+                            ? MOCK_CONFIGURATIONS.find(c => c.id === configId)?.name
+                            : undefined;
+                          handleUpdateStep({ configurationId: configId, configurationName: configName });
+                        }}
+                        style={{
+                          fontSize: '12px',
+                          fontFamily: 'var(--font-family)',
+                          color: currentStep.configurationId ? '#8404B3' : '#36415D',
+                          backgroundColor: 'rgba(255,255,255,0.95)',
+                          border: currentStep.configurationId ? '1px solid #8404B3' : '1px solid #C2C9DB',
+                          borderRadius: '6px',
+                          padding: '3px 8px',
+                          cursor: 'pointer',
+                          fontWeight: currentStep.configurationId ? 600 : 400,
+                        }}
+                      >
+                        <option value="">None</option>
+                        {MOCK_CONFIGURATIONS.filter(c => !c.isDefault).map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* GAP 7 (FR58): Config-filtered options note in viewer mode */}
+                {!editingEnabled && activeConfigName && currentStep.actions.length > 1 && (
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 pointer-events-auto"
+                    style={{ bottom: '-22px', zIndex: 20 }}
+                  >
+                    <span style={{
+                      fontSize: '10px',
+                      fontFamily: 'var(--font-family)',
+                      color: 'rgba(255,255,255,0.5)',
+                      fontStyle: 'italic',
+                    }}>
+                      {currentStep.actions.length > 1
+                        ? `1 option not available in "${activeConfigName}" configuration`
+                        : ''}
+                    </span>
+                  </div>
+                )}
+
                 {/* Media Viewer - Positioned absolutely to attach to left side of step card */}
                 <div
                   className="absolute right-1/2 hidden lg:flex flex-col justify-end pointer-events-none h-full"
